@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+
+   <div class="region-cards">
+  {% for region in reg %}
+    <div class="region-card">
+      <div class="region-icon">
+      <i class="bi bi-pin-map"></i></div>
+      <a href="{% url 'region_report' region.id %}">{{ region.region_name }}</a>
+    </div>
+  {% endfor %}
+</div>
+
+
+
+
+{% endblock content %}
+

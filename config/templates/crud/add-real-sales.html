@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+
+<form method="POST" action="{% url 'create_real_sales' %}">
+  {% csrf_token %}
+  <div class="card shadow-sm" style="width: 80%; margin: auto;">
+  <div style="width: 70%">
+    <div class="card-body">
+      
+      <!-- Başlıq -->
+      <div class="d-flex align-items-center mb-4">
+        <i class="fa-solid fa-prescription-bottle-medical fa-xl me-2 text-primary"></i>
+        <h5 class="card-title mb-0">Real Satış Əlavə Et</h5>
+      </div>
+
+      <!-- Bölgə seçimi -->
+      <div class="mb-3">
+        <label for="region" class="form-label small text-muted">Bölgə<span style="color:red">*</span></label>
+        <select id="region-select" name="region" class="form-select">
+          <option disabled selected>Bölgə Seçin</option>
+          {% for r in regions %}
+            <option value="{{ r.id }}" {% if r.id|stringformat:"s" == selected_region %}selected{% endif %}>
+              {{ r.region_name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Həkim, Tarix, Yekun -->
+      <div class="row mb-4">
+        <!-- Həkim -->
+        <div class="col-md-6">
+          <label for="doctor" class="form-label small text-muted">Həkim seçin<span style="color:red">*</span></label>
+          <select id="doctor-select" name="doctor" class="form-select">
+            <option selected disabled>Əvvəl bölgə seçin</option>
+          </select>
+        </div>
+
+        <!-- Tarix -->
+        <div class="col-md-3">
+          <label for="tarix" class="form-label small text-muted">Tarix<span style="color:red">*</span></label>
+          <input type="date" name="date" value="{% now 'Y-m-d' %}" class="form-control" />
+        </div>
+
+        <!-- Yekun Say -->
+        <div class="col-md-3">
+          <label class="form-label small text-muted">Yekun Say<span style="color:red">*</span></label>
+          <input type="text" id="total-count" class="form-control text-end" readonly value="0" />
+        </div>
+      </div>
+
+      <hr>
+
+      <!-- Dərmanlar -->
+      <div class="mb-4">
+        <label class="form-label">Dərmanlar</label>
+        {% for d in drugs %}
+          <div class="d-flex mb-3 justify-content-start align-items-center">
+            <!-- Dərman adı düymə kimi -->
+            <button type="button" class="fs-6 fw-bold me-3"
+              style="width: 60%; background-color: #f0f0f0; border-radius: 10px; border: none; padding: 10px; color: #3b3b3bff; text-align: left; display: block;"
+              disabled>
+              {{ d.med_full_name }}
+            </button>
+
+            <!-- Say inputu -->
+            <div style="width: 120px;">
+              <input type="number" name="quantity_{{ d.id }}" class="form-control" min="0" />
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <hr>
+
+      <!-- Əməliyyat düymələri -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <button type="submit" class="btn btn-success">
+            <i class="fa-solid fa-floppy-disk me-1"></i> Yadda Saxla
+          </button>
+          <button type="reset" class="btn btn-danger ms-2">
+            <i class="fa-solid fa-rotate-right me-1"></i> Sıfırla
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  </div>
+</form>
+
+<script>
+  const ajaxUrl = "{% url 'ajax_doctors_by_region' %}";
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const regionSelect = document.getElementById("region-select");
+    const doctorSelect = document.getElementById("doctor-select");
+
+    regionSelect.addEventListener("change", function () {
+      const selectedRegionId = this.value;
+      doctorSelect.innerHTML = '<option disabled selected>Yüklənir...</option>';
+
+      fetch(ajaxUrl + '?region_id=' + selectedRegionId)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Server cavab vermədi');
+          }
+          return response.json();
+        })
+        .then(data => {
+          doctorSelect.innerHTML = '';
+
+          if (data.doctors.length > 0) {
+            data.doctors.forEach(doctor => {
+              const option = document.createElement("option");
+              option.value = doctor.id;
+              option.textContent = doctor.ad;
+              doctorSelect.appendChild(option);
+            });
+          } else {
+            const option = document.createElement("option");
+            option.text = "Həkim tapılmadı";
+            option.disabled = true;
+            option.selected = true;
+            doctorSelect.appendChild(option);
+          }
+        })
+        .catch(error => {
+          console.error("Həkimlər alınarkən xəta:", error);
+          doctorSelect.innerHTML = '<option disabled selected>Xəta baş verdi</option>';
+        });
+    });
+  });
+
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const inputs = document.querySelectorAll('input[name^="quantity_"]');
+    const totalField = document.getElementById("total-count");
+
+    function updateTotal() {
+      let total = 0;
+      inputs.forEach(input => {
+        total += parseInt(input.value) || 0;
+      });
+      totalField.value = total;
+    }
+
+    inputs.forEach(input => {
+      input.addEventListener("input", updateTotal);
+    });
+  });
+</script>
+
+
+
+
+{% endblock content %}

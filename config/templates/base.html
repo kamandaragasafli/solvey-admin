@@ -1,0 +1,194 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solvey - Dashboard</title>
+
+  <!-- Bootstrap CSS -->
+ <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <link rel="icon" href="{% static 'img/solvey logo.png' %}" type="image/png">
+    <link rel="shortcut icon" href="{% static 'img/solvey logo.png' %}" type="image/x-icon">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+
+
+
+</head>
+<body>
+<div class="sidebar d-flex flex-column">
+  <h4 class="text-center py-4 fw-bold"><img src="{% static 'img/solvey logo.png' %}"style="widht:100%; height:50px"></h4>
+  <hr>
+
+   <!-- Dashboard -->
+  <a class="nav-link active" href="{% url 'index' %}">
+    <i class="bi bi-speedometer2"></i> Dashboard
+  </a>
+
+  <!-- Həkimlər -->
+  <a class="nav-link" href="{% url 'doctors' %}">
+    <i class="bi bi-people-fill"></i> Həkim Siyahısı
+  </a>
+  <a class="nav-link" href="{% url 'add-doctor' %}">
+    <i class="bi bi-person-plus-fill"></i> Həkim Əlavə et
+  </a>
+   <a class="nav-link" href="{% url 'add-pay-dr' %}">
+    <i class="bi bi-credit-card-fill"></i> Ödəniş et
+  </a>
+  <a class="nav-link" href="{% url 'datasiya' %}">
+    <i class="bi bi-graph-up"></i> Datasiya
+  </a>
+  <a class="nav-link" href="{% url 'razilasma' %}">
+    <i class="bi bi-file-earmark-text"></i> Razılaşma
+  </a>
+   <a class="nav-link" href="{% url 'finance_view' %}">
+   <i class="bi bi-wallet2"></i> Maliyyə
+  </a>
+  <hr>
+
+  <!-- Dərmanlar -->
+  <a class="nav-link" href="{% url 'drugs' %}">
+    <i class="bi bi-capsule" style="color: green"></i> Dərmanlar
+  </a>
+   <a class="nav-link" href="{% url 'create_recipe' %}">
+    <i class="bx bx-plus-circle" style="color: green"></i>Qeydiyyat Əlavə et
+  </a>
+  <a class="nav-link" href="{% url 'data_list' %}">
+    <i class="bi bi-clipboard-data" style="color: green"></i> Aylıq Qeydiyyat
+  </a>
+  
+  <hr>
+
+  <!-- Satış -->
+  <a class="nav-link" href="{% url 'create_real_sales' %}">
+    <i class="bi bi-cart-plus-fill"></i> Real Satış Əlavə et
+  </a>
+  
+  <!-- Aylıq Hesabat -->
+  <a class="nav-link" href="{% url 'report' %}">
+    <i class="bi bi-cash-stack"></i> Borcalacaq
+  </a>
+  <a class="nav-link" href="{% url 'closed_accounts' %}">
+    <i class="bi bi-archive"></i> Köhnə Hesabat
+  </a>
+  <a class="nav-link" href="{% url 'sales' %}">
+    <i class="bi bi-bar-chart-fill"></i> Aylıq Satışlar
+  </a>
+  <hr>
+
+  <!-- Klinikalar -->
+  <a class="nav-link" href="{% url 'hospital_list' %}">
+    <i class="bi bi-hospital"></i> Klinikalar
+  </a>
+  <a class="nav-link" href="{% url 'region_list' %}">
+    <i class="bi bi-geo-alt-fill"></i> Bölgələr
+  </a>
+  <hr>
+
+  <!-- Admin -->
+  {% if request.user.is_superuser %}
+  <a class="nav-link" href="{% url 'admin' %}">
+    <i class="bi bi-gear-fill"></i> Admin
+  </a>
+  {% endif %}
+
+  <!-- İzləmə -->
+  <a class="nav-link" href="{% url 'movqe-gonder' %}">
+    <i class="bi bi-geo-fill"></i> İzləmə
+  </a>
+</div>
+
+
+<div class="content">
+  <div class="top-bar">
+        <a href="{% url 'test' %}"style="background-color: rgba(0, 132, 255, 1)">
+  <i class="bx bx-file-blank"></i> Komissiya Hesabatı
+</a>
+
+<a href="{% url 'create_recipe' %}"style="background-color: rgba(0, 132, 255, 1)">
+  <i class="bx bx-plus-circle"></i> Qeydiyyat Əlavə et
+</a>
+
+<a href="{% url 'add-sell' %}"style="background-color: rgba(0, 132, 255, 1)">
+  <i class="bx bx-cart-alt"></i> Dərman Satışı Əlavə et
+</a>
+
+<a href="{% url 'add-pay-dr' %}"style="background-color: rgba(0, 132, 255, 1)">
+  <i class="bx bx-dollar-circle"></i> Həkimə Ödəniş Əlavə et
+</a>
+
+         <!-- Dark Mode Toggle -->
+                    {% comment %} <button id="darkModeToggle" class="dark-mode-btn">
+                        <i class="fas fa-moon"></i>
+                    </button> {% endcomment %}
+
+                    <!-- Notifications -->
+                    {% comment %} <button class="notification-btn">
+                      <i class="bi bi-bell"></i> {% endcomment %}
+                      {% comment %} <span class="notification-badge">3</span> {% endcomment %}
+                  </button>
+
+
+                    <!-- User Profile -->
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        {% if user.is_authenticated %}
+                        <span class="user-name">{{ user.username }}</span>
+                        {% else %}
+                         <a href="{% url 'login' %}" class="text-dark"><img src="{% static 'img/man.png' %}" class="fs-5"></a>
+                    {% endif %}
+                   
+                    </div>
+
+ 
+ 
+  </div>
+ {% if messages %}
+  <div class="alert-container">
+    {% for message in messages %}
+      <div class="custom-alert 
+        {% if message.tags == 'success' %}success
+        {% elif message.tags == 'error' %}error
+        {% elif message.tags == 'warning' %}warning
+        {% elif message.tags == 'info' %}info
+        {% endif %}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% block content %}
+
+
+{% endblock content %}
+
+
+<!-- Əvvəlcə jQuery -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+
+<!-- Sonra Moment.js -->
+<script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+
+<!-- Daha sonra Daterangepicker -->
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
+<!-- Sonra Bootstrap (jQuery-dən sonra gəlməlidir) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+
+
+</body>
+</html>
+
+

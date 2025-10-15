@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <div class="card shadow p-4">
+    <h5 class="mb-4">Həkimə Sənəd Əlavə Et</h5>
+    
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+    
+    <form method="POST" action="{% url 'document_add' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="row">
+        <!-- Region -->
+        <div class="col-md-6 mb-3">
+          <label for="document_region_id" class="form-label" style="color: #4850b9;">Bölgə Seç</label>
+          <select
+            class="form-select"
+            name="region_id"
+            id="document_region_id"
+            style="background-color: #f0f0f0; color: #333; border: 2px solid #55e0a3; border-radius: 8px;"
+            required
+          >
+            <option value="" disabled selected>Bölgə Seçin</option>
+            {% for r in region %}
+              <option value="{{ r.id }}">{{ r.region_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Doctor -->
+        <div class="col-md-6 mb-3">
+          <label for="document_doctor_id" class="form-label">Həkim Seç</label>
+          <select class="form-select" name="doctor_id" id="document_doctor_id" required disabled>
+            <option value="" selected disabled>Əvvəl bölgə seçin</option>
+          </select>
+        </div>
+
+        <!-- Document File -->
+        <div class="col-md-6 mb-3">
+          <label for="photo" class="form-label">Ödəniş Sənədi</label>
+          <input type="file" class="form-control" name="check_photo" id="photo" accept="image/*,.pdf,.doc,.docx" required>
+          <div class="form-text">Şəkil, PDF və ya Word sənədi yükləyə bilərsiniz (maksimum 5MB)</div>
+        </div>
+
+        <!-- Date -->
+        <div class="col-md-6 mb-3">
+          <label for="document_date" class="form-label">Tarix Seç</label>
+          <input type="date" class="form-control" name="check_date" id="document_date" value="{% now 'Y-m-d' %}" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-success mt-2">
+        <i class="bi bi-plus-circle me-1"></i> Sənəd Əlavə Et
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const documentRegionSelect = document.getElementById("document_region_id");
+  const documentDoctorSelect = document.getElementById("document_doctor_id");
+
+  function loadDoctors(regionId, doctorSelect) {
+    if (!regionId) {
+      doctorSelect.innerHTML = '<option value="" selected disabled>Əvvəl bölgə seçin</option>';
+      doctorSelect.disabled = true;
+      return;
+    }
+
+    doctorSelect.innerHTML = '<option disabled selected>Yüklənir...</option>';
+    doctorSelect.disabled = true;
+
+    fetch('/reports/ajax/get-doctors/?region_id=' + regionId)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        doctorSelect.innerHTML = '';
+        
+        if (data.doctors && data.doctors.length > 0) {
+          doctorSelect.disabled = false;
+          
+          // Default seçim
+          const defaultOption = document.createElement("option");
+          defaultOption.value = "";
+          defaultOption.textContent = "Həkim seçin";
+          defaultOption.disabled = true;
+          defaultOption.selected = true;
+          doctorSelect.appendChild(defaultOption);
+          
+          // Həkimləri əlavə et
+          data.doctors.forEach(doctor => {
+            const option = document.createElement("option");
+            option.value = doctor.id;
+            option.textContent = doctor.ad;
+            doctorSelect.appendChild(option);
+          });
+        } else {
+          const option = document.createElement("option");
+          option.value = "";
+          option.textContent = "Bu bölgədə həkim tapılmadı";
+          option.disabled = true;
+          option.selected = true;
+          doctorSelect.appendChild(option);
+          doctorSelect.disabled = true;
+        }
+      })
+      .catch(error => {
+        console.error("Həkimlər alınarkən xəta:", error);
+        doctorSelect.innerHTML = '<option value="" selected disabled>Xəta baş verdi</option>';
+        doctorSelect.disabled = true;
+      });
+  }
+
+  // Sənəd formu üçün region dəyişikliyi
+  documentRegionSelect.addEventListener("change", function () {
+    loadDoctors(this.value, documentDoctorSelect);
+  });
+
+  // Form göndərildikdə validation
+  document.querySelector('form').addEventListener('submit', function(e) {
+    const regionId = documentRegionSelect.value;
+    const doctorId = documentDoctorSelect.value;
+    const file = document.getElementById('photo').files[0];
+    
+    if (!regionId) {
+      e.preventDefault();
+      alert('Zəhmət olmasa bölgə seçin!');
+      return;
+    }
+    
+    if (!doctorId) {
+      e.preventDefault();
+      alert('Zəhmət olmasa həkim seçin!');
+      return;
+    }
+    
+    if (file && file.size > 5 * 1024 * 1024) {
+      e.preventDefault();
+      alert('Fayl ölçüsü 5MB-dan çox ola bilməz!');
+      return;
+    }
+  });
+});
+</script>
+
+{% endblock content %}

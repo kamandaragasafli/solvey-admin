@@ -1,0 +1,76 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS İzləmə Sistemi</title>
+      <link rel="stylesheet" href="{% static 'css/map.css' %}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GPS İzləmə Sistemi</h1>
+            <div class="user-controls">
+                <button id="loginBtn">Daxil Ol</button>
+                <button id="registerBtn">Qeydiyyat</button>
+            </div>
+        </header>
+
+        <div class="tracking-controls">
+            <button id="startTracking" class="btn-primary">İzləməyə Başla</button>
+            <button id="stopTracking" class="btn-secondary" disabled>Dayandır</button>
+            <div class="status">
+                <span id="statusText">İzləmə dayanıb</span>
+                <div id="gpsStatus" class="gps-off">GPS</div>
+            </div>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <h3>Məsafə</h3>
+                <span id="distance">0 km</span>
+            </div>
+            <div class="stat-card">
+                <h3>Müddət</h3>
+                <span id="duration">00:00:00</span>
+            </div>
+            <div class="stat-card">
+                <h3>Sürət</h3>
+                <span id="speed">0 km/s</span>
+            </div>
+            <div class="stat-card">
+                <h3>Dayanma</h3>
+                <span id="stops">0 dəfə</span>
+            </div>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="session-history">
+            <h3>Keçmiş Sessiyalar</h3>
+            <div id="sessionsList"></div>
+        </div>
+    </div>
+
+    <!-- Modallar -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Daxil Ol</h2>
+            <form id="loginForm">
+                <input type="text" placeholder="İstifadəçi adı" required>
+                <input type="password" placeholder="Şifrə" required>
+                <button type="submit">Daxil Ol</button>
+            </form>
+        </div>
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="{% static 'js/map.js' %}"></script>
+    <script src="{% static 'js/tracking.js' %}"></script>
+    <script src="{% static 'js/ui.js' %}"></script>
+  
+</body>
+</html>

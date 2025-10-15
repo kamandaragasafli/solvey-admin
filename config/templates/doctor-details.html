@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+ <link rel="stylesheet" href="{% static 'css/dr-details.css' %}">
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Doctor Information Card -->
+                <div class="doctor-info-card">
+                    <div class="doctor-avatar">
+                    {% if doctor.cinsiyyet_from_name == "Qadın" %}
+                     <img src="{% static 'img/doctorW.png' %}"style="widht:100%; height:50px">
+                    {% else %}
+                    <img src="{% static 'img/doctorM.png' %}"style="widht:100%; height:50px">
+                    {% endif %}
+                       
+                    </div>
+                    <div class="doctor-details">
+                        <h2 class="doctor-name">Dr. {{ doctor.ad }}</h2>
+                        <div class="doctor-info-grid">
+                            <div class="info-item">
+                                <span class="info-label">İxtisas:</span>
+                                <span class="info-value">{{ doctor.ixtisas }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Nömrə:</span>
+                                <span class="info-value">{{ doctor.number }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Dərəcə:</span>
+                                <span class="info-value">{{ doctor.get_derece_display }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Cinsiyyət:</span>
+                                <span class="info-value">{{ doctor.get_cinsiyyet_display }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Kateqoriya:</span>
+                                <span class="info-value">{{ doctor.kategoriya }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Bölgə:</span>
+                                <span class="info-value">{{ doctor.bolge }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Status:</span>
+                                <span class="status-badge active">Aktiv</span>
+                            </div>
+                            
+                        </div>
+                    </div>
+                    <div class="doctor-actions">
+                        <button class="action-btn edit" onclick="editDoctor()">
+                            <i class="bi bi-pencil"></i>
+                            <span>Redaktə et</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="stats-section">
+                    <div class="stats-grid">
+                        <div class="stat-card recipes">
+                            <div class="stat-icon">
+                                <i class="bi bi-journal-medical"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 class="stat-value">{{ recibe_total }} Ədəd</h3>
+                                <p class="stat-label">Yazdığı Reseptlər</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-card debt">
+                            <div class="stat-icon">
+                                <i class="bi bi-wallet2"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 class="stat-value">{{ doctor.previous_debt }}  ₼</h3>
+                                <p class="stat-label">Yekun Borcu</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-card payments">
+                            <div class="stat-icon">
+                                <i class="bi bi-cash-coin"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 class="stat-value">{{ payments|length }}</h3>
+                                <p class="stat-label">Ödəniş Sayı</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tables Section -->
+                <div class="tables-section">
+                    <div class="tables-grid">
+                        <!-- Payments Table -->
+                        <div class="table-card">
+                            <div class="table-header">
+                                <h3>
+                                    <i class="bi bi-wallet-fill"></i>
+                                    Son Ödənişlər
+                                </h3>
+                           
+
+
+                                <a href ="{% url 'add-pay-dr' %}" class="add-btn" style="text-decoration: none;">
+                                
+                                 <i class="bi bi-plus"></i>Əlavə et</a>
+
+                                
+                            </div>
+                            <div class="table-container">
+                             {% if payments %}
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>№</th>
+                                            <th>Tarix</th>
+                                            <th>Status</th>
+                                            <th>Növü</th>
+                                            <th>Məbləğ</th>
+                                            <th>Əməliyyat</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                     {% for pay in payments %}
+
+                                        <tr>
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>{{ pay.date|date:"d.m.Y" }}</td>
+                                            <td><span class="badge success">Ödənildi</span></td>
+
+                                             {% if pay.payment_type == "Avans" %}
+
+                                             <td><span class="badge primary">Avans</span></td>
+
+                                             {% elif pay.payment_type == "İnvest" %}
+
+                                             <td><span class="badge warning">İnvestisiya</span></td>
+
+
+                                             {% elif pay.payment_type == "Geri_qaytarma" %}
+
+                                              <td><span class="badge danger">Geri Qaytarma</span></td>
+
+                                              {% endif %}
+                                            <td><strong>{{ pay.pay }} ₼</strong></td>
+                                            <td>
+                                               <button class="action-icon delete" onclick="return confirm('Bu ödənişi silmək istədiyinizə əminsinizmi?')">
+                                                <a href="{% url 'del_payments' pay.id %}" style="text-decoration: none" ><i class="bi bi-trash"></i></a>
+                                            </button>
+
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                 {% else %}
+                              <p class="text-muted p-3">Hələ heç bir ödəniş yoxdur.</p>
+                              {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Recipes Table -->
+                        <div class="table-card">
+                            <div class="table-header">
+                                <h3>
+                                    <i class="bi bi-file-earmark-medical"></i>
+                                    Yazılan Reseptlər
+                                </h3>
+                               <a href="{% url 'create_detail_recipe' %}?doctor_id={{ doctor.id }}">
+                                <button class="add-btn">
+                                  <i class="bi bi-plus"></i>
+                                  Əlavə et
+                                </button>
+                              </a>
+
+                            </div>
+                            <div class="table-container">
+                              {% if recipe %}
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>№</th>
+                                            <th>Tarix</th>
+                                            <th>Dərman Adı</th>
+                                            <th>Say</th>
+                                            <th>Bölgə</th>
+                                            <th>Əməliyyat</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for r in recipe %}
+                                        <tr>
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>{{ r.recipe.date|date:"d.m.Y" }}</td>
+                                            <td>
+                                                <span class="medicine-name">  {{ r.drug.med_name }}</span>
+                                            </td>
+                                            <td><strong>{{ r.number }}</strong></td>
+                                            <td>{{ r.recipe.region}}</td>
+                                            <td>
+                                                <div class="action-buttons">
+                                                <button class="action-icon edit" onclick="openModal('updateRecipeModal')">
+                                                   <a href="">
+                                                            <i class="bi bi-pencil-square"></i>
+                                                    </a>
+                                                  </button>
+                                                    <button class="action-icon delete" onclick="deleteRecipe()">
+                                                         <a href="{% url 'del_recipe' r.id %}"><i class="bi bi-trash"></i></a>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                             {% else %}
+                          <p class="text-muted p-3">Hələ heç bir resept yazılmayıb.</p>
+                          {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Edit Doctor -->
+<div id="editDoctorModal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Həkim Məlumatlarını Redaktə et</h3>
+      <button class="close-btn" onclick="closeModal('editDoctorModal')">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form method="POST" action="{% url 'update-doctor' doctor.id %}">
+        {% csrf_token %}
+        <div class="row">
+          <div class="mb-3 col-md-6">
+            <label for="ad" class="form-label">Həkim Adı</label>
+            <input type="text" class="form-control" id="ad" name="ad" value="{{ doctor.ad|default:'' }}" required>
+          </div>
+          <div class="mb-3 col-md-6">
+            <label for="ixtisas" class="form-label">İxtisas</label>
+            <select id="ixtisas" name="ixtisas" class="form-select" required>
+              <option value="">Seçin...</option>
+              {% for code, name in doctor.İXTİSAS_SECIMI %}
+                <option value="{{ code }}" {% if doctor.ixtisas == code %}selected{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3 col-md-6">
+            <label for="kategoriya" class="form-label">Kateqoriya</label>
+            <select id="kategoriya" name="kategoriya" class="form-select" required>
+              {% for code, name in doctor.KATEQORIYA_SECIMI %}
+                <option value="{{ code }}" {% if doctor.kategoriya == code %}selected{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3 col-md-6">
+            <label for="cinsiyyet" class="form-label">Cinsiyyət</label>
+            <select id="cinsiyyet" name="cinsiyyet" class="form-select" required>
+              {% for code, name in doctor.GENDER_SECIMI %}
+                <option value="{{ code }}" {% if doctor.cinsiyyet == code %}selected{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3 col-md-6">
+            <label for="derece" class="form-label">Dərəcə</label>
+            <select id="derece" name="derece" class="form-select" required>
+              {% for code, name in doctor.DERECE_SECIMI %}
+                <option value="{{ code }}" {% if doctor.derece == code %}selected{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3 col-md-6">
+            <label for="number" class="form-label">Əlaqə nömrəsi</label>
+            <input type="text" class="form-control" id="number" name="number" value="{{ doctor.number|default:'' }}">
+          </div>
+        </div>
+        <div class="modal-actions mt-3">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('editDoctorModal')">Ləğv et</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check"></i> Yadda saxla</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+  <!-- JS: Region seçildikdə şəhər və xəstəxanaları yükləmək -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const regionSelect = document.getElementById('region_id');
+  const citySelect = document.getElementById('city_id');
+  const hospitalSelect = document.getElementById('hospital_id');
+  const loadUrl = "{% url 'ajax-load-cities-hospitals' %}";
+
+  function loadCitiesHospitals(regionId) {
+    if (!regionId) {
+      citySelect.innerHTML = '<option value="">Əvvəl bölgə seçin...</option>';
+      hospitalSelect.innerHTML = '<option value="">Əvvəl bölgə seçin...</option>';
+      return;
+    }
+
+    fetch(`${loadUrl}?region_id=${regionId}`)
+      .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+      })
+      .then(data => {
+        // Şəhərlər
+        citySelect.innerHTML = '<option value="">Seçin...</option>';
+        data.cities.forEach(city => {
+          const option = document.createElement('option');
+          option.value = city.id;
+          option.textContent = city.city_name;
+          if (city.id == '{{ doctor.city_id|default:"" }}') option.selected = true;
+          citySelect.appendChild(option);
+        });
+
+        // Xəstəxanalar
+        hospitalSelect.innerHTML = '<option value="">Seçin...</option>';
+        data.hospitals.forEach(hospital => {
+          const option = document.createElement('option');
+          option.value = hospital.id;
+          option.textContent = hospital.hospital_name;
+          if (hospital.id == '{{ doctor.klinika_id|default:"" }}') option.selected = true;
+          hospitalSelect.appendChild(option);
+        });
+      })
+      .catch(error => console.error('Error loading cities/hospitals:', error));
+  }
+
+  // Initialize dropdowns with doctor's current region
+  if (regionSelect.value) {
+    loadCitiesHospitals(regionSelect.value);
+  }
+
+  // Update cities and hospitals when region changes
+  regionSelect.addEventListener('change', function() {
+    loadCitiesHospitals(this.value);
+  });
+
+  // Modal open/close functions
+  function openModal(modalId) {
+    document.getElementById(modalId).style.display = 'block';
+    // Reinitialize dropdowns when modal opens
+    if (regionSelect.value) {
+      loadCitiesHospitals(regionSelect.value);
+    }
+  }
+
+  function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+  }
+});
+
+// Pəncərə xaricinə klikləyəndə də bağlamaq istəyirsənsə
+window.onclick = function(event) {
+    const modal = document.getElementById('updateRecipeModal');
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
+</script>
+
+</div>
+
+
+
+
+<script src="{% static 'js/dr-details.js' %}"></script>
+
+</body>
+</html>
+
+
+{% endblock %}

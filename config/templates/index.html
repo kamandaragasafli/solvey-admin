@@ -1,0 +1,804 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% load custom_filters %}
+
+
+{% block content %}
+<style>
+.custom-modal {
+    max-width: 95%; /* Ekranın 95%-i qədər genişlik */
+    width: 95%;
+}
+</style>
+  <div class="container-fluid py-4">
+        <!-- Header Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="fw-bold text-dark mb-1">
+                            <i class="fas fa-chart-line me-3 text-primary"></i>
+                            Admin Paneli
+                        </h2>
+                        <p class="text-muted mb-0">Solvey İdarəetmə Sistemi</p>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-xl-3 col-md-6">
+                <div class="stats-card stats-card-primary">
+                    <div class="stats-card-body">
+                        <div class="stats-icon">
+                            <i class="fas fa-user-doctor"></i>
+                        </div>
+                        <div class="stats-content">
+                            <h3 class="stats-number">{{doctor_count}}</h3>
+                            <p class="stats-label">Həkim sayı</p>
+                            <div class="stats-trend">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>+12% bu ay</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <div class="stats-card stats-card-success">
+                    <div class="stats-card-body">
+                        <div class="stats-icon">
+                            <i class="fas fa-hospital"></i>
+                        </div>
+                        <div class="stats-content">
+                            <h3 class="stats-number">{{hospital_count}}</h3>
+                            <p class="stats-label">Xəstəxana sayı</p>
+                            <div class="stats-trend">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>+3% bu ay</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <div class="stats-card stats-card-warning">
+                    <div class="stats-card-body">
+                        <div class="stats-icon">
+                            <i class="fas fa-location-dot"></i>
+                        </div>
+                        <div class="stats-content">
+                            <h3 class="stats-number">{{city_count}}</h3>
+                            <p class="stats-label">Şəhər sayı</p>
+                            <div class="stats-trend">
+                                <i class="fas fa-minus"></i>
+                                <span>Dəyişiklik yoxdur</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <div class="stats-card stats-card-danger">
+                    <div class="stats-card-body">
+                        <div class="stats-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stats-content">
+                            <h3 class="stats-number">{{ aktiv_sayi }}</h3>
+                            <p class="stats-label">Aktiv Həkimlər</p>
+                            <div class="stats-trend">
+                                <i class="fas fa-arrow-up"></i>
+                                <span>+8% bu ay</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Statistics Section -->
+        <div class="row g-4 mb-5">
+            <!-- Regional Drug Charts -->
+            <div class="col-lg-4">
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <h5 class="chart-title">
+                            <i class="fas fa-chart-column me-2"></i>
+                            Digər bölgələr üzrə dərman qeydiyyatı
+                        </h5>
+                        <div class="chart-actions">
+                            <button class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-card-body">
+                        <canvas id="regionDrugChartOther" height="300"></canvas>
+                    </div>
+                </div>
+              <div class="chart-card mt-4">
+
+
+                <div class="chart-card-body">
+                    <!-- Chart yerinə boş qutuda kalendar görünəcək -->
+                    <div id="calendarContainer" class="calendar-wrapper"></div>
+                </div>
+                </div>
+
+            </div>
+
+            <div class="col-lg-4 ">
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <h5 class="chart-title">
+                            <i class="fas fa-chart-column me-2"></i>
+                            Bakı bölgələri üzrə dərman
+                        </h5>
+                        <div class="chart-actions">
+                            <button class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-card-body">
+                        <canvas id="regionDrugChartBaku" height="300"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card mt-4">
+            <div class="chart-card-header d-flex justify-content-between align-items-center">
+                <h5 class="chart-title">
+                <i class="fas fa-chart-column me-2"></i>
+                Bakı bölgələri üzrə satışı
+                </h5>
+                <div class="chart-actions d-flex align-items-center gap-3">
+                <!-- Saat -->
+                <div id="bakuClock" style="font-weight:600; font-size:14px; color:#4850b9;">
+                    --
+                </div>
+                <!-- Yükləmə düyməsi -->
+                <button class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-download"></i>
+                </button>
+                </div>
+            </div>
+
+            <div class="chart-card-body">
+                <canvas id="regionDrugChartOther" height="300"></canvas>
+            </div>
+            </div>
+            </div>
+
+<!-- Prescription Statistics Card -->
+<div class="col-lg-4 ">
+    <div class="prescription-stats-card">
+        <div class="prescription-header">
+            <div class="prescription-icon">
+                <i class="fas fa-pills"></i>
+            </div>
+            <div class="prescription-title">
+                <h5>Dərman Yazılış Statistikası</h5>
+                <p>Məlumat mərkəzi</p>
+            </div>
+        </div>
+
+        <div class="prescription-stats">
+            <div class="stat-item other-regions">
+                <div class="stat-icon">
+                    <i class="fas fa-map-location-dot"></i>
+                </div>
+                <div class="stat-content">
+                    <p class="stat-label">Digər bölgələr üzrə</p>
+                    <p class="stat-sublabel">Regional data</p>
+                </div>
+                <div class="stat-value">
+                    <span class="stat-number">{{ total_other|default:0 }}</span>
+                </div>
+            </div>
+
+            <div class="stat-item baku-regions">
+                <div class="stat-icon">
+                    <i class="fas fa-city"></i>
+                </div>
+                <div class="stat-content">
+                    <p class="stat-label">Bakı bölgələri üzrə</p>
+                    <p class="stat-sublabel">Capital regions</p>
+                </div>
+                <div class="stat-value">
+                    <span class="stat-number">{{ total_baku|default:0 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="prescription-divider"></div>
+
+        <div class="prescription-total">
+            <div class="total-content">
+                <div class="total-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="total-text">
+                    <p class="total-label">Ümumi yazılış sayı</p>
+                    <p class="total-sublabel">Total prescriptions</p>
+                </div>
+            </div>
+            <div class="total-value">
+                <span class="total-number">{{ total_baku|add:total_other }}</span>
+                <span class="total-unit">prescriptions</span>
+            </div>
+        </div>
+
+        <div class="prescription-progress">
+            <div class="progress-header">
+                <span class="progress-label">Bölgə paylaşımı</span>
+                {% with total=total_baku|add:total_other %}
+                    {% if total > 0 %}
+                        {% with percentage=total_baku|divisibleby:total|floatformat:0 %}
+                            <span class="progress-percentage">{{ percentage }}% Bakı</span>
+                        {% endwith %}
+                    {% else %}
+                        <span class="progress-percentage">0% Bakı</span>
+                    {% endif %}
+                {% endwith %}
+            </div>
+            <div class="progress-bar-custom">
+                {% with total=total_baku|add:total_other %}
+                    {% if total > 0 %}
+                        <div class="progress-fill" style="width: {{ total_baku|divisibleby:total|floatformat:0 }}%"></div>
+                    {% else %}
+                        <div class="progress-fill" style="width: 0%"></div>
+                    {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Recent Activities Section -->
+<div class="row mt-5">
+    <div class="col-lg-6 ">
+        <div class="activity-card" style="width: 900px">
+            <div class="activity-header">
+                <h5 class="activity-title">
+                    <i class="fas fa-clock-rotate-left me-2"></i>
+                    Son Əməliyyatlar (Reseptlər)
+                </h5>
+                <div class="activity-actions">
+                    <button class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-filter me-1"></i>
+                        Filter
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-refresh"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="activity-body">
+                <div class="activity-list">
+                    {% for item in combined_events %}
+                        <div class="activity-item"
+                            {% if forloop.counter <= 4 %}
+                                visible-item
+                            {% else %}
+                                hidden-item" style="display:none"
+                            {% endif %}">
+                        
+                            {% if item.event_type == "added" %}
+                                <!-- Added Recipe -->
+                                <div class="activity-icon">
+                                  <i class="bi bi-check-circle-fill" style="color: green;"></i>
+
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-main">
+                                        <strong>{{user.username}}</strong> Tərəfindən <i class="fw-bold">{{ item.dr.ad }}</i> adına yeni resept əlavə edildi!
+                                    </div>
+                                    <div class="activity-meta">
+                                        <span class="activity-date">{{ item.event_date|date:"Y-m-d H:i" }}</span>
+                                        <span class="activity-badge badge bg-success">Əlavə edildi</span>
+                                    </div>
+                                </div>
+                            {% elif item.event_type == "deleted" %}
+                                <!-- Deleted Recipe -->
+                                <div class="activity-icon">
+                                    <i class="bi bi-x-circle-fill"style="color: red;"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-main">
+                                        <strong>
+                                        {{user.username}}</strong> Tərəfindən 
+                                            <strong>{% if item.recipe and item.recipe.dr %}
+                                                {{ item.recipe.dr.ad }}dan
+                                            {% else %}
+                                                Naməlum həkim
+                                            {% endif %}</strong>
+                                         <strong style="color:red">{{ item.drug_name }}</strong> dərmanı qeydiyyatdan silindi!
+                                    </div>
+                                    <div class="activity-meta">
+                                        <span class="activity-date">{{ item.event_date|date:"Y-m-d H:i" }}</span>
+                                        <span class="activity-badge badge bg-danger">Silindi</span>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <div class="text-muted p-3">Əməliyyat tapılmadı.</div>
+                    {% endfor %}
+                </div>
+
+                <div class="activity-footer">
+                    <button id="toggle-activity" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-eye me-1"></i>
+                        Hamısını gör
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+      <div class="col-lg-4 ms-auto">
+                <div class="quick-actions-card">
+                    <div class="quick-actions-header">
+                        <h5 class="quick-actions-title">
+                            <i class="fas fa-bolt me-2"></i>
+                            Tez Əməliyyatlar
+                        </h5>
+                    </div>
+                    <div class="quick-actions-body">
+                        <div class="quick-action-item">
+                            <button class="btn btn-outline-primary w-100 mb-3">
+                                 <a class="nav-link ps-5" href="{% url 'add-doctor' %}">Yeni Həkim Əlavə Et<i class="fas fa-user-plus me-2"></i></a>
+                             
+                            </button>
+                        </div>
+                        <div class="quick-action-item">
+                            <button class="btn btn-outline-success w-100 mb-3">
+                                <i class="fas fa-hospital me-2"></i>
+                                Xəstəxana Qeydiyyatı
+                            </button>
+                        </div>
+                        <div class="quick-action-item">
+                            <button class="btn btn-outline-warning w-100 mb-3">
+                                <i class="fas fa-pills me-2"></i>
+                                Dərman Kataloqu
+                            </button>
+                        </div>
+                        <div class="quick-action-item">
+                            <button class="btn btn-outline-info w-100 mb-3">
+                                <i class="fas fa-chart-bar me-2"></i>
+                                Hesabat Yarat
+                            </button>
+                        </div>
+                        <div class="quick-actions-item">
+                            <button type="button" class="btn btn-outline-danger w-100 mb-3" data-bs-toggle="modal" data-bs-target="#regionModal">
+                                <i class="fas fa-map-marker-alt me-2"></i>
+                                Region Qeydiyyat
+                            </button>
+                        </div>
+                        <div class="quick-actions-item">
+                            <button class="btn btn-outline-secondary w-100"data-bs-toggle="modal" data-bs-target="#bakuModal">
+                                <i class="fas fa-city me-2"></i>
+                                Bakı Qeydiyyat
+                            </button>
+                            </div>
+
+                    </div>
+                </div>
+            </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="regionModal" tabindex="-1" aria-labelledby="regionModalLabel" aria-hidden="true">
+<div class="modal-dialog modal-dialog-centered custom-modal">
+
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="regionModalLabel">Region Qeydiyyat</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
+            <thead class="table-light text-muted" style="font-size: 0.65rem;">
+              <tr>
+                <th>#</th>
+                <th>Bölgə</th>
+                {% for d in all_drug %}
+                <th>{{ d.med_name }}</th>
+                {% endfor %}
+                <th>Günlük Qeydiyyat</th>
+                <th>Aylıq Qeydiyyat</th>
+              </tr>
+            </thead>
+            <tbody>
+             {% for region in diger_region %}
+                <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ region.region_name }}</td>
+
+                {% for drug in all_drug %}
+                    {% with key=region.region_name|add:"|"|add:drug.med_name %}
+                    <td>{{ region_drug_counts|get_region_drug:key }}</td>
+                    {% endwith %}
+                {% endfor %}
+
+                <td style="font-weight: bold">{{ region_daily_totals|get_total_item:region.region_name }}</td>
+                <td style="font-weight: bold">{{ region_monthly_totals|get_total_item:region.region_name }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+         <a href="{% url 'export_excel_ayliq_region' %}" class="btn btn-success ">
+        <i class="bi bi-file-earmark-excel"></i> Excel
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bağla</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Bakı Modal -->
+<div class="modal fade" id="bakuModal" tabindex="-1" aria-labelledby="bakuModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered custom-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="bakuModalLabel">Bakı Region Qeydiyyat</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="baku-result-table">
+            <thead class="table-light text-muted" style="font-size: 0.65rem;">
+              <tr>
+                <th>#</th>
+                <th>Bölgə</th>
+                {% for d in all_drug %}
+                <th>{{ d.med_name }}</th>
+                {% endfor %}
+                <th>Günlük Qeydiyyat</th>
+                <th>Aylıq Qeydiyyat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for region in baki_region %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ region.region_name }}</td>
+
+                  {% for drug in all_drug %}
+                    {% with key=region.region_name|add:"|"|add:drug.med_name %}
+                      <td>{{ baki_region_drug_counts|get_region_drug:key }}</td>
+                    {% endwith %}
+                  {% endfor %}
+
+                  <td style="font-weight: bold">{{ baki_region_daily_totals|get_total_item:region.region_name }}</td>
+                  <td style="font-weight: bold">{{ baki_region_monthly_totals|get_total_item:region.region_name }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a href="{% url 'export_excel_ayliq_baki' %}" class="btn btn-success">
+          <i class="bi bi-file-earmark-excel"></i> Excel
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bağla</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let totalOtherCount = 0;
+let totalBakuCount = 0;
+fetch('/region-drug-data/other/')
+  .then(response => response.json())
+  .then(data => {
+    const ctx = document.getElementById('regionDrugChartOther').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: 'Qeydiyyat sayı',
+          data: data.data,
+          backgroundColor: 'rgba(25, 135, 84, 0.8)',
+          borderColor: 'rgba(25, 135, 84, 1)',
+          borderWidth: 1,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false }
+        },
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: {
+              autoSkip: false,
+              maxRotation: 90,
+              minRotation: 90
+            }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        }
+      }
+    });
+  });
+
+
+// Bakı bölgələri üçün
+fetch('/region-drug-data/baku/')
+  .then(response => response.json())
+  .then(data => {
+    const ctx = document.getElementById('regionDrugChartBaku').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: 'Qeydiyyat sayı',
+          data: data.data,
+          backgroundColor: '#004e6dff'
+        }]
+      },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false }
+          },
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              ticks: {
+                autoSkip: false,
+                maxRotation: 90,  // Dönmə bucağı (və ya 90 etsən tam aşağıya)
+                minRotation: 90
+              }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1
+              }
+            }
+          }
+        }
+    });
+  });
+
+  function updateTotalText() {
+  if (totalOtherCount !== 0 || totalBakuCount !== 0) {
+    const totalElem = document.getElementById('totalRegistration');
+    totalElem.innerHTML = `
+      Digər: ${totalOtherCount} <br>
+      Bakı: ${totalBakuCount}
+    `;
+  }
+}
+
+
+    document.getElementById('toggle-activity').addEventListener('click', function() {
+        const hiddenItems = document.querySelectorAll('.hidden-item');
+        const btn = this;
+
+        if (btn.innerText.includes("Hamısını gör")) {
+            // Gizli elementləri göstər
+            hiddenItems.forEach(item => {
+                item.style.display = 'block';
+            });
+            btn.innerHTML = '<i class="fas fa-eye-slash me-1"></i> Gizlət';
+        } else {
+            // Gizli elementləri yenidən gizlət
+            hiddenItems.forEach(item => {
+                item.style.display = 'none';
+            });
+            btn.innerHTML = '<i class="fas fa-eye me-1"></i> Hamısını gör';
+        }
+    });
+(function(){
+    // Localization (Azerbaycan / Türkçe tarzı)
+    const MONTHS = ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'];
+    const WEEKDAYS = ['Hə','B.e','Ç.a','Ç','C','Ş','B']; // qısa adlar; istəyə görə dəyişə bilərsiniz. (bazar ertəsi başlanğıcı)
+
+    // Elements
+    const input = document.getElementById('modernCalendar');
+    const container = document.getElementById('calendarContainer');
+
+    // Current view state
+    const today = new Date();
+    let viewYear = today.getFullYear();
+    let viewMonth = today.getMonth(); // 0-based
+    let selectedDate = null; // Date object
+
+    // Build calendar shell
+    function buildShell() {
+      container.innerHTML = `
+        <div class="calendar-wrapper-inner">
+          <div class="cal-header">
+            <div class="cal-nav">
+              <button class="cal-btn" data-action="prev" title="Əvvəl">&lsaquo;</button>
+              <div class="cal-title" id="calTitle"></div>
+              <button class="cal-btn" data-action="next" title="Sonra">&rsaquo;</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="cal-btn" data-action="jumpToday" title="Bu gün">Bu gün</button>
+              <button class="cal-btn" data-action="clear" title="Təmizlə">Təmizlə</button>
+            </div>
+          </div>
+
+          <div class="cal-grid" id="calWeekdays"></div>
+          <div class="cal-grid" id="calDays" style="margin-top:6px"></div>
+
+          <div class="cal-footer">
+            <small style="color:#6b6b6b"><strong id="monthLabel"></strong></small>
+          </div>
+        </div>
+      `;
+      // weekdays
+      const wd = document.getElementById('calWeekdays');
+      WEEKDAYS.forEach(d => {
+        const el = document.createElement('div');
+        el.className = 'cal-weekday';
+        el.textContent = d;
+        wd.appendChild(el);
+      });
+
+      // wire nav
+      container.querySelectorAll('[data-action]').forEach(btn=>{
+        btn.addEventListener('click', handleAction);
+      });
+    }
+
+    function handleAction(e){
+      const action = e.currentTarget.getAttribute('data-action');
+      if(action === 'prev'){ viewMonth--; if(viewMonth < 0){ viewMonth=11; viewYear--; } render(); }
+      if(action === 'next'){ viewMonth++; if(viewMonth > 11){ viewMonth=0; viewYear++; } render(); }
+      if(action === 'prevYear'){ viewYear--; render(); }
+      if(action === 'nextYear'){ viewYear++; render(); }
+      if(action === 'jumpToday'){ viewYear = today.getFullYear(); viewMonth = today.getMonth(); render(); }
+      if(action === 'clear'){ selectedDate = null; input.value = ''; render(); }
+    }
+
+    // Render days
+    function render() {
+      const calTitle = container.querySelector('#calTitle');
+      const monthLabel = container.querySelector('#monthLabel');
+      calTitle.textContent = MONTHS[viewMonth] + ' ' + viewYear;
+      monthLabel.textContent = MONTHS[viewMonth] + ' ' + viewYear;
+
+      const daysEl = container.querySelector('#calDays');
+      daysEl.innerHTML = '';
+
+      // First day of month and number of days
+      const firstOfMonth = new Date(viewYear, viewMonth, 1);
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+      // Determine offset so that week starts on Monday.
+      // getDay(): Sunday=0 ... Saturday=6. We want Monday=0 ... Sunday=6
+      const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // Monday-based index
+
+      // previous month's tail
+      const prevMonthLast = new Date(viewYear, viewMonth, 0).getDate();
+      for(let i = firstWeekday - 1; i >= 0; i--){
+        const d = prevMonthLast - i;
+        const el = document.createElement('div');
+        el.className = 'cal-day cal-day--muted';
+        el.textContent = d;
+        daysEl.appendChild(el);
+      }
+
+      // current month days
+      for(let d = 1; d <= daysInMonth; d++){
+        const el = document.createElement('div');
+        el.className = 'cal-day';
+        el.textContent = d;
+
+        const thisDate = new Date(viewYear, viewMonth, d);
+
+        // today highlight
+        if(thisDate.toDateString() === today.toDateString()){
+          el.classList.add('cal-day--today');
+        }
+
+        // selected highlight
+        if(selectedDate && thisDate.toDateString() === selectedDate.toDateString()){
+          el.classList.add('cal-day--selected');
+        }
+
+        // click to select
+        el.addEventListener('click', ()=>{
+          selectedDate = thisDate;
+          input.value = formatDateISO(selectedDate);
+          render();
+        });
+
+        daysEl.appendChild(el);
+      }
+
+      // next month's head to fill last week
+      const totalCells = daysEl.children.length;
+      const rem = (7 - (totalCells % 7)) % 7;
+      for(let i = 1; i <= rem; i++){
+        const el = document.createElement('div');
+        el.className = 'cal-day cal-day--muted';
+        el.textContent = i;
+        daysEl.appendChild(el);
+      }
+    }
+
+    // Format YYYY-MM-DD
+    function pad(n){ return n < 10 ? '0'+n : n; }
+    function formatDateISO(d){
+      return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+    }
+
+    // Click outside to close (if you want to hide calendar when clicking elsewhere)
+    // For now we show it always in the container. But let's close if click outside container and a flag show/hide.
+    // (Not hiding by default since container is inline in card.)
+
+    // Initialize shell and first render
+    buildShell();
+    render();
+
+    // Optional: open small date picker when input focused: scroll to calendar (UX)
+    input.addEventListener('focus', ()=>{
+      container.scrollIntoView({behavior:'smooth', block:'nearest'});
+    });
+
+    // Keyboard support: left/right change day, up/down change week, enter selects today
+    document.addEventListener('keydown', (e)=>{
+      if(document.activeElement === input || container.contains(document.activeElement) || true){
+        // enable only when calendar is present
+        if(!selectedDate) selectedDate = new Date(viewYear, viewMonth, 1);
+        let changed = false;
+        if(e.key === 'ArrowLeft'){ selectedDate.setDate(selectedDate.getDate() - 1); changed = true; }
+        if(e.key === 'ArrowRight'){ selectedDate.setDate(selectedDate.getDate() + 1); changed = true; }
+        if(e.key === 'ArrowUp'){ selectedDate.setDate(selectedDate.getDate() - 7); changed = true; }
+        if(e.key === 'ArrowDown'){ selectedDate.setDate(selectedDate.getDate() + 7); changed = true; }
+        if(e.key === 'Enter'){ input.value = formatDateISO(selectedDate); changed = true; }
+        if(changed){
+          viewYear = selectedDate.getFullYear();
+          viewMonth = selectedDate.getMonth();
+          render();
+        }
+      }
+    });
+
+    // If input already has a date (e.g., from server), try parse it
+    (function tryParseInitial(){
+      const v = input.value && input.value.trim();
+      if(!v) return;
+      // Expecting YYYY-MM-DD
+      const parts = v.split('-');
+      if(parts.length === 3){
+        const y = parseInt(parts[0],10), m = parseInt(parts[1],10)-1, d = parseInt(parts[2],10);
+        const parsed = new Date(y,m,d);
+        if(!isNaN(parsed)) { selectedDate = parsed; viewYear = y; viewMonth = m; render(); }
+      }
+    })();
+
+  })();
+</script>
+{% endblock content %}

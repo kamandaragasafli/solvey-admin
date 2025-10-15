@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+  <h4 class="mb-3">💊 Dərman Siyahısı</h4>
+<div class="col-md-3 mb-3">
+  <button type="button" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2" data-bs-toggle="modal" data-bs-target="#addDrugModal">
+    <i class="bi bi-plus-circle fs-5"></i> Dərman Əlavə et
+  </button>
+</div>
+
+  {% if drugs %}
+    {% for drug in drugs %}
+      <div class="row align-items-center mb-2 p-2 rounded" style="background-color: #f8f9fa;">
+        <!-- Dərmanın adı button kimi -->
+        <div class="col-md-3">
+          <button type="button" class="btn btn w-100 text-start">
+            {{ drug.med_name }}
+          </button>
+        </div>
+
+        <!-- Qiymət -->
+        <div class="col-md-2 fw-bold text-center text-dark">
+          Qiymət: ₼{{ drug.med_price }}
+        </div>
+
+        <!-- Komissiya -->
+        <div class="col-md-2 text-center">
+          <span class="badge bg-success" title="Komissiya">₼{{ drug.komissiya }}</span>
+        </div>
+
+        <!-- Status -->
+        <div class="col-md-2 text-center">
+          {% if drug.status %}
+            <span class="badge bg-primary">Aktiv</span>
+          {% else %}
+            <span class="badge bg-secondary">Passiv</span>
+          {% endif %}
+        </div>
+
+        <!-- Sil düyməsi -->
+        <div class="col-md-2 text-center">
+          <a href="{% url 'remove' drug.id %}" class="btn btn-sm btn-outline-danger" title="Sil">
+            <i class="bi bi-trash3"></i>
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="text-muted">Dərman yoxdur</div>
+  {% endif %}
+</div>
+<div class="modal fade" id="addDrugModal" tabindex="-1" aria-labelledby="addDrugModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content rounded-4">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="addDrugModalLabel">💊 Yeni Dərman Əlavə et</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Bağla"></button>
+      </div>
+      <form method="POST" action="{% url 'add-drug' %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="medName" class="form-label">Dərman adı</label>
+            <input type="text" class="form-control" id="medName" name="drug_name" required>
+          </div>
+          <div class="mb-3">
+            <label for="medPrice" class="form-label">Satış Qiyməti</label>
+            <input type="number" step="0.01" class="form-control" id="medPrice" name="price" required>
+          </div>
+          <div class="mb-3">
+            <label for="komissiya" class="form-label">Komissiya</label>
+            <input type="number" step="0.01" class="form-control" id="komissiya" name="komissiya" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Bağla</button>
+          <button type="submit" class="btn btn-success">Əlavə et</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}

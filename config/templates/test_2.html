@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% load my_filters %}
+
+{% block content %}
+<style>
+  .report-card {
+    border: 2px solid #5b70f3;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    background-color: #f4f7ff;
+    position: relative;
+    overflow-x: auto;
+  }
+
+  .report-card h3 {
+    color: #4850b9;
+    margin-bottom: 10px;
+  }
+
+  .export-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background-color: #5b70f3;
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .export-btn:hover {
+    background-color: #4850b9;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 800px;
+    margin-top: 15px;
+  }
+
+  table, th, td {
+    border: 1px solid #5b70f3;
+  }
+
+  th, td {
+    padding: 8px;
+    text-align: center;
+  }
+
+  th {
+    background-color: #e0e7ff;
+    color: #000;
+  }
+
+  tfoot td, tfoot th {
+    font-weight: bold;
+    background-color: #edf2ff;
+  }
+
+  h2 {
+    color: #4850b9;
+    margin-bottom: 30px;
+  }
+</style>
+
+
+<h2>{{ region.region_name }} Bölgəsinin Hesabatı</h2>
+<p>Ümumi həkimlərin resept sayı: {{ toplam_hekim_say }}</p>
+
+<form method="get" style="margin-bottom: 30px; display: flex; align-items: center; gap: 10px;">
+    <label for="month" style="font-weight: bold; color: #4850b9;">Ay seçin:</label>
+    <select name="month" id="month" 
+            style="padding: 6px 10px; border-radius: 6px; border: 1px solid #5b70f3; background-color: #f4f7ff; color: #000; font-weight: bold;">
+        {% for i in aylar %}
+            <option value="{{ i }}" {% if ay == i %}selected{% endif %}>{{ i }}-ay</option>
+        {% endfor %}
+    </select>
+    <button type="submit" 
+            style="padding: 6px 12px; border-radius: 6px; border: none; background-color: #5b70f3; color: #fff; cursor: pointer; font-weight: bold; transition: 0.3s;">
+        Hesabla
+    </button>
+</form>
+
+<!-- 1. Kart -->
+<div class="report-card">
+  <h3>1. Həkimlər üzrə Dərman Sayları</h3>
+  <button class="export-btn">⬇️ Export</button>
+  <p>Bu cədvəldə hər həkimin yazdığı dərmanların sayları göstərilir.</p>
+  <table>
+    <thead style="font-size: 0.65rem;">
+      <tr>
+        <th>Həkimlər</th>
+        {% for derman in dermanlar %}
+          <th>{{ derman.med_name }}</th>
+        {% endfor %}
+        <th>Ümumi</th>
+      </tr>
+    </thead>
+    <tbody style="font-size: 0.65rem;">
+      {% for hekim in hekimler_data %}
+        <tr>
+          <td>{{ hekim.hekim.ad }}</td>
+          {% for say in hekim.dermanlar %}
+            <td {% if say > 0 %} style="background-color: #d4edda; color: #155724; font-weight:bold;" {% endif %}>{{ say }}</td>
+          {% endfor %}
+          <td>{{ hekim.toplam }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>Ümumi</td>
+        {% for toplam in derman_toplamlari %}
+          <td {% if toplam > 0 %} style="background-color: #d4edda; color: #155724; font-weight:bold;" {% endif %}>{{ toplam }}</td>
+        {% endfor %}
+        <td>{{ toplam_hekim_say }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<!-- 2. Kart -->
+<div class="report-card">
+  <h3>2. Dərəcəyə Görə Bölünmüş Həkim Hesabatı</h3>
+  <button class="export-btn">⬇️ Export</button>
+  <p>Burada hər həkimin dərəcələri və faizli dərman toplamları göstərilir.</p>
+  <table>
+    <thead style="font-size: 0.65rem;">
+      <tr>
+        <th>Həkim</th>
+        <th>Dərəcə</th>
+        {% for derman in dermanlar %}
+          <th>{{ derman.med_name }}</th>
+        {% endfor %}
+        <th>Toplam</th>
+        <th>Faizli Toplam</th>
+      </tr>
+    </thead>
+    <tbody style="font-size: 0.65rem;">
+      {% for row in hekimler_data %}
+        <tr>
+          <td>{{ row.hekim.ad }}</td>
+          <td>{{ row.hekim.derece }}</td>
+          {% for say in row.faizli_dermanlar %}
+            <td {% if say > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ say }}</td>
+          {% endfor %}
+          <td {% if row.toplam > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ row.toplam }}</td>
+          <td {% if row.faizli_toplam > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ row.faizli_toplam }}</td>
+        </tr>
+      {% endfor %}
+      <tr>
+        <th colspan="2">Toplam</th>
+        {% for say in faizli_derman_toplamlari %}
+          <th {% if say > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ say }}</th>
+        {% endfor %}
+        <th {% if toplam_hekim_say > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ toplam_hekim_say }}</th>
+        <th {% if toplam_faizli_say > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ toplam_faizli_say }}</th>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 3. Kart -->
+<div class="report-card">
+  <h3>3. Satış Hesablanmış Dərmanlar</h3>
+  <button class="export-btn">⬇️ Export</button>
+  <p>Effektivliklə vurulmuş dərmanların hesablanması.</p>
+  <table>
+    <thead style="font-size: 0.65rem;">
+      <tr>
+        <th>Həkimlər</th>
+        {% for derman in dermanlar %}
+          <th>{{ derman.med_name }}</th>
+        {% endfor %}
+        <th>Ümumi</th>
+      </tr>
+    </thead>
+    <tbody style="font-size: 0.65rem;">
+      {% for row in hekimler_data %}
+        <tr>
+          <td>{{ row.hekim.ad }}</td>
+          {% for effektiv in row.effektivlikli_dermanlar %}
+            <td {% if effektiv > 0 %} style="background-color: #cce5ff; color: #004085; font-weight:bold;" {% endif %}>{{ effektiv }}</td>
+          {% endfor %}
+          <td {% if row.effektivlikli_toplam > 0 %} style="background-color: #cce5ff; color: #004085; font-weight:bold;" {% endif %}>{{ row.effektivlikli_toplam }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>Ümumi</td>
+        {% for toplam in effektivlikli_derman_toplamlari %}
+          <td {% if toplam > 0 %} style="background-color: #cce5ff; color: #004085; font-weight:bold;" {% endif %}>{{ toplam }}</td>
+        {% endfor %}
+        <td {% if toplam_effektivlikli_say > 0 %} style="background-color: #cce5ff; color: #004085; font-weight:bold;" {% endif %}>{{ toplam_effektivlikli_say }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<!-- 4. Kart -->
+<div class="report-card" id="report-card">
+  <h3>4. Komissiyaya uyğun Silinən Dərmanlar</h3>
+  <button class="print-btn" onclick="printDiv('report-card')">🖨️ Çap et</button>
+  <p>Bu cədvəldə yalnız həkimlərin komissiyadan silinən dərman miqdarları göstərilir.</p>
+  <table>
+    <thead style="font-size: 0.65rem;">
+      <tr>
+        <th>Həkim Adı</th>
+        {% for derman in dermanlar %}
+          <th>{{ derman.med_name }} (Silinən)</th>
+        {% endfor %}
+        <th>Silinən Toplam</th>
+      </tr>
+    </thead>
+    <tbody style="font-size: 0.65rem;">
+      {% for row in hekimler_data %}
+        <tr>
+          <td>{{ row.hekim.ad }}</td>
+          {% for _, komissiya in row.hekim_effektiv_komissiya %}
+            <td {% if komissiya > 0 %} style="background-color: #f8d7da; color: #721c24; font-weight:bold; " {% endif %}>{{ komissiya }}</td>
+          {% endfor %}
+          <td {% if row.hekimden_silinen > 0 %} style="background-color: #f8d7da; color: #721c24; font-weight:bold; " {% endif %}>{{ row.hekimden_silinen }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+  <tr>
+    <th>Toplam</th>
+    {% for komissiya in komissiya_toplamlari %}
+      <th>
+        {% if komissiya > 0 %}
+          <span style="background-color: #f8d7da; color: #721c24;">{{ komissiya }}</span>
+        {% else %}
+          {{ komissiya }}
+        {% endif %}
+      </th>
+    {% endfor %}
+    <th>
+      {% if toplam_komissiya > 0 %}
+        <span style="background-color: #f8d7da; color: #721c24;">{{ toplam_komissiya }}</span>
+      {% else %}
+        {{ toplam_komissiya }}
+      {% endif %}
+    </th>
+  </tr>
+</tfoot>
+
+  </table>
+</div>
+
+
+<script>
+  function printDiv(divId) {
+    const content = document.getElementById(divId).innerHTML;
+    const printWindow = window.open('', '', 'height=600,width=800');
+    printWindow.document.write('<html><head><title>Çap</title>');
+    printWindow.document.write('<style>table, th, td { border: 1px solid black; border-collapse: collapse; padding: 4px; font-size: 10px; } th { background-color: #f4f4f4; }</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(content);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  }
+</script>
+
+{% endblock content %}

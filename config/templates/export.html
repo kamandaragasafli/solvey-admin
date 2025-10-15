@@ -1,0 +1,200 @@
+
+{% extends "base.html" %}
+
+{% load static %}
+{% block content %}
+ <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+
+       <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-upload me-2"></i>Excel ilə Məlumat Yükləmə
+                            </h4>
+                            <div class="cards-grid">
+                                <!-- Dərman əlavə et -->
+                                <div class="upload-card primary">
+                                    <div class="card-icon">
+                                        <i class="bi bi-capsule-pill"></i>
+                                    </div>
+                                    <h5 class="card-title">Dərman əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="{% url 'import_drug' %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_drug_file" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn primary">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Həkim əlavə et -->
+                               <div class="kart">
+                                <div class="ikon">
+                                    <i class="bi bi-person-badge"></i>
+                                </div>
+                                <h5 class="kart-basliq">Həkim əlavə et</h5>
+                                <form class="form" method="POST" action="{% url 'import_doctors' %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                    <input type="file" name="excel_doctor_file" class="fayl-secmek" required>
+                                    <button type="submit" class="btn">Yüklə</button>
+                                </form>
+                            </div>
+
+                                <!-- Bölgə əlavə et -->
+                                <div class="upload-card info">
+                                    <div class="card-icon">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                    </div>
+                                    <h5 class="card-title">Bölgə əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="{% url 'import_region' %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_region_file" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn info">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Xəstəxana əlavə et -->
+                                <div class="upload-card danger">
+                                    <div class="card-icon">
+                                        <i class="bi bi-hospital"></i>
+                                    </div>
+                                    <h5 class="card-title">Xəstəxana əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="{% url 'import_hospital' %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_hospital_file" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn danger">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Borc əlavə et -->
+                                <div class="">
+                                    <div class="card">
+                                        <i class="bi bi-cash-coin"></i>
+                                    </div>
+                                    <h5 class="card-te">Borc əlavə et</h5>
+                                    <form class="uploaform" method="POST" action="{% url 'import_debts' %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_debt_file" class="" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-eark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="uploa-btn success">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Maliyyə əlavə et -->
+                                <div class="upload-card dark">
+                                    <div class="card-icon">
+                                        <i class="bi bi-bar-chart"></i>
+                                    </div>
+                                    <h5 class="card-title">Maliyyə əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="{% url 'import_finance' %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_finance_file" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn dark">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="upload-card dark">
+                                    <div class="card-icon">
+                                        <i class="bi bi-bar-chart"></i>
+                                    </div>
+                                    <h5 class="card-title">Maliyyə əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="{% url 'import_recipes' %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_finance_file" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn dark">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Satış Excel Yükləmə -->
+                        <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-cart-plus me-2"></i>Satış Excel Yükləmə
+                            </h4>
+                            <div class="sales-grid">
+                                <div class="upload-card success">
+                                    <div class="card-icon">
+                                        <i class="bi bi-cart"></i>
+                                    </div>
+                                    <h5 class="card-title">Bakı Satış əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="#" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_baku_sales" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn success">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <div class="upload-card primary">
+                                    <div class="card-icon">
+                                        <i class="bi bi-cart"></i>
+                                    </div>
+                                    <h5 class="card-title">Region Satış əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="#" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_region_sales" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn primary">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+{% endblock content %}
