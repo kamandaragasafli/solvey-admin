@@ -1,0 +1,740 @@
+{% extends "base.html" %}
+
+{% load static %}
+{% block content %}
+ <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+{% if messages %}
+  <div class="messages">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+
+    <div class="dashboard-container">
+    
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Tab Navigation -->
+                <div class="tab-navigation">
+                <button class="tab-btn active" data-tab="data">
+                       <i class="fa-solid fa-notes-medical"></i>
+                        <span>Qeydiyyatlar</span>
+                    </button>
+                    <button class="tab-btn" data-tab="import">
+                        <i class="bi bi-upload"></i>
+                        <span>İmport et</span>
+                    </button>
+                    <button class="tab-btn" data-tab="settings">
+                        <i class="bi bi-gear"></i>
+                        <span>Sistem Ayarları</span>
+                    </button>
+                    <button class="tab-btn" data-tab="backup">
+                        <i class="bi bi-cloud-arrow-down"></i>
+                        <span>Backup Ayarları</span>
+                    </button>
+                </div>
+                 <div class="tab-pane active" id="data">
+            
+                        <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-journal-text me-2"></i>Qeydiyyat Jurnal
+                            </h4>
+                            <div class="audit-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Tarix</th>
+                                            <th>Həkim adı</th>
+                                            <th>Dərman adı</th>
+                                            <th>Dərman sayı</th>
+                                            <th>Bölgə</th>
+                                            <th>#</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for r in recipes %}
+                                    <tr>
+                                            <td>{{r.created_at}}</td>
+                                <td>
+                                    <a href="{% url 'doctor_detail' r.recipe.dr.id %}" style="text-decoration: none; color: inherit;">
+                                        {{ r.recipe.dr.ad }}
+                                    </a>
+                                </td>
+
+
+                                            <td><span class="action-badge edit">{{r.drug}}</span></td>
+                                            <td><span class="action-badge create">{{r.number}}</span></td>
+                                            <td>{{r.recipe.region.region_name}}</td>
+                                            <td><a href="{% url 'admin_recipe_del' r.id %}"><i class="bi bi-x-circle"style="color: red;"></i></a></td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+
+                <!-- Tab Content -->
+                <div class="tab-content">
+                    <!-- Import Tab -->
+                    <div class="tab-pane" id="import">
+                        <!-- Excel ilə Məlumat Yükləmə -->
+                        <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-upload me-2"></i>Excel ilə Məlumat Yükləmə
+                            </h4>
+                            <div class="cards-grid">
+                                <!-- Dərman əlavə et -->
+                                <div class="upload-card primary">
+                                    <div class="card-icon">
+                                        <i class="bi bi-capsule-pill"></i>
+                                    </div>
+                                    <h5 class="card-title">Dərman əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="{% url 'import_drug' %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_drug_file" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn primary my-2">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                                 <div class="file-format-info bg-primary" style="margin-top: 20px; padding: 10px;  border-radius: 5px;">
+                                                        <h6 style="color: #fff; margin-bottom: 10px;"><i class="bi bi-info-circle"></i> Excel fayl formatı:</h6>
+                                                        <ul style="color: #ccc; font-size: 14px; padding-left: 20px;">
+                                                            <li>Sütun başlıqları: <strong>Dərman adı</strong>, <strong>Dərman Qiyməti</strong>,<strong>Dərman Komissiyası</strong>
+                                                            <li>Birinci sətir başlıq kimi qəbul edilir</li>
+                                                        
+                                                        </ul>
+                                                    </div>
+                                </div>
+
+                                <!-- Həkim əlavə et -->
+                                <div class="upload-card warning">
+                                    <div class="card-icon">
+                                        <i class="bi bi-person-badge"></i>
+                                    </div>
+                                    <h5 class="card-title">Həkim əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="{% url 'import_doctors' %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_doctor_file" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn warning my-2">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                                    <div class="file-format-info" style="margin-top: 20px; padding: 10px; background: orange;  border-radius: 5px;">
+                                                        <h6 style="color: #fff; margin-bottom: 10px;"><i class="bi bi-info-circle"></i> Excel fayl formatı:</h6>
+                                                        <ul style="color: #ffffffff; font-size: 14px; padding-left: 20px;">
+                                                            <li>Sütun başlıqları: <strong>Bölgə</strong>, <strong>Həkim</strong>,<strong>Dərəcə</strong>, 
+                                                            <strong>Telefon</strong>,<strong>Klinika</strong>, <strong>İxtisas</strong>
+                                                            <li>Birinci sətir başlıq kimi qəbul edilir</li>
+                                                        
+                                                        </ul>
+                                                    </div>
+                                    </form>
+                                </div>
+
+                                <!-- Bölgə əlavə et -->
+                                <div class="upload-card info">
+                                    <div class="card-icon">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                    </div>
+                                    <h5 class="card-title">Bölgə əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="{% url 'import_region' %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_region_file" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn info my-2">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                                    <div class="file-format-info" style="margin-top: 20px; padding: 10px; background-color: #00adccff; border-radius: 5px;">
+                                                        <h6 style="color: #fff; margin-bottom: 10px;"><i class="bi bi-info-circle"></i> Excel fayl formatı:</h6>
+                                                        <ul style="color: #ccc; font-size: 14px; padding-left: 20px;">
+                                                            <li>Sütun başlıqları: <strong>Bölgə</strong>
+                                                            <li>Birinci sətir başlıq kimi qəbul edilir</li>
+                                                        
+                                                        </ul>
+                                                    </div>
+                                    </form>
+                                </div>
+
+                                <!-- Xəstəxana əlavə et -->
+                                        <div class="upload-card danger">
+                                            <div class="card-icon">
+                                                <i class="bi bi-hospital"></i>
+                                            </div>
+                                            <h5 class="card-title">Xəstəxana əlavə et</h5>
+                                            <form class="upload-form" method="POST" action="{% url 'import_hospital' %}" enctype="multipart/form-data">
+                                            {% csrf_token %}
+                                                <div class="file-input-wrapper">
+                                                    <input type="file" name="excel_hospital_file" class="file-input" required>
+                                                    <label class="file-label">
+                                                        <i class="bi bi-file-earmark-excel"></i>
+                                                        Excel faylı seçin
+                                                    </label>
+                                                </div>
+                                                <button type="submit" class="upload-btn danger my-2">
+                                                    <i class="bi bi-upload"></i> Yüklə
+                                                </button>
+                                            </form>
+                                                    <div class="file-format-info" style="margin-top: 20px; padding: 10px; background-color: #c70000ff; border-radius: 5px;">
+                                                        <h6 style="color: #fff; margin-bottom: 10px;"><i class="bi bi-info-circle"></i> Excel fayl formatı:</h6>
+                                                        <ul style="color: #ccc; font-size: 14px; padding-left: 20px;">
+                                                            <li>Sütun başlıqları: <strong>Bölgə</strong>, <strong>Xəstəxana</strong>
+                                                            <li>Birinci sətir başlıq kimi qəbul edilir</li>
+                                                        
+                                                        </ul>
+                                                    </div>
+                                            
+                                        </div>
+
+                                             <!-- Borc əlavə et -->
+                                            <div class="upload-card success">
+                                                <div class="card-icon">
+                                                    <i class="bi bi-cash-coin"></i>
+                                                </div>
+                                                <h5 class="card-title">Borc əlavə et</h5>
+                                                <form class="upload-form" method="POST" action="{% url 'import_debts' %}" enctype="multipart/form-data">
+                                                {% csrf_token %}
+                                                    <div class="file-input-wrapper">
+                                                        <input type="file" name="excel_debt_file" class="file-input" required>
+                                                        <label class="file-label">
+                                                            <i class="bi bi-file-earmark-excel"></i>
+                                                            Excel faylı seçin
+                                                        </label>
+                                                    </div>
+                                                    <button type="submit" class="upload-btn success my-2">
+                                                        <i class="bi bi-upload"></i> Yüklə
+                                                    </button>
+                                                </form>
+                                                        <div class="file-format-info" style="margin-top: 20px; padding: 10px; background-color: #007423ff; border-radius: 5px;">
+                                                            <h6 style="color: #fff; margin-bottom: 10px;"><i class="bi bi-info-circle"></i> Excel fayl formatı:</h6>
+                                                            <ul style="color: #ccc; font-size: 14px; padding-left: 20px;">
+                                                                <li>Sütun başlıqları: <strong>ad</strong>, <strong>Əvvəlki Borc</strong>
+                                                                <li>Birinci sətir başlıq kimi qəbul edilir</li>
+                                                            
+                                                            </ul>
+                                                        </div>
+                                            </div>
+
+                                <!-- Maliyyə əlavə et -->
+                                        <div class="upload-card dark">
+                                            <div class="card-icon">
+                                                <i class="bi bi-bar-chart"></i>
+                                            </div>
+                                            <h5 class="card-title">Maliyyə əlavə et</h5>
+                                            <form class="upload-form" method="POST" action="{% url 'import_finance' %}" enctype="multipart/form-data">
+                                                {% csrf_token %}
+                                                <div class="file-input-wrapper">
+                                                    <input type="file" name="excel_finance_file" class="file-input" required>
+                                                    <label class="file-label">
+                                                        <i class="bi bi-file-earmark-excel"></i>
+                                                        Excel faylı seçin
+                                                    </label>
+                                                </div>
+                                                
+                                                <!-- Tarix seçimi -->
+                                                <div class="date-input-wrapper" style="margin: 15px 0; position: relative; z-index: 10;">
+                                                    <label for="selected_date" style="display: block; margin-bottom: 8px; color: #363636ff;">
+                                                        <i class="bi bi-calendar-event"></i> Ödəniş tarixini seçin:
+                                                    </label>
+                                                    <input type="date" id="selected_date-1" name="selected_date" 
+                                                        class="form-control" 
+                                                        value="{% now 'Y-m-d' %}" 
+                                                        required
+                                                        style="padding: 10px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #fff;">
+                                                </div>
+                                                
+                                                <button type="submit" class="upload-btn dark">
+                                                    <i class="bi bi-upload"></i> Yüklə
+                                                </button>
+                                            </form>
+                                            
+                                            <!-- Excel fayl formatı haqqında məlumat -->
+                                            <div class="file-format-info" style="margin-top: 20px; padding: 10px; background-color: #2a2a2a; border-radius: 5px;">
+                                                <h6 style="color: #fff; margin-bottom: 10px;"><i class="bi bi-info-circle"></i> Excel fayl formatı:</h6>
+                                                <ul style="color: #ccc; font-size: 14px; padding-left: 20px;">
+                                                    <li>Sütun başlıqları: <strong>ad</strong>, <strong>avans</strong>, <strong>invest</strong></li>
+                                                    <li>Birinci sətir başlıq kimi qəbul edilir</li>
+                                                    <li>Rəqəmsal olmayan dəyərlər 0 kimi qəbul edilir</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                <div class="upload-card dark">
+                                    <div class="card-icon">
+                                        <i class="bi bi-bar-chart"></i>
+                                    </div>
+                                    <h5 class="card-title">Qeydiyyat əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="{% url 'import_recipes' %}" enctype="multipart/form-data">
+                                        {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_recipe_file" class="file-input" id="excel_recipe_file" required>
+                                            <label for="excel_recipe_file" class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        
+                                        <!-- Tarix seçimi - z-index problemi həll edilib -->
+                                        <div class="date-input-wrapper" style="margin: 15px 0; position: relative; z-index: 10;">
+                                            <label for="selected_date" style="display: block; margin-bottom: 8px; color: #2b2b2bff;">
+                                                <i class="bi bi-calendar-event"></i> Qeydiyyat tarixini seçin:
+                                            </label>
+                                            <input type="date" id="selected_date-2" name="selected_date" 
+                                                class="form-control date-picker-fixed" 
+                                                value="{% now 'Y-m-d' %}" 
+                                                required
+                                                style="padding: 10px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #fff; width: 100%; box-sizing: border-box;">
+                                        </div>
+                                        
+                                        <button type="submit" class="upload-btn dark">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                    
+                                    <!-- Excel fayl formatı haqqında məlumat -->
+                                    <div class="file-format-info" style="margin-top: 20px; padding: 10px; background-color: #2a2a2a; border-radius: 5px;">
+                                        <h6 style="color: #fff; margin-bottom: 10px;"><i class="bi bi-info-circle"></i> Excel fayl formatı:</h6>
+                                        <ul style="color: #ccc; font-size: 14px; padding-left: 20px;">
+                                            <li>İlk sütunlar: <strong>Həkim</strong>, <strong>Bölgə</strong></li>
+                                            <li>Sonrakı sütunlar: Dərman adları</li>
+                                            <li>Birinci sətir başlıq kimi qəbul edilir</li>
+                                            <li>Rəqəmsal olmayan dəyərlər 0 kimi qəbul edilir</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Satış Excel Yükləmə -->
+                        <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-cart-plus me-2"></i>Satış Excel Yükləmə
+                            </h4>
+                            <div class="sales-grid">
+                                <div class="upload-card success">
+                                    <div class="card-icon">
+                                        <i class="bi bi-cart"></i>
+                                    </div>
+                                    <h5 class="card-title">Bakı Satış əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="#" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_baku_sales" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn success">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <div class="upload-card primary">
+                                    <div class="card-icon">
+                                        <i class="bi bi-cart"></i>
+                                    </div>
+                                    <h5 class="card-title">Region Satış əlavə et</h5>
+                                    <form class="upload-form" method="POST" action="#" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_region_sales" class="file-input" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn primary">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Settings Tab -->
+                    <div class="tab-pane" id="settings">
+                          <section class="section-block">
+                    <h4 class="section-title">
+                        <i class="bi bi-file-earmark-lock"></i> Hesabat Əməliyyatı
+                    </h4>
+                <form id="hesabatForm" method="POST">
+                    {% csrf_token %}
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="aySec" class="form-label">Ay seçin:</label>
+                            <select id="aySec" class="form-select" name="ay" required>
+                                {% for item in aylar %}
+                                    <option value="{{ item.1 }}" {% if item.1 == current_month %}selected{% endif %}>
+                                        {{ item.0 }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="ilSec" class="form-label">İl seçin:</label>
+                            <select class="form-select" id="ilSec" name="il" required>
+                                {% for y in years_list %}
+                                    <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="bolgeSec" class="form-label">Bölgə seçin:</label>
+                            <select class="form-select" id="bolgeSec" name="region_id">
+                                <option value="">Bütün bölgələr</option>
+                                {% for bolge in bolgeler %}
+                                    <option value="{{ bolge.id }}">{{ bolge.region_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn primary">
+                        <i class="bi bi-file-earmark-lock"></i> Hesabatı Bağla
+                    </button>
+                </form>
+                    <div id="hesabatMessage"></div>
+                <h4 class="section-title my-3">
+                    <i class="bi bi-arrow-counterclockwise"></i> Borcları Sil 
+                </h4>
+                <form id="borcForm" class="settings-form" method="POST" action="{% url 'borc_sifirla' %}">
+                    {% csrf_token %}
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="bolgeSec_borc" class="form-label">Bölgə seçin:</label>
+                            <select class="form-select" id="bolgeSec_borc" name="region_id">
+                                <option value="">Bütün bölgələr</option>
+                                {% for bolge in bolgeler %}
+                                    <option value="{{ bolge.id }}">{{ bolge.region_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn danger">
+                        <i class="bi bi-x-circle"></i> Bölgə Borcunu Sil
+                    </button>
+                </form>
+            </section>
+
+                        
+
+                        <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-person-plus me-2"></i>Yeni İstifadəçi Əlavə Et
+                            </h4>
+                            <form class="settings-form" method="POST" action="{% url 'yeni_istifadeci' %}">
+                            {% csrf_token %}
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="email">Email</label>
+                                        <input type="email" id="email" name="email" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="ad">Ad</label>
+                                        <input type="text" id="ad" name="ad" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="parol">Parol</label>
+                                        <input type="password" id="parol" name="parol" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn primary">
+                                    <i class="bi bi-person-plus"></i> Əlavə Et
+                                </button>
+                            </form>
+                        </section>
+
+                        <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-people me-2"></i>İstifadəçi İdarəetməsi
+                            </h4>
+                           <div class="user-management">
+                            {% for user in users %}
+                                <div class="user-card">
+                                    <div class="user-info">
+                                        <div class="user-avatar">
+                                            <i class="bi bi-person-circle"></i>
+                                        </div>
+                                        <div class="user-details">
+                                            <h5>{{ user.username }}</h5>
+                                            <p>{{ user.email }}</p>
+                                            
+                                            {% if user.is_superuser %}
+                                                <span class="user-role admin">Admin</span>
+                                            {% else %}
+                                                <span class="user-role moderator">İstifadəçi</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="user-actions">
+                                        <button class="btn-icon edit" title="Redaktə et">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn-icon toggle" title="Aktiv/Deaktiv">
+                                            <i class="bi bi-toggle-on"></i>
+                                        </button>
+
+                                        {% if not user.is_superuser %}
+                                        <button class="btn-icon delete" title="Sil">
+                                            <a href="{% url 'delete_user' user.pk %}"> 
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        </section>
+
+                        <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-gear me-2"></i>Sistem Parametrləri
+                            </h4>
+                            <form class="settings-form" method="POST" action="#">
+                            {% csrf_token %}
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="dil">Dil seçimi</label>
+                                        <select id="dil" name="dil" required>
+                                            <option value="az">Azərbaycan</option>
+                                            <option value="en">İngilis</option>
+                                            <option value="ru">Rus</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="movzu">Mövzu (Tema)</label>
+                                        <select id="movzu" name="movzu" required>
+                                            <option value="isiglik">İşıqlı</option>
+                                            <option value="qara">Qara</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn secondary">
+                                    <i class="bi bi-check-circle"></i> Yadda saxla
+                                </button>
+                            </form>
+                        </section>
+
+                        <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-journal-text me-2"></i>Audit Jurnal
+                            </h4>
+                            <div class="audit-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Tarix</th>
+                                            <th>İstifadəçi</th>
+                                            <th>Əməliyyat</th>
+                                            <th>Ətraflı</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>05.08.2025 14:00</td>
+                                            <td>admin</td>
+                                            <td><span class="action-badge delete">İstifadəçi silindi</span></td>
+                                            <td>İstifadəçi: nadir94@aptek.az</td>
+                                        </tr>
+                                        <tr>
+                                            <td>04.08.2025 09:30</td>
+                                            <td>moderator</td>
+                                            <td><span class="action-badge edit">Parol dəyişdirildi</span></td>
+                                            <td>İstifadəçi: nurse12@clinic.az</td>
+                                        </tr>
+                                        <tr>
+                                            <td>03.08.2025 16:45</td>
+                                            <td>admin</td>
+                                            <td><span class="action-badge create">Yeni istifadəçi</span></td>
+                                            <td>İstifadəçi: doctor@hospital.az</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Backup Tab -->
+                    <div class="tab-pane" id="backup">
+                        <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-cloud-arrow-down me-2"></i>Backup Əməliyyatları
+                            </h4>
+                            <div class="backup-actions">
+                                <button class="backup-btn create"  id="createBackupBtn">
+                                    <i class="bi bi-cloud-arrow-up"></i>
+                                    <span>Yeni Backup Yarat</span>
+                                </button>
+
+                                <button class="backup-btn schedule">
+                                    <i class="bi bi-calendar-event"></i>
+                                    <span>Avtomatik Backup Təyin Et</span>
+                                </button>
+                             
+                                <button class="backup-btn restore">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                    <span>Backup-dan Bərpa Et</span>
+                                </button>
+                            
+                            </div>
+                        </section>
+                          <section class="section-block">
+                              <h4 class="section-title">
+                                  <i class="bi bi-list-ul me-2"></i>Backup Siyahısı
+                              </h4>
+                          <div class="backup-list">
+                            {% if backups %}
+                                {% for backup in backups %}
+                                    <div class="backup-item">
+                                        <div class="backup-info">
+                                            <div class="backup-icon success">
+                                                <i class="bi bi-check-circle"></i>
+                                            </div>
+                                            <div class="backup-details">
+                                                <h5>{{ backup.ad }}</h5>
+                                                <p>{{ backup.olusturulma_tarixi|date:"d.m.Y - H:i" }}</p>
+                                                <span class="backup-size">{{ backup.olcu }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="backup-actions">
+                                            <a href="{{ backup.fayl.url }}" class="btn-icon download" title="Yüklə">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                             <form method="post" action="{% url 'restore_backup' backup.id %}" onsubmit="return confirm('Bu backup bərpa ediləcək. Əminsiniz?');">
+                                                 {% csrf_token %}
+                                            <button class="btn-icon restore" title="Bərpa et">
+                                                <i class="bi bi-arrow-clockwise"></i>
+                                            </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p>Heç bir backup mövcud deyil.</p>
+                            {% endif %}
+                          </div>
+                          </section>
+                        <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-gear me-2"></i>Backup Parametrləri
+                            </h4>
+                            <form class="settings-form" method="POST" action="#">
+                            {% csrf_token %}
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="backup-frequency">Backup Tezliyi</label>
+                                        <select id="backup-frequency" name="backup_frequency">
+                                            <option value="daily">Gündəlik</option>
+                                            <option value="weekly">Həftəlik</option>
+                                            <option value="monthly">Aylıq</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="backup-time">Backup Vaxtı</label>
+                                        <input type="time" id="backup-time" name="backup_time" value="02:00">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="retention-days">Saxlama Müddəti (gün)</label>
+                                        <input type="number" id="retention-days" name="retention_days" value="30" min="1" max="365">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn primary">
+                                    <i class="bi bi-check-circle"></i> Parametrləri Yadda Saxla
+                                </button>
+                            </form>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+
+    
+    <script src="{% static 'js/admin.js' %}"></script>
+<script>
+function getCSRFToken() {
+    const name = 'csrftoken';
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        if (cookie.trim().startsWith(name + '=')) {
+            return decodeURIComponent(cookie.trim().substring(name.length + 1));
+        }
+    }
+    return '';
+}
+
+document.getElementById('createBackupBtn').addEventListener('click', function () {
+    fetch('/dashboard/create-backup/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCSRFToken()}
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showToast('Backup uğurla yaradıldı!', 'success');
+            // Səhifəni yenilə ki, template modeldən siyahını göstərsin
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast(data.message, 'error');
+        }
+    })
+    .catch(err => showToast('Backup alınmadı!', 'error'));
+});
+
+document.getElementById("hesabatForm").addEventListener("submit", function(e) {
+    e.preventDefault(); // səhifə reload olmasın
+    let formData = new FormData(this);
+
+    fetch("{% url 'hesabat_bagla' %}", {
+        method: "POST",
+        body: formData,
+        headers: {
+            "X-CSRFToken": formData.get("csrfmiddlewaretoken")
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        let msgDiv = document.getElementById("hesabatMessage");
+        msgDiv.innerText = data.message;
+        msgDiv.style.color = data.success ? "green" : "red";
+    })
+    .catch(err => console.error("Error:", err));
+});
+
+
+  
+</script>
+
+
+
+
+
+
+{% endblock content %}
+

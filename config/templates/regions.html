@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+<div class="container py-4">
+        <!-- İkon və Başlıq -->
+      <div class="d-flex align-items-center mb-2">
+          <i class="fa-solid fa-map-location-dot fa-2x me-2 text-primary"></i>
+          <h4 class="mb-0">Bölgələr</h4>
+             <button type="button" class="btn btn-primary d-flex mx-5 align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#addRegionModal">
+                <i class="bi bi-plus-circle"></i> Bölgə Əlavə et
+              </button>
+             <button type="button" class="btn btn-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#addHospitalModal">
+                <i class="bi bi-plus-circle"></i> Klinika/Xəstəxana Əlavə et
+              </button>
+        </div>
+
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Ana səhifə</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Bölgələr</li>
+          </ol>
+        </nav>
+<div class="container mt-5">
+  <div class="row g-4" style="color: white;">
+     <div class="col-md-2">
+      <div class="card  shadow-sm text-center p-3" style="color: white; background-color: #9fa0cfff;">
+        
+        <h4 class="fw-bold">{{ region_count }}</h4>
+        <h6 class="text-muted">Ümumi sayı</h6>
+      </div>
+    </div>
+
+    <!-- Kart 1: Bölgə Sayı -->
+    <div class="col-md-2">
+      <div class="card bg-primary shadow-sm text-center p-3" style="color: white;">
+        
+        <h4 class="fw-bold">{{ diger_sayi }}</h4>
+        <h6 class="text-muted">Region Bölgəsi sayı</h6>
+      </div>
+    </div>
+
+    <!-- Kart 2: Həkim Sayı -->
+    <div class="col-md-2">
+      <div class="card bg-success shadow-sm text-center p-3"style="color: white;">
+        
+        <h4 class="fw-bold">{{ baki_sayi }}</h4>
+        <h6 class="text-muted">Bakı bölgəsi sayı</h6>
+      </div>
+    </div>
+
+    <!-- Kart 3: Şəhər Sayı -->
+      <div class="col-md-2">
+      <div class="card bg-info shadow-sm text-center p-3"style="color: white;">
+        
+        <h4 class="fw-bold">{{ doctor_count }}</h4>
+        <h6 class="text-muted">Həkim sayı</h6>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card  shadow-sm text-center p-3" style="color: white; background-color: red">
+        
+        <h4 class="fw-bold">{{ city_count }}</h4>
+        <h6 class="text-muted">Şəhər sayı</h6>
+      </div>
+    </div>
+
+    <!-- Kart 4: Xəstəxana Sayı -->
+    <div class="col-md-2">
+      <div class="card bg-warning shadow-sm text-center p-3"style="color: white;">
+        
+        <h4 class="fw-bold">{{ hospital_count }}</h4>
+        <h6 class="text-muted">Xəstəxana sayı</h6>
+      </div>
+    </div>
+
+  </div>
+</div>
+<br>
+
+
+<table class="table table-hover">
+    <thead class="table">
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">Region Adı</th>
+        <th scope="col">Region Növü</th>
+        <th scope="col">Həkim Sayı</th>
+        <th scope="col">Şəhər Sayı</th>
+        <th scope="col">Klinika Sayı</th>
+      </tr>
+    </thead>
+    <tbody>
+       {% for region in regions %}
+      <tr>
+        <th scope="row">{{ forloop.counter }}</th>
+
+        <!-- Bölgə adı qalın -->
+        <td><strong>{{ region.region_name }}</strong></td>
+
+        <!-- Tip badge ilə -->
+        <td>
+          {% if region.get_region_type_display == "Bakı" %}
+            <span class="badge bg-success">Bakı</span>
+          {% else %}
+            <span class="badge bg-primary">Digər</span>
+          {% endif %}
+        </td>
+
+        <!-- Həkim sayı -->
+      <td>
+          {% if region.doctors.count == 0 %}
+            <span class="badge bg-danger fs-6">0</span>
+          {% else %}
+            <span class="badge bg-info fs-6">{{ region.doctors.count }}
+          {% endif %}
+        </td>
+
+
+        <!-- Şəhər sayı -->
+        <td>
+          {% if region.city_count == 0 %}
+            <span class="badge bg-danger fs-6">0</span>
+          {% else %}
+            <span class="badge bg-info fs-6">{{ region.city_count }}</span>
+          {% endif %}
+        </td>
+
+        <!-- Xəstəxana sayı -->
+        <td>
+          {% if region.hospital_count == 0 %}
+            <span class="badge bg-danger fs-6">0</span>
+          {% else %}
+            <span class="badge bg-warning text-dark fs-6">{{ region.hospital_count }}</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="6" class="text-center">Region tapılmadı.</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+
+
+
+
+
+
+
+
+<!-- Modal -->
+<div class="modal fade" id="addRegionModal" tabindex="-1" aria-labelledby="addRegionModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{% url 'add-region' %}" class="modal-content">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title" id="addRegionModalLabel">➕ Yeni Bölgə Əlavə et</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Bağla"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="region_name" class="form-label">Bölgənin Adı</label>
+          <input type="text" class="form-control" id="region_name" name="region_name" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İmtina</button>
+        <button type="submit" class="btn btn-primary">Əlavə et</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<div class="modal fade" id="addHospitalModal" tabindex="-1" aria-labelledby="addHospitalModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'add-hospital' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="addHospitalModalLabel">Yeni Klinikaya Əlavə Et</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Bağla"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="hospital_name" class="form-label">Klinika Adı</label>
+            <input type="text" class="form-control" id="hospital_name" name="hospital_name" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="region_net" class="form-label">Bölgə Seçin</label>
+            <select class="form-select" id="region_net" name="region_net" required>
+              <option selected disabled>Seçin...</option>
+              {% for r in regions %}
+                <option value="{{ r.id }}">{{ r.region_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İmtina</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> Əlavə Et
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock content %}

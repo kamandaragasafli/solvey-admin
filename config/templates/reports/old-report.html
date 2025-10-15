@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm" style="width: 100%; margin: auto;">
+  <div class="card-body">
+    <div id="statusMessage" style="margin-top:10px; font-weight:bold;"></div>
+    <h5 class="card-title mb-4">Bağlanmış Aylıq Hesabatlar</h5>
+
+    <!-- Filter Section -->
+    <form method="GET" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label for="region-select" class="form-label small text-muted">Bölgə seçin</label>
+        <select id="region-select" name="region" class="form-select" required>
+          <option value="" disabled selected>Bölgə Seçin</option>
+          {% for r in region %}
+            <option value="{{ r.id }}" {% if request.GET.region == r.id|stringformat:"s" %}selected{% endif %}>
+              {{ r.region_name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label for="year-select" class="form-label small text-muted">İl seçin</label>
+        <select name="year" id="year-select" class="form-select" required>
+          <option value="" disabled selected>İl seçin</option>
+          {% for year in years %}
+            <option value="{{ year }}" {% if request.GET.year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label for="month-select" class="form-label small text-muted">Ay seçin</label>
+        <select name="month" id="month-select" class="form-select" required>
+          <option value="" disabled selected>Ay seçin</option>
+          {% for ay_id, ay_ad in aylar %}
+            <option value="{{ ay_id }}" {% if request.GET.month == ay_id|stringformat:"s" %}selected{% endif %}>{{ ay_ad }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label for="searchInput" class="form-label">Axtar</label>
+        <input type="text" id="searchInput" class="form-control" placeholder="Həkim adı ilə axtar...">
+      </div>
+
+      <div class="col-md-2 d-grid">
+        <button type="button" id="showClosedAccountsBtn" class="btn btn-primary">Hesabatları Göstər</button>
+      </div>
+    </form>
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-end align-items-center mt-4 gap-2">
+      <button id="excel-btn" class="btn btn-outline-success btn-sm">
+        <i class="bi bi-file-earmark-excel"></i> Excel
+      </button>
+    </div>
+    <hr>
+
+    <!-- Cədvəl -->
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
+        <thead class="table-light text-muted" style="font-size: 0.65rem;">
+          <tr>
+            <th>#</th>
+            <th>Bölgə</th>
+            <th>Həkim</th>
+            <th>Kod</th>
+            <th>Kategoriya</th>
+            <th>Dərəcə</th>
+            <th>İxtisas</th>
+            <th>Əvvəlki Borc</th>
+            {% for d in drug %}
+              <th>{{ d.med_name }}</th>
+            {% endfor %}
+            <th>Total</th>
+            <th>Hesablanan Miqdar</th>
+            <th>Həkimə silinən</th>
+            <th>Avans</th>
+            <th>İnvestisiya</th>
+            <th>Yekun Borc</th>
+          </tr>
+        </thead>
+        <tbody id="dataTable">
+          <tr>
+            <td colspan="100%" class="text-muted fst-italic text-center">Bölgə, il və ay seçin, sonra "Hesabatları Göstər" düyməsini basın</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Stil -->
+<style>
+  td:last-child, td:nth-child(4) {
+    font-weight: bold;
+    text-align: center;
+  }
+  .table-responsive {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+</style>
+
+<!-- JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // İlləri doldur
+  const yearSelect = document.getElementById('year-select');
+  const currentYear = new Date().getFullYear();
+  
+  // Mövcud optionları təmizlə (ilk optiondan başqa)
+  while (yearSelect.options.length > 1) {
+    yearSelect.remove(1);
+  }
+  
+  // Son 5 il və cari ili əlavə et
+  for (let year = currentYear; year >= currentYear - 5; year--) {
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year;
+    if (year === currentYear) {
+      option.selected = true;
+    }
+    yearSelect.appendChild(option);
+  }
+  
+  // Cari ayı seç
+  const currentMonth = new Date().getMonth() + 1;
+  document.getElementById('month-select').value = currentMonth;
+});
+
+// Sütun sayını hesabla
+function getColumnCount() {
+  const drugCount = {{ drug|length }}; // Django template-dən dərman sayı
+  return 14 + drugCount; // 14 sabit sütun + dərman sütunları
+}
+
+document.getElementById('showClosedAccountsBtn').addEventListener('click', function () {
+  const regionId = document.getElementById('region-select').value;
+  const month = document.getElementById('month-select').value;
+  const year = document.getElementById('year-select').value;
+
+  if (!regionId || !month || !year) {
+    alert("Zəhmət olmasa həm bölgəni, həm ili, həm də ayı seçin!");
+    return;
+  }
+
+  const statusMessage = document.getElementById('statusMessage');
+  statusMessage.textContent = "Hesabatlar yüklənir...";
+  statusMessage.style.color = "blue";
+
+  fetch(`/reports/ajax/closed-accounts/?region_id=${regionId}&month=${month}&year=${year}`)
+    .then(res => {
+      if (!res.ok) throw new Error("Server cavabı düzgün deyil");
+      return res.json();
+    })
+    .then(data => {
+      statusMessage.textContent = "";
+      const tbody = document.getElementById('dataTable');
+      tbody.innerHTML = "";
+
+      if (!data.results || data.results.length === 0) {
+        const columnCount = getColumnCount();
+        tbody.innerHTML = `<tr><td colspan="${columnCount}" class="text-muted fst-italic text-center">Bu bölgə üçün ${year}-${month} ayında bağlanmış hesab tapılmadı.</td></tr>`;
+        return;
+      }
+
+      // Dərman adlarını JS array-ınə çevir
+      const drugNames = [
+        {% for d in drug %}
+          "{{ d.med_name }}",
+        {% endfor %}
+      ];
+
+      data.results.forEach((item, index) => {
+        let drugsTd = "";
+        
+        // Hər dərman üçün uyğun sayı tap
+        drugNames.forEach(drugName => {
+          const foundDrug = item.drugs.find(d => d.name === drugName);
+          drugsTd += `<td>${foundDrug ? foundDrug.count : 0}</td>`;
+        });
+
+        const row = `
+          <tr class="table-secondary" style="font-size: 0.60rem;">
+            <td>${index + 1}</td>
+            <td>${item.bolge}</td>
+            <td>${item.doctor}</td>
+            <td>${item.barcode || ''}</td>
+            <td>${item.kategoriya || '–'}</td>
+            <td>${item.derece || '–'}</td>
+            <td>${item.ixtisas || '–'}</td>
+            <td class="text-danger fw-semibold">${Number(item.previous_debt || 0).toFixed(2)}</td>
+            ${drugsTd}
+            <td class="fw-bold">${Number(item.total || 0)}</td>
+            <td>${Number(item.hesablanan_miqdar || 0).toFixed(2)}</td>
+            <td>${Number(item.hekimden_silinen || 0).toFixed(2)}</td>
+            <td>${Number(item.avans || 0).toFixed(2)}</td>
+            <td>${Number(item.investisiya || 0).toFixed(2)}</td>
+            <td class="fw-bold">${Number(item.yekun_borc || 0).toFixed(2)}</td>
+          </tr>
+        `;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    })
+    .catch(err => {
+      const columnCount = getColumnCount();
+      document.getElementById('dataTable').innerHTML = `<tr><td colspan="${columnCount}" class="text-danger text-center">Xəta baş verdi: ${err.message}</td></tr>`;
+      console.error(err);
+    });
+});
+
+// Axtarış funksiyası
+document.getElementById('searchInput').addEventListener('input', function () {
+  const query = this.value.toLowerCase();
+  const rows = document.querySelectorAll('#dataTable tr');
+
+  rows.forEach(row => {
+    const doctorCell = row.querySelector('td:nth-child(3)'); // Həkim adı sütunu
+    if (doctorCell && doctorCell.textContent.toLowerCase().includes(query)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+});
+
+// Excel Export (isteğe bağlı)
+document.getElementById('excel-btn').addEventListener('click', function (e) {
+  e.preventDefault();
+  const regionId = document.getElementById('region-select').value;
+  const month = document.getElementById('month-select').value;
+  const year = document.getElementById('year-select').value;
+  
+  if (!regionId || !month || !year) {
+    alert("Zəhmət olmasa bölgə, il və ay seçin");
+    return;
+  }
+  
+  const url = `/reports/export-closed-reports-excel/?region_id=${regionId}&month=${month}&year=${year}`;
+  window.location.href = url;
+});
+</script>
+{% endblock content %}

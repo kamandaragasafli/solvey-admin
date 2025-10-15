@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+<form method="POST" action="{% url 'add-sell' %}">
+  {% csrf_token %}
+  <div class="card shadow-sm" style="width: 80%; margin: auto;">
+  <div style="width: 70%">
+    <div class="card-body">
+      
+      <!-- Başlıq -->
+      <div class="d-flex align-items-center justify-content-between mb-4">
+        <div class="d-flex align-items-center">
+          <i class="fa-solid fa-capsules fa-xl me-2 text-primary"></i>
+          <h5 class="card-title mb-0">Dərman Satışı Əlavə Et</h5>
+        </div>
+        <div class="text-end">
+          <strong class="text-muted">Toplam dərman sayı: <span id="total-count">0</span></strong>
+        </div>
+      </div>
+
+      <!-- Bölgə və Tarix -->
+      <div class="row mb-4">
+        <div class="col-md-9">
+          <label for="pharm" class="form-label small text-muted">Bölgə adı<span style="color:red">*</span></label>
+          <select id="aptek-adi" name="region" class="form-select">
+            <option selected disabled>Bölgə seçin</option>
+            {% for r in region_all %}
+              <option value="{{ r.id }}">{{ r.region_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="tarix" class="form-label small text-muted">Tarix<span style="color:red">*</span></label>
+          <input type="date" name="date" value="{% now 'Y-m-d' %}" class="form-control" />
+        </div>
+      </div>
+
+      <hr>
+
+      <!-- Dərmanlar -->
+      <div class="mb-4">
+        <label class="form-label">Dərmanlar</label>
+        {% for d in drug_all %}
+          <div class="d-flex mb-3 justify-content-start align-items-center">
+            <!-- Dərman adı düymə kimi -->
+            <button type="button" class="fs-6 fw-bold me-3"
+              style="width: 60%; background-color: #f0f0f0; border-radius: 10px; border: none; padding: 10px; color: #3b3b3bff; text-align: left; display: block;"
+              disabled>
+              {{ d.med_full_name }}
+            </button>
+
+            <!-- Say inputu -->
+            <div style="width: 120px;">
+              <input type="number" name="quantity_{{ d.id }}" class="form-control" min="0" />
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <hr>
+
+      <!-- Əməliyyat düyməsi -->
+      <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-plus me-1"></i> Sifarişi Əlavə Et
+        </button>
+      </div>
+
+    </div>
+  </div>
+  </div>
+</form>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const inputs = document.querySelectorAll("input[type='number']");
+    const totalCountEl = document.getElementById("total-count");
+
+    function updateTotal() {
+      let total = 0;
+      inputs.forEach(input => {
+        const val = parseFloat(input.value);
+        if (!isNaN(val)) {
+          total += val;
+        }
+      });
+      totalCountEl.textContent = total;
+    }
+
+    // Hər input üçün dəyişiklik olduqda toplamı yenilə
+    inputs.forEach(input => {
+      input.addEventListener("input", updateTotal);
+    });
+  });
+</script>
+
+{% endblock content %}

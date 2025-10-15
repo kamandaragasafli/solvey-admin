@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+
+  <div class="container my-4">
+ <div class="card mb-3" style="max-width: 100%;">
+  <div class="row g-0">
+    <div class="col-md-12">
+      <div class="card-body">
+
+        <!-- İkon və Başlıq -->
+        <div class="d-flex align-items-center mb-2">
+          <i class="fa-solid fa-user-doctor fa-2x me-2 text-primary"></i>
+          <h4 class="mb-0">Həkim Əlavə Et</h4>
+        </div>
+
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Ana səhifə</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Həkim Əlavə Et</li>
+          </ol>
+        </nav>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+ <form method="POST" action="{% url 'add-doctor' %}">
+        {% csrf_token %}
+        <div class="row">
+          
+          <!-- Bölgə -->
+          <div class="mb-3 col-md-6">
+            <label for="region_id" class="form-label">Bölgə</label>
+            <select class="form-select" id="region_id" name="bolge_id" required>
+              <option selected disabled>Seçin...</option>
+              {% for r in regions %}
+                <option value="{{ r.id }}">{{ r.region_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Həkim Adı -->
+          <div class="mb-3 col-md-6">
+            <label for="ad" class="form-label">Həkim Adı</label>
+            <input type="text" class="form-control" id="ad" name="ad" required>
+          </div>
+
+          <!-- İxtisas -->
+          <div class="mb-3 col-md-6">
+            <label for="ixtisas" class="form-label">İxtisas</label>
+            <select class="form-select" id="ixtisas" name="ixtisas" required>
+              <option selected disabled>Seçin...</option>
+              <option value="CA">CA - Kardioloq</option>
+              <option value="TE">TE - Terapevt</option>
+              <option value="SU">SU - Cərrah</option>
+              <option value="TR">TR - Travmatoloq</option>
+              <option value="NE">NE - Nevropatoloq</option>
+              <option value="PE">PE - Pediatr</option>
+              <option value="EN">EN - Endokrinoloq</option>
+              <option value="GI">GI - Ginekoloq</option>
+              <option value="DE">DE - Dermatoloq</option>
+              <option value="OR">OR - Ortoped</option>
+              <option value="PS">PS - Psixoloq</option>
+              <option value="UR">UR - Uroloq</option>
+              <option value="ON">ON - Onkoloq</option>
+              <option value="RE">RE - Reanimatoloq</option>
+              <option value="AL">AL - Allergoloq</option>
+            </select>
+          </div>
+
+          <!-- Şəhər -->
+          <div class="mb-3 col-md-6">
+            <label for="city_id" class="form-label">Şəhər</label>
+            <select class="form-select" id="city_id" name="city_id">
+              <option selected disabled>Əvvəl bölgə seçin...</option>
+            </select>
+          </div>
+
+          <!-- Klinika -->
+          <div class="mb-3 col-md-6">
+            <label for="hospital_id" class="form-label">Klinika/Xəstəxana</label>
+            <select class="form-select" id="hospital_id" name="klinika_id" required>
+              <option selected disabled>Əvvəl bölgə seçin...</option>
+            </select>
+          </div>
+
+          <!-- Kateqoriya -->
+          <div class="mb-3 col-md-6">
+            <label for="kategoriya" class="form-label">Kateqoriya</label>
+            <select class="form-select" id="kategoriya" name="kategoriya" required>
+              <option selected disabled>Seçin...</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+            </select>
+          </div>
+
+          <!-- Cinsiyyət -->
+          <div class="mb-3 col-md-6">
+            <label for="cinsiyyet" class="form-label">Cinsiyyət</label>
+            <select class="form-select" id="cinsiyyet" name="cinsiyyet" required>
+              <option selected disabled>Seçin...</option>
+              <option value="Kişi">Kişi</option>
+              <option value="Qadın">Qadın</option>
+            </select>
+          </div>
+
+          <!-- Dərəcə -->
+          <div class="mb-3 col-md-6">
+            <label for="derece" class="form-label">Dərəcə</label>
+            <select class="form-select" id="derece" name="derece" required>
+              <option selected disabled>Seçin...</option>
+              <option value="VIP">VIP</option>
+              <option value="I">I</option>
+              <option value="II">II</option>
+              <option value="III">III</option>
+            </select>
+            <div class="form-text"><i class="fa-solid fa-circle-info px-2"></i>Bu dərəcə həkimin komissiyasına təsir edir.</div>
+          </div>
+
+          <!-- Əlaqə nömrəsi -->
+          <div class="mb-3 col-md-6">
+            <label for="number" class="form-label">Əlaqə nömrəsi</label>
+            <input type="text" class="form-control" id="number" name="number">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-plus-circle me-1"></i> Əlavə Et
+        </button>
+      </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const regionSelect = document.getElementById("region_id");
+  const hospitalSelect = document.getElementById("hospital_id");
+  const citySelect = document.getElementById("city_id");
+
+  if (!regionSelect || !hospitalSelect || !citySelect) {
+    console.error("Select elementləri tapılmadı.");
+    return;
+  }
+
+  regionSelect.addEventListener("change", function () {
+    const selectedRegionId = this.value;
+
+    // Klinikalar üçün yükləmə
+    hospitalSelect.innerHTML = '<option disabled selected>Yüklənir...</option>';
+    fetch('/doctors/ajax/get-hospitals/?region_id=' + selectedRegionId)
+      .then(response => response.json())
+      .then(data => {
+        hospitalSelect.innerHTML = '';
+        if (data.hospitals.length > 0) {
+          data.hospitals.forEach(hospital => {
+            const option = document.createElement("option");
+            option.value = hospital.id;
+            option.textContent = hospital.hospital_name;
+            hospitalSelect.appendChild(option);
+          });
+        } else {
+          hospitalSelect.innerHTML = '<option disabled selected>Klinika tapılmadı</option>';
+        }
+      })
+      .catch(error => {
+        console.error("Klinika üçün xəta:", error);
+        hospitalSelect.innerHTML = '<option disabled selected>Xəta baş verdi</option>';
+      });
+
+    // Şəhərlər üçün yükləmə
+    citySelect.innerHTML = '<option disabled selected>Yüklənir...</option>';
+    fetch('/doctors/ajax/get-cities/?region_id=' + selectedRegionId)
+      .then(response => response.json())
+      .then(data => {
+        citySelect.innerHTML = '';
+        if (data.cities.length > 0) {
+          data.cities.forEach(city => {
+            const option = document.createElement("option");
+            option.value = city.id;
+            option.textContent = city.city_name;
+            citySelect.appendChild(option);
+          });
+        } else {
+          citySelect.innerHTML = '<option disabled selected>Şəhər tapılmadı</option>';
+        }
+      })
+      .catch(error => {
+        console.error("Şəhər üçün xəta:", error);
+        citySelect.innerHTML = '<option disabled selected>Xəta baş verdi</option>';
+      });
+  });
+});
+</script>
+
+
+
+{% endblock content %}

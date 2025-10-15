@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+
+
+<form method="POST" action="{% url 'create_refund' %}">
+   {% csrf_token %}
+<div class="card shadow-sm" style="max-width: auto; margin: auto;">
+  <div class="card-body">
+    <h5 class="card-title mb-4">Sifariş əlavə et</h5>
+
+    <!-- Aptek və Tarix -->
+    <div class="row mb-3">
+      <div class="col-md-7 mb-2">
+        <label for="pharm" class="form-label small text-muted">Aptek adı</label>
+        <select id= "pharm" name="pharm"  class="form-select">
+          <option selected disabled>Aptek seçin</option>
+
+            {% for p in all_pharm %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+            {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 mb-2">
+        <label for="tarix" class="form-label small text-muted">Tarix</label>
+        <input type="date" name="date" class="form-control" />
+        <!-- Cari Borc Göstəricisi -->
+    
+         Cari borcu: <strong id="current-debt"> ₼</strong>
+  
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Dərmanlar: ad yazı, say input -->
+    <div>
+      <div class="row align-items-center mb-3">
+       {% for d in all_drug %}
+        <div class="col-md-8">
+          <h6 class="mb-0" id="derman-adi">{{ d.med_name }}</h6>
+          <small class="text-muted">Dərman adı</small>
+        </div>
+        <div class="col-md-1">
+          <input type="number"id="derman-inp" name="quantity_{{ d.id }}" class="form-control"  />
+          <small class="text-muted">Say</small>
+
+        </div>
+         {% endfor %}
+      </div>
+    <button type="submit" class="btn btn-primary ">Sifarişi əlavə et</button>
+  </div>
+</div>
+
+</form>
+<script>
+  const all_pharm = {
+    {% for p in all_pharm %}
+      "{{ p.id }}": {{ p.debt }},
+    {% endfor %}
+  };
+
+  document.getElementById("pharm").addEventListener("change", function () {
+    const id = this.value;
+    const debt = all_pharm[id] ?? 0;
+    document.getElementById("current-debt").innerText = debt + " ₼";
+  });
+</script>
+{% endblock content %}

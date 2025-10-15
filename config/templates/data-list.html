@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm" style="width: 85%; margin: auto;">
+  <div class="card-body">
+    <h5 class="card-title mb-4">Aylıq Dannılar</h5>
+
+    <!-- Filter Section -->
+    <form method="GET" class="row g-3 align-items-end">
+      <div class="col-md-2">
+        <label for="region-select" class="form-label small text-muted">Bölgə seçin</label>
+        <select id="region-select" name="region" class="form-select" required>
+          <option value="" disabled selected>Bölgə Seçin</option>
+          {% for r in region %}
+            <option value="{{ r.id }}" {% if request.GET.region == r.id|stringformat:"i" %}selected{% endif %}>{{ r.region_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label for="searchInput" class="form-label small text-muted">Axtar</label>
+        <input type="text" id="searchInput" name="search" class="form-control" placeholder="Həkim, dərman..." value="{{ request.GET.search }}">
+      </div>
+
+      <div class="col-md-2">
+        <label for="month-select" class="form-label small text-muted">Ay Seçin</label>
+        <select id="month-select" name="month" class="form-control">
+          <option value="">Ay seçin</option>
+          <option value="1" {% if request.GET.month == "1" %}selected{% endif %}>Yanvar</option>
+          <option value="2" {% if request.GET.month == "2" %}selected{% endif %}>Fevral</option>
+          <option value="3" {% if request.GET.month == "3" %}selected{% endif %}>Mart</option>
+          <option value="4" {% if request.GET.month == "4" %}selected{% endif %}>Aprel</option>
+          <option value="5" {% if request.GET.month == "5" %}selected{% endif %}>May</option>
+          <option value="6" {% if request.GET.month == "6" %}selected{% endif %}>İyun</option>
+          <option value="7" {% if request.GET.month == "7" %}selected{% endif %}>İyul</option>
+          <option value="8" {% if request.GET.month == "8" %}selected{% endif %}>Avqust</option>
+          <option value="9" {% if request.GET.month == "9" %}selected{% endif %}>Sentyabr</option>
+          <option value="10" {% if request.GET.month == "10" %}selected{% endif %}>Oktyabr</option>
+          <option value="11" {% if request.GET.month == "11" %}selected{% endif %}>Noyabr</option>
+          <option value="12" {% if request.GET.month == "12" %}selected{% endif %}>Dekabr</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label for="date-range" class="form-label small text-muted">Tarix Aralığı</label>
+        <input type="text" id="date-range" name="date_range" class="form-control" placeholder="Tarix seçin" value="{{ request.GET.date_range }}">
+      </div>
+
+      <div class="col-md-2">
+        <label for="name-filter-select" class="form-label small text-muted">Yazılış Filteri</label>
+        <select id="name-filter-select" name="name_filter" class="form-select">
+          <option value="" selected>Hamısı</option>
+          <option value="with_dannisi" {% if request.GET.name_filter == "with_dannisi" %}selected{% endif %}>Adında dannısı olmayanlar</option>
+          <option value="without_dannisi" {% if request.GET.name_filter == "without_dannisi" %}selected{% endif %}>Adında dannısı olanlar</option>
+        </select>
+      </div>
+
+      <div class="col-md-2 d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Filtrlə</button>
+        <a href="{% url 'data_list' %}" class="btn btn-warning">Təmizlə</a>
+      </div>
+    </form>
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-end align-items-center mt-4 gap-2">
+      <a href="#" id="excel-btn" class="btn btn-success btn-sm">
+        <i class="fa-solid fa-file-excel"></i> Excel
+      </a>
+      <a href="#" id="pdf-btn" class="btn btn-danger btn-sm">
+        <i class="bi bi-file-earmark-pdf"></i> PDF
+      </a>
+    </div>
+    <hr>
+
+    <!-- Cədvəl -->
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
+        <thead class="table-light text-muted" style="font-size: 0.65rem;">
+          <tr>
+            <th>#</th>
+            <th>Bölgə</th>
+            <th>Həkim</th>
+            <th>Son Ödəniş</th>
+            <th>Kod</th>
+            {% for d in drug %}
+            <th>{{ d.med_name }}</th>
+            {% endfor %}
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody id="table-body" style="font-size: 0.65rem;">
+          <tr>
+            <td colspan="25" class="text-muted fst-italic">Bölgə seçin</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<style>
+  td:last-child, td:nth-child(4) {
+    font-weight: bold;
+    text-align: center;
+  }
+</style>
+
+<script>
+function loadRegionData(regionId) {
+  const dateRangeInput = document.getElementById('date-range');
+  const dateRange = dateRangeInput ? dateRangeInput.value : "";
+
+  const nameFilterSelect = document.getElementById('name-filter-select');
+  const nameFilter = nameFilterSelect ? nameFilterSelect.value : "";
+
+  const searchInput = document.getElementById('searchInput');
+  const searchTerm = searchInput ? searchInput.value.trim() : "";
+
+  const monthSelect = document.getElementById('month-select');
+  const month = monthSelect ? monthSelect.value : "";
+
+  const params = new URLSearchParams({ region_id: regionId });
+
+  if (dateRange) {
+    params.append('date_range', dateRange);
+  }
+  if (nameFilter) {
+    params.append('name_filter', nameFilter);
+  }
+  if (searchTerm) {
+    params.append('search', searchTerm);
+  }
+  if (month) {
+    params.append('month', month);
+  }
+
+  fetch(`/doctors/ajax/region-data/?${params.toString()}`)
+    .then(response => {
+      if (!response.ok) throw new Error("Server cavabı düzgün deyil");
+      return response.json();
+    })
+    .then(data => {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = "";
+
+      if (!data.results || data.results.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="25" class="text-muted fst-italic">Seçilən bölgəyə uyğun məlumat tapılmadı.</td></tr>`;
+        return;
+      }
+
+     const allTh = Array.from(document.querySelectorAll('thead th'));
+      const drugNames = allTh
+        .slice(5, allTh.length - 1) // 5-ci sütundan başlayır, "Total"-dan əvvəl dayanır
+        .map(th => th.textContent.trim());
+
+
+      data.results.forEach((item, index) => {
+        let drugCells = "";
+        drugNames.forEach(drugName => {
+          const drugObj = item.drugs.find(d => d.name === drugName);
+          const count = drugObj ? drugObj.count : 0;
+          const cellClass = count > 0 ? 'style="background-color: #d7f7c4ff; font-weight: bold;"' : '';
+          drugCells += `<td ${cellClass}>${count}</td>`;
+        });
+
+        const odemeCell = `
+          <td class="${item.odeme.class}">
+            ${parseFloat(item.odeme.amount).toFixed(2)}
+            ${item.odeme.date ? `<small class="d-block text-muted">${item.odeme.date}</small>` : ""}
+          </td>`;
+
+        const row = `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${item.bolge}</td>
+            <td>
+              <a href="/doctors/details/${item.doctor_id}/" class="text-primary fw-semibold text-decoration-none">
+                ${item.doctor}
+              </a>
+            </td>
+            ${odemeCell}
+            <td>${item.barcode}</td>
+            ${drugCells}
+            <td class="fw-bold">${parseFloat(item.total)}</td>
+          </tr>`;
+
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    })
+    .catch(error => {
+      console.error("Xəta baş verdi:", error);
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = `<tr><td colspan="25" class="text-danger">Xəta baş verdi.</td></tr>`;
+    });
+}
+
+function initializeDateRangePicker() {
+  const dateRangeInput = document.getElementById('date-range');
+  
+  if (dateRangeInput && typeof $ !== 'undefined' && $.fn.daterangepicker) {
+    $(dateRangeInput).daterangepicker({
+      locale: {
+        format: 'YYYY-MM-DD',
+        separator: ' - ',
+        applyLabel: 'Təsdiqlə',
+        cancelLabel: 'Ləğv et',
+        fromLabel: 'Başlanğıc',
+        toLabel: 'Son',
+        customRangeLabel: 'Xüsusi',
+        weekLabel: 'Həftə',
+        daysOfWeek: ['Bz', 'Be', 'Ça', 'Ç', 'Ca', 'C', 'Ş'],
+        monthNames: ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'],
+        firstDay: 1
+      },
+      startDate: moment().startOf('month'),
+      endDate: moment().endOf('month'),
+      opens: 'center'
+    });
+
+    $(dateRangeInput).on('apply.daterangepicker', function (ev, picker) {
+      const regionId = document.getElementById('region-select').value;
+      if (regionId) {
+        loadRegionData(regionId);
+      }
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const regionSelect = document.getElementById('region-select');
+  const nameFilterSelect = document.getElementById('name-filter-select');
+  const searchInput = document.getElementById('searchInput');
+  const monthSelect = document.getElementById('month-select');
+  const form = document.querySelector('form');
+
+  initializeDateRangePicker();
+
+  // Əgər URL-də region varsa, avtomatik yüklə
+  const urlParams = new URLSearchParams(window.location.search);
+  const regionParam = urlParams.get('region');
+  if (regionParam && regionSelect.value) {
+    loadRegionData(regionSelect.value);
+  }
+
+  regionSelect.addEventListener('change', () => {
+    const selectedRegionId = regionSelect.value;
+    if (selectedRegionId) {
+      loadRegionData(selectedRegionId);
+    }
+  });
+
+  nameFilterSelect.addEventListener('change', () => {
+    const selectedRegionId = regionSelect.value;
+    if (selectedRegionId) {
+      loadRegionData(selectedRegionId);
+    }
+  });
+
+  monthSelect.addEventListener('change', () => {
+    const selectedRegionId = regionSelect.value;
+    if (selectedRegionId) {
+      loadRegionData(selectedRegionId);
+    }
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const selectedRegionId = regionSelect.value;
+    if (selectedRegionId) {
+      loadRegionData(selectedRegionId);
+    } else {
+      alert("Zəhmət olmasa bölgə seçin");
+    }
+  });
+
+  document.getElementById('excel-btn').addEventListener('click', function(e){
+    e.preventDefault();
+    const regionId = regionSelect.value;
+    const nameFilter = nameFilterSelect.value;
+    const dateRange = document.getElementById('date-range').value;
+    const searchTerm = searchInput.value.trim();
+    const month = monthSelect.value;
+
+    if(!regionId){
+      alert("Zəhmət olmasa bölgə seçin");
+      return;
+    }
+
+    const params = new URLSearchParams({ region_id: regionId });
+
+    if (dateRange) {
+      params.append('date_range', dateRange);
+    }
+    if (nameFilter) {
+      params.append('name_filter', nameFilter);
+    }
+    if (searchTerm) {
+      params.append('search', searchTerm);
+    }
+    if (month) {
+      params.append('month', month);
+    }
+
+    const url = `/doctors/export-region-excel/?${params.toString()}`;
+    window.location.href = url;
+  });
+});
+</script>
+{% endblock content %}

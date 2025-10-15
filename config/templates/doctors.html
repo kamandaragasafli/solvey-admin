@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+ <link rel="stylesheet" href="{% static 'css/doctors.css' %}">
+
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="header-title">
+                    <h1><i class="fas fa-user-md"></i> Həkim Paneli</h1>
+                    <p>Həkim məlumatlarını idarə edin və borclara nəzarət edin</p>
+                </div>
+                <div class="header-stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalDoctors">156</div>
+                        <div class="stat-label">Toplam Həkim</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number text-success" id="activePayments">89</div>
+                        <div class="stat-label">Aktiv Ödənişlər</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number text-warning" id="pendingDebts">23</div>
+                        <div class="stat-label">Gözləyən Borclər</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Filters Section -->
+<section class="filters-section">
+    <div class="filters-card">
+        <form method="get" class="filters-form" id="filtersForm">
+            <div class="filter-group">
+                <label for="debt_filter" class="filter-label">
+                    <i class="fas fa-money-bill-wave"></i>
+                    Borc filteri
+                </label>
+                <select name="debt_filter" id="debt_filter" class="filter-select">
+                   <option value="">Hamısı</option>
+                   <option value="greater" {% if request.GET.debt_filter == 'greater' %}selected{% endif %}>Borcu olanlar</option>
+                   <option value="zero" {% if request.GET.debt_filter == 'zero' %}selected{% endif %}>Borcsuzlar</option>
+                   <option value="less" {% if request.GET.debt_filter == 'less' %}selected{% endif %}>Borcu 100₼-dən az olanlar</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="region_filter" class="filter-label">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Bölgə filteri
+                </label>
+                <select name="region_filter" id="region_filter" class="filter-select">
+                    <option value="">Hamısı</option>
+                    {% for r in regions %}
+                        <option value="{{ r.id }}" {% if request.GET.region_filter == r.id|stringformat:"s" %}selected{% endif %}>
+                            {{ r.region_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="searchInput" class="filter-label">
+                    <i class="fas fa-search"></i>
+                    Axtarış
+                </label>
+                <input type="text" name="search" id="searchInput" class="filter-input" value="{{ request.GET.search|default:'' }}" placeholder="Ad...">
+            </div>
+
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter"></i>
+                    Filtrlə
+                </button>
+                <button type="reset" class="btn btn-secondary">
+                    <i class="fas fa-times"></i>
+                    Sıfırla
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+
+
+        <!-- Action Bar -->
+        <section class="action-bar">
+            <div class="results-info">
+                <span class="results-count">Toplam <strong id="resultsCount">156</strong> nəticə tapıldı</span>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-success" id="exportBtn">
+                    <i class="fas fa-file-excel"></i>
+                    Excel Export
+                </button>
+                <button class="btn btn-warning" id="deleteBtn">
+                    <i class="fas fa-trash"></i>
+                    Sil
+                </button>
+            </div>
+        </section>
+
+        <!-- Table Section -->
+        <section class="table-section">
+            <div class="table-card">
+                <div class="table-responsive">
+                    <table class="data-table" id="dataTable">
+                        <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Barkod</th>
+                            <th>Bölgə</th>
+                            <th>Ad</th>
+                            <th>Sonuncu Ödəniş</th>
+                            <th>İxtisas</th>
+                            <th>Dərəcə</th>
+                            <th>Kateqoriya</th>
+                            <th>Klinika</th>
+                            <th>Əlaqə</th>
+                            <th>Yekun Borc</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    {% for d in page_obj %}
+                    <tr>
+                        <td>#{{ forloop.counter }}</td>
+                        <td>{{ d.doctor.barkod }}</td>
+                        <td>
+                            <div class="location">
+                                <i class="fas fa-map-marker-alt"></i>
+                                {{ d.doctor.bolge }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="doctor-info">
+                                <div class="doctor-avatar"><i class="fas fa-user-md"></i></div>
+                                <a href="{% url 'doctor_detail' d.doctor.id %}" class="doctor-name">Dr. {{ d.doctor.ad }}</a>
+                            </div>
+                        </td>
+                        <td>
+                            {% if d.doctor.avans %}
+                                <span class="badge badge-success"><i class="fas fa-arrow-up"></i>₼{{ d.doctor.avans }}</span>
+                            {% elif d.doctor.investisiya %}
+                                <span class="badge bg-primary"><i class="fas fa-arrow-down"></i>-₼{{ d.doctor.investisiya }}</span>
+                            {% elif d.doctor.geriqaytarma %}
+                                <span class="badge bg-warning"><i class="fas fa-undo"></i>₼{{ d.doctor.geriqaytarma }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                            <small class="payment-date">{{ d.last_payment_date|date:"d.m.Y" }}</small>
+                        </td>
+               
+                        <td>{{ d.doctor.ixtisas }}</td>
+                        <td>
+                        {% if d.doctor.get_derece_display == "ViP Dərəcə" %}
+                            <span class="badge badge-high">{{ d.doctor.get_derece_display }}</span>
+                        {% elif d.doctor.get_derece_display == "I Dərəcə" %}
+                            <span class="badge badge-medium">{{ d.doctor.get_derece_display }}</span>
+                        {% else %}
+                            <span class="badge badge-low">{{ d.doctor.get_derece_display }}</span>
+                        {% endif %}
+                        </td>
+
+
+
+                        <td>{{ d.doctor.kategoriya }} kategoriya</td>
+                        <td>{{ d.doctor.klinika }}</td>
+                        <td>
+                            <a href="tel:{{ d.doctor.number }}" class="phone-link"><i class="fas fa-phone"></i>{{ d.doctor.number }}</a>
+                        </td>
+                        <td>
+                            {% if d.doctor.previous_debt >= 0 %}
+                                <span class="badge badge-debt-positive">₼{{ d.doctor.previous_debt }}</span>
+                            {% else %}
+                                <span class="badge badge-debt-negative">₼{{ d.doctor.previous_debt }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+
+                </div>
+            </div>
+        </section>
+
+     <section class="pagination-section">
+    <nav class="pagination-nav">
+        <div class="pagination-info text-center mb-2">
+            Səhifə <strong>{{ page_obj.number }}</strong> / <strong>{{ page_obj.paginator.num_pages }}</strong>
+        </div>
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                        <i class="fas fa-chevron-left"></i> Əvvəlki
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link"><i class="fas fa-chevron-left"></i> Əvvəlki</span>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"10" %}
+                    <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                        Növbəti <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Növbəti <i class="fas fa-chevron-right"></i></span>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</section>
+
+
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Yüklənir...</p>
+            </div>
+        </div>
+ </div>
+
+    <script src="{% static 'js/doctors.js' %}"></script>
+
+<script>
+  document.getElementById('searchInput').addEventListener('input', function () {
+    const query = this.value.toLowerCase();
+    const rows = document.querySelectorAll('#dataTable tr');
+
+    rows.forEach(row => {
+      const cell = row.querySelectorAll('td')[3];  // 3 = "Ad" sütunu
+      if (cell && cell.textContent.toLowerCase().includes(query)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  });
+</script>
+
+
+
+
+{% endblock content %}

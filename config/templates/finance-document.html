@@ -1,0 +1,202 @@
+<!-- templates/financial_documents.html -->
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="fas fa-file-invoice-dollar me-2"></i>Maliyyə Sənədləri</h4>
+        <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" style="width: 200px;" id="regionFilter">
+                <option value="">Bütün bölgələr</option>
+                {% for region in regions %}
+                <option value="{{ region.id }}">{{ region.region_name }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" class="form-control form-control-sm" placeholder="Həkim axtar..." id="doctorSearch" style="width: 250px;">
+        </div>
+    </div>
+
+    <!-- Statistik Kartlar -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+                                Ümumi Sənəd
+                            </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ total_documents }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-file-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-success text-uppercase mb-1">
+                                Bu Ay
+                            </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">{{ this_month_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sənəd Kartları -->
+    <div class="row" id="documentsContainer">
+        {% for document in documents %}
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-4 document-card" 
+             data-region="{{ document.check_region.id }}" 
+             data-doctor="{{ document.check_dr.ad|lower }}">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-primary">{{ document.check_region.region_name }}</span>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ document.check_photo.url }}" download>
+                                    <i class="fas fa-download me-2"></i>Yüklə
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ document.check_photo.url }}" target="_blank">
+                                    <i class="fas fa-external-link-alt me-2"></i>Bax
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body text-center">
+                    <!-- Şəkil Preview -->
+                    <div class="document-preview mb-3">
+                        {% if document.check_photo.url|lower|slice:'-4:' == '.pdf' %}
+                        <div class="pdf-preview bg-light rounded p-4">
+                            <i class="fas fa-file-pdf text-danger fa-3x mb-2"></i>
+                            <p class="small text-muted mb-0">PDF Sənəd</p>
+                        </div>
+                        {% else %}
+                        <img src="{{ document.check_photo.url }}" 
+                             class="img-fluid rounded document-image" 
+                             alt="Sənəd"
+                             style="max-height: 150px; object-fit: cover; cursor: pointer;"
+                             data-bs-toggle="modal" 
+                             data-bs-target="#imageModal"
+                             data-image="{{ document.check_photo.url }}">
+                        {% endif %}
+                    </div>
+                    
+                    <h6 class="card-title mb-1">{{ document.check_dr.ad }}</h6>
+                    <p class="card-text small text-muted mb-2">
+                        <i class="fas fa-calendar me-1"></i>
+                        {{ document.check_date|date:"d.m.Y" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">Heç bir sənəd tapılmadı</h5>
+            <p class="text-muted">İlk sənədi əlavə etmək üçün "Sənəd Əlavə Et" düyməsini istifadə edin.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal for Image Preview -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sənədə baxış</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" id="modalImage" class="img-fluid" style="max-height: 70vh;">
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="downloadLink" class="btn btn-primary" download>
+                    <i class="fas fa-download me-2"></i>Yüklə
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bağla</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Image Modal
+    const imageModal = document.getElementById('imageModal');
+    imageModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const imageUrl = button.getAttribute('data-image');
+        document.getElementById('modalImage').src = imageUrl;
+        document.getElementById('downloadLink').href = imageUrl;
+    });
+
+    // Filter functionality
+    const regionFilter = document.getElementById('regionFilter');
+    const doctorSearch = document.getElementById('doctorSearch');
+    const documentCards = document.querySelectorAll('.document-card');
+
+    function filterDocuments() {
+        const regionValue = regionFilter.value;
+        const searchValue = doctorSearch.value.toLowerCase();
+
+        documentCards.forEach(card => {
+            const cardRegion = card.getAttribute('data-region');
+            const cardDoctor = card.getAttribute('data-doctor');
+            
+            const regionMatch = !regionValue || cardRegion === regionValue;
+            const doctorMatch = !searchValue || cardDoctor.includes(searchValue);
+            
+            card.style.display = (regionMatch && doctorMatch) ? 'block' : 'none';
+        });
+    }
+
+    regionFilter.addEventListener('change', filterDocuments);
+    doctorSearch.addEventListener('input', filterDocuments);
+});
+</script>
+
+<style>
+.document-card {
+    transition: transform 0.2s;
+}
+.document-card:hover {
+    transform: translateY(-5px);
+}
+.document-image {
+    transition: opacity 0.2s;
+}
+.document-image:hover {
+    opacity: 0.8;
+}
+.pdf-preview {
+    border: 2px dashed #dee2e6;
+}
+.card {
+    transition: all 0.3s ease;
+}
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+</style>
+
+{% endblock %}

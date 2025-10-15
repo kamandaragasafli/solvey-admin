@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm" style="width: 100%; margin: auto;">
+  <div class="card-body">
+    <div id="statusMessage" style="margin-top:10px; font-weight:bold;"></div>
+    <h5 class="card-title mb-4">Aylıq Hesabat</h5>
+
+    <form method="GET" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label for="region-select" class="form-label small text-muted">Bölgə seçin</label>
+        <select id="region-select" name="region" class="form-select" required>
+          <option value="" disabled selected>Bölgə Seçin</option>
+          {% for r in region %}
+            <option value="{{ r.id }}" {% if request.GET.region == r.id|stringformat:"s" %}selected{% endif %}>
+              {{ r.region_name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label for="month-select" class="form-label small text-muted">Ay seçin</label>
+        <select id="month-select" name="month" class="form-select">
+          <option value="1" {% if request.GET.month == "1" %}selected{% endif %}>Yanvar</option>
+          <option value="2" {% if request.GET.month == "2" %}selected{% endif %}>Fevral</option>
+          <option value="3" {% if request.GET.month == "3" %}selected{% endif %}>Mart</option>
+          <option value="4" {% if request.GET.month == "4" %}selected{% endif %}>Aprel</option>
+          <option value="5" {% if request.GET.month == "5" %}selected{% endif %}>May</option>
+          <option value="6" {% if request.GET.month == "6" %}selected{% endif %}>İyun</option>
+          <option value="7" {% if request.GET.month == "7" %}selected{% endif %}>İyul</option>
+          <option value="8" {% if request.GET.month == "8" %}selected{% endif %}>Avqust</option>
+          <option value="9" {% if request.GET.month == "9" %}selected{% endif %}>Sentyabr</option>
+          <option value="10" {% if request.GET.month == "10" %}selected{% endif %}>Oktyabr</option>
+          <option value="11" {% if request.GET.month == "11" %}selected{% endif %}>Noyabr</option>
+          <option value="12" {% if request.GET.month == "12" %}selected{% endif %}>Dekabr</option>
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label for="searchInput" class="form-label">Axtar</label>
+        <input type="text" id="searchInput" name="query" class="form-control" placeholder="Axtar..." value="{{ request.GET.query }}">
+      </div>
+
+      <div class="col-md-2">
+        <label for="borc-status" class="form-label">Borclu vəziyyəti</label>
+        <select id="borc-status" name="borc" class="form-select">
+          <option value="">Hamısı</option>
+          <option value="borclu" {% if request.GET.borc == "borclu" %}selected{% endif %}>Borclu</option>
+          <option value="borcsuz" {% if request.GET.borc == "borcsuz" %}selected{% endif %}>Borcsuz</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Filtr et</button>
+      </div>
+    </form>
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-end align-items-center mt-4 gap-2">
+      <a href="#" id="excel-btn" class="btn btn-outline-success btn-sm">
+        <i class="bi bi-file-earmark-excel"></i> Excel
+      </a>
+      <a href="#"><button class="btn btn-outline-danger btn-sm">
+        <i class="bi bi-file-earmark-pdf"></i> PDF
+      </button></a>
+    </div>
+    <hr>
+
+    <!-- Cədvəl -->
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
+        <thead class="table-light text-muted" style="font-size: 0.65rem;">
+          <tr>
+            <th>#</th>
+            <th>Bölgə</th>
+            <th>Həkim</th>
+            <th>Kod</th>
+            <th>Kategoriya</th>
+            <th>Dərəcə</th>
+            <th>İxtisas</th>
+            <th>Əvvəlki Borc</th>
+            {% for d in drug %}
+              <th>{{ d.med_name }}</th>
+            {% endfor %}
+            <th>Total</th>
+            <th>Hesablanan Miqdar</th>
+            <th>Həkimə silinən</th>
+            <th>Avans</th>
+            <th>İnvestisiya</th>
+            <th>Datasiya</th>
+            <th>Yekun Borc</th>
+          </tr>
+        </thead>
+        <tbody id="dataTable" style="font-size: 0.75rem;">
+          <tr>
+            <td colspan="25" class="text-muted fst-italic">Bölgə seçin</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Stil -->
+<style>
+  td:last-child, td:nth-child(4) {
+    font-weight: bold;
+    text-align: center;
+  }
+</style>
+
+<!-- JS -->
+<script>
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+function loadRegionData(regionId, month) {
+  const borcFilter = document.getElementById('borc-status').value;
+
+  fetch(`/reports/ajax/region-report/?region_id=${regionId}&month=${month}&borc=${borcFilter}`)
+    .then(response => {
+      if (!response.ok) throw new Error("Server cavabı düzgün deyil");
+      return response.json();
+    })
+    .then(data => {
+      const tbody = document.getElementById('dataTable');
+      tbody.innerHTML = "";
+
+      if (!data.results || data.results.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="35" class="text-muted fst-italic" id="noResultRow">Seçilən bölgəyə və aya uyğun məlumat tapılmadı.</td></tr>`;
+        return;
+      }
+
+      const heads = Array.from(document.querySelectorAll('#result-table thead th'))
+        .map(th => th.textContent.trim());
+
+      const evvelkiBorcIdx = heads.findIndex(h => h === 'Əvvəlki Borc');
+      const totalIdx = heads.findIndex(h => h === 'Total');
+      const drugNames = heads.slice(evvelkiBorcIdx + 1, totalIdx);
+
+      const formatBoldIfPositive = (num, extraClass = '') => {
+        return Number(num) > 0 ? `fw-bold ${extraClass}`.trim() : '';
+      };
+
+      data.results.forEach((item, index) => {
+        let drugCells = "";
+        drugNames.forEach(drugName => {
+          const drugObj = (item.drugs || []).find(d => d.name.toLowerCase() === drugName.toLowerCase());
+          const count = drugObj ? Number(drugObj.count) : 0;
+          const cellClass = count > 0 ? 'style="background-color:rgba(9, 179, 185, 0.43); font-weight:bold; color:rgba(0, 26, 82, 1); "' : '';
+          drugCells += `<td ${cellClass}>${count}</td>`;
+        });
+
+        const row = `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${item.bolge}</td>
+            <td>
+              <a href="/doctors/details/${item.doctor_id}/" class="text-primary fw-semibold text-decoration-none">
+                ${item.doctor}
+              </a>
+            </td>
+            <td>${item.barcode || ''}</td>
+            <td>${item.kategoriya || '–'}</td>
+            <td>${item.derece || '–'}</td>
+            <td>${item.ixtisas || '–'}</td>
+            <td class="${formatBoldIfPositive(item.previous_debt, 'text-danger')}">
+              ${Number(item.previous_debt || 0).toFixed(2)}
+            </td>
+            ${drugCells}
+            <td class="fw-bold">${Number(item.total || 0)}</td>
+            <td class="${formatBoldIfPositive(item.hesablanan_miqdar)}">
+              ${Number(item.hesablanan_miqdar || 0).toFixed(2)}
+            </td>
+            <td class="${formatBoldIfPositive(item.hekimden_silinen)}">
+              ${Number(item.hekimden_silinen || 0).toFixed(2)}
+            </td>
+            <td class="${formatBoldIfPositive(item.avans)}">
+              ${Number(item.avans || 0).toFixed(2)}
+            </td>
+            <td class="${formatBoldIfPositive(item.investisiya)}">
+              ${Number(item.investisiya || 0).toFixed(2)}
+            </td>
+            <td class="${formatBoldIfPositive(item.datasiya)}">
+              ${Number(item.datasiya || 0).toFixed(2)}
+            </td>
+            <td class="${formatBoldIfPositive(item.yekun_borc, 'fw-bold')}">
+              ${Number(item.yekun_borc || 0).toFixed(2)}
+            </td>
+          </tr>
+        `;
+
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    })
+    .catch(error => {
+      const tbody = document.getElementById('dataTable');
+      tbody.innerHTML = `<tr><td colspan="30" class="text-danger">Xəta baş verdi.</td></tr>`;
+      console.error(error);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const regionSelect = document.getElementById('region-select');
+  const monthSelect = document.getElementById('month-select');
+  const borcSelect = document.getElementById('borc-status');
+  const searchInput = document.getElementById('searchInput');
+
+  function updateData() {
+    const regionId = regionSelect.value;
+    const month = monthSelect.value;
+    if (regionId) {
+      loadRegionData(regionId, month);
+    } else {
+      const tbody = document.getElementById('dataTable');
+      tbody.innerHTML = `<tr><td colspan="25" class="text-muted fst-italic">Bölgə seçin</td></tr>`;
+    }
+  }
+
+  regionSelect.addEventListener('change', updateData);
+  monthSelect.addEventListener('change', updateData);
+  borcSelect.addEventListener('change', () => {
+    const regionId = regionSelect.value;
+    const month = monthSelect.value;
+    if (regionId) {
+      loadRegionData(regionId, month);
+    }
+  });
+
+  searchInput.addEventListener('input', function () {
+    const query = this.value.toLowerCase();
+    const rows = document.querySelectorAll('#dataTable tr');
+    let found = false;
+
+    rows.forEach(row => {
+      const cell = row.querySelectorAll('td')[2]; // Həkim adı sütunu
+      if (cell && cell.textContent.toLowerCase().includes(query)) {
+        row.style.display = '';
+        found = true;
+      } else if (cell) {
+        row.style.display = 'none';
+      }
+    });
+
+    const noResultRow = document.getElementById('noResultRow');
+    if (!found && noResultRow) {
+      noResultRow.style.display = '';
+    } else if (noResultRow) {
+      noResultRow.style.display = 'none';
+    }
+  });
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+
+
+  document.getElementById('excel-btn').addEventListener('click', function (e) {
+    e.preventDefault();
+    const regionId = regionSelect.value;
+    const month = monthSelect.value;
+    const borcFilter = borcSelect.value;
+
+    if (!regionId) {
+      alert("Zəhmət olmasa bölgə seçin");
+      return;
+    }
+
+    let url = `/reports/export-region-report-excel/?region_id=${regionId}`;
+    if (month) {
+      url += `&month=${month}`;
+    }
+    if (borcFilter) {
+      url += `&borc=${borcFilter}`;
+    }
+
+    window.location.href = url;
+  });
+
+  // Initial load based on GET parameters
+  const initialRegion = regionSelect.value || "{{ request.GET.region|default:'' }}";
+  const initialMonth = monthSelect.value || "{{ request.GET.month|default:'' }}";
+  if (initialRegion) {
+    loadRegionData(initialRegion, initialMonth);
+  }
+});
+</script>
+
+
+
+
+
+{% endblock content %}

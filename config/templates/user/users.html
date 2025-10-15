@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% load static %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+
+<div class="dashboard-container">
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+
+
+            <!-- Audit Jurnal -->
+<section class="section-block">
+    <h4 class="section-title">
+        <i class="bi bi-journal-text me-2"></i>Audit Jurnal
+    </h4>
+    <div class="audit-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Tarix</th>
+                    <th>İstifadəçi</th>
+                    <th>Əməliyyat</th>
+                    <th>Ətraflı</th>
+                    <th>Fəaliyyətlər</th>
+                </tr>
+            </thead>
+           <tbody>
+            {% for u in istifadeciler %}
+            <tr>
+            
+                <td>{{ u.date_joined|date:"d.m.Y H:i" }}</td>
+                <td>{{ u.username }}</td>
+                {% if request.user.is_superuser %}
+                <td><span class="action-badge delete">Admin</span></td>
+                {% else %}
+                <td><span class="action-badge create">İstifadəçi</span></td>
+                {% endif %}
+                <td>İstifadəçi: {{ u.email }}</td>
+                <td>
+                    <div class="user-actions">
+                        {% if u.id in movqe_olan_istifadeciler %}
+                        <button class="btn-icon gps"
+                            onclick="window.location.href='{% url 'xerite' %}?user={{ u.id }}'">
+                            <i class="bi bi-pin-map"></i>
+                        </button>
+
+                        {% else %}
+                        <button class="btn-icon delete" disabled title="Mövqe yoxdur">
+                            <i class="bi bi-pin-map"></i>
+                        </button>
+                        {% endif %}
+
+                        <button class="btn-icon edit" title="Redaktə et">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn-icon toggle inactive" title="Aktiv/Deaktiv">
+                            <i class="bi bi-toggle-off"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">Heç bir istifadəçi yoxdur</td></tr>
+            {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+</section>
+
+
+        </div>
+    </main>
+</div>
+
+
+
+    
+    <script src="{% static 'js/admin.js' %}"></script>
+<script>
+
+
+
+
+</script>
+
+
+
+{% endblock content %}
+

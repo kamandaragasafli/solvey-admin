@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load custom_tags %}
+
+
+
+{% block content %}
+<div class="card shadow-sm" style="width: 85%; margin: auto;">
+  <div class="card-body">
+    <h5 class="card-title mb-4">Aylıq Satışlar</h5>
+
+    <!-- Filter Section -->
+    <form method="GET" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label for="searchInput" class="form-label small text-muted">Bölgə Axtar</label>
+        <input type="text" id="searchInput" name="region_search" class="form-control" placeholder="Bölgə..." value="{{ request.GET.region_search }}">
+      </div>
+      <div class="col-md-3">
+        <label for="regionSelect" class="form-label small text-muted">Bölgə Seç</label>
+        <select id="regionSelect" name="region" class="form-select">
+          <option value="">Hamısı</option>
+          {% for region in all_region %}
+            <option value="{{ region.id }}" {% if request.GET.region == region.id|stringformat:"s" %}selected{% endif %}>{{ region.region_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="monthSelect" class="form-label small text-muted">Ay Seç</label>
+        <select id="monthSelect" name="month" class="form-select">
+          <option value="">Hamısı</option>
+          <option value="1" {% if request.GET.month == "1" %}selected{% endif %}>Yanvar</option>
+          <option value="2" {% if request.GET.month == "2" %}selected{% endif %}>Fevral</option>
+          <option value="3" {% if request.GET.month == "3" %}selected{% endif %}>Mart</option>
+          <option value="4" {% if request.GET.month == "4" %}selected{% endif %}>Aprel</option>
+          <option value="5" {% if request.GET.month == "5" %}selected{% endif %}>May</option>
+          <option value="6" {% if request.GET.month == "6" %}selected{% endif %}>İyun</option>
+          <option value="7" {% if request.GET.month == "7" %}selected{% endif %}>İyul</option>
+          <option value="8" {% if request.GET.month == "8" %}selected{% endif %}>Avqust</option>
+          <option value="9" {% if request.GET.month == "9" %}selected{% endif %}>Sentyabr</option>
+          <option value="10" {% if request.GET.month == "10" %}selected{% endif %}>Oktyabr</option>
+          <option value="11" {% if request.GET.month == "11" %}selected{% endif %}>Noyabr</option>
+          <option value="12" {% if request.GET.month == "12" %}selected{% endif %}>Dekabr</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="yearSelect" class="form-label small text-muted">İl Seç</label>
+        <select id="yearSelect" name="year" class="form-select">
+          <option value="">Hamısı</option>
+          {% for year in years %}
+            <option value="{{ year }}" {% if request.GET.year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-1 d-grid">
+        <button type="submit" class="btn btn-primary">Filtrlə</button>
+      </div>
+    </form>
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-end align-items-center mt-4 gap-2">
+      <a href="#" id="excel-btn" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-file-earmark-excel"></i> Excel
+      </a>
+      <a href="#"><button class="btn btn-outline-danger btn-sm">
+        <i class="bi bi-file-earmark-pdf"></i> PDF
+      </button></a>
+      <a href="#"><button class="btn btn-outline-success btn-sm">
+        <i class="bi bi-plus"></i> Əlavə Et
+      </button></a>
+    </div>
+    <hr>
+
+    <!-- Table -->
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
+        <thead class="table-light text-muted" style="font-size: 0.65rem;">
+          <tr>
+            <th>#</th>
+            <th>Bölgə</th>
+            {% for d in all_drug %}
+              <th>{{ d.med_name }}</th>
+            {% endfor %}
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          {% for region in all_region %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ region.region_name }}</td>
+              {% for drug in all_drug %}
+                {% with sales_dict|get_item:region.id|get_item:drug.id as qty %}
+                  {% if qty %}
+                    <td style="font-weight: bold;">{{ qty }}</td>
+                  {% else %}
+                    <td>0</td>
+                  {% endif %}
+                {% endwith %}
+              {% endfor %}
+              <td style="font-weight: bold;">{{ totals_per_region|get_item:region.id }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for Client-Side Filtering -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('searchInput');
+  const regionSelect = document.getElementById('regionSelect');
+  const tableBody = document.getElementById('table-body');
+  const rows = Array.from(tableBody.getElementsByTagName('tr'));
+
+  function filterTable() {
+    const searchText = searchInput.value.toLowerCase();
+    const selectedRegion = regionSelect.value;
+
+    rows.forEach(row => {
+      const regionCell = row.cells[1].textContent.toLowerCase();
+      const regionId = row.cells[1].getAttribute('data-region-id') || regionCell;
+
+      const matchesSearch = regionCell.includes(searchText);
+      const matchesRegion = !selectedRegion || regionId === selectedRegion;
+
+      row.style.display = (matchesSearch && matchesRegion) ? '' : 'none';
+    });
+  }
+
+  searchInput.addEventListener('input', filterTable);
+  regionSelect.addEventListener('change', filterTable);
+});
+</script>
+{% endblock content %}

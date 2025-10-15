@@ -1,0 +1,58 @@
+/* Həkim Admin üçün xüsusi stillər */
+.btn-group .btn {
+    padding: 2px 6px;
+    margin: 1px;
+    font-size: 11px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-group .btn-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.btn-group .btn-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.btn-group .btn-success {
+    background-color: #0db133;
+    color: white;
+}
+
+.btn-group .btn:hover {
+    opacity: 0.8;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+}
+
+/* Maliyyə rəngləri */
+.positive {
+    color: green;
+    font-weight: bold;
+}
+
+.negative {
+    color: red;
+    font-weight: bold;
+}
+
+/* Responsive cədvəl */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.8rem;
+    }
+    
+    .btn-group .btn {
+        font-size: 0.7rem;
+        padding: 1px 4px;
+    }
+}

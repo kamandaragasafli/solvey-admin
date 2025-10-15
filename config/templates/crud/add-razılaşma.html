@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="POST" action="{% url 'razilasma' %}">
+  {% csrf_token %}
+  <div class="card shadow-sm" style="width:80%; margin: auto;">
+    <div class="card-body">
+      <h5 class="card-title mb-4">Razılaşma Əlavə Et</h5>
+
+      <!-- Bölgə seçimi -->
+      <div class="row mb-3">
+        <div class="col-md-5 mb-2">
+          <label for="region" class="form-label small text-muted">Bölgə seçin</label>
+          <select id="region-select" name="region" class="form-select">
+            <option disabled selected>Bölgə Seçin</option>
+            {% for r in regions %}
+              <option value="{{ r.id }}" {% if r.id|stringformat:"s" == selected_region %}selected{% endif %}>{{ r.region_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2 mb-2">
+          <label for="tarix" class="form-label small text-muted">Tarix</label>
+          <input type="date" name="date" value="{% now 'Y-m-d' %}" class="form-control" />
+        </div>
+      </div>
+
+      <hr>
+      <div class="row mb-1 fw-bold" style="font-size: 0.9rem;">
+        <div class="col-md-3">Həkim *</div>
+        <div class="col-md-3 text-center">Razılaşma sayı</div>
+      </div>
+
+      <div class="row mb-3 fw-bold" style="font-size: 1rem;">
+        <div class="col-md-3"></div>
+        <div class="col-md-3 text-center" id="total-razilasma" style="color: #00af0f;">0</div>
+      </div>
+
+      <!-- Həkimlər və inputlar -->
+      <div id="doctors-container">
+        {% if doctors %}
+          {% for d in doctors %}
+            <div class="row align-items-center mb-2 p-2 rounded" style="background-color: #ebebeb;">
+              <div class="col-md-3">
+                <button type="button" class="btn btn w-100 text-start">{{ d.ad }}</button>
+              </div>
+              <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
+                <input type="number" name="razilasma_{{ d.id }}" class="form-control" style="max-width: 120px;" />
+              </div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <div class="mt-4">
+        <button type="submit" class="btn btn-success">Yadda Saxla</button>
+        <button type="reset" class="btn btn-danger">Sil</button>
+      </div>
+
+    </div>
+  </div>
+</form>
+
+<script>
+  const ajaxUrl = "{% url 'ajax_doctors_by_region' %}";
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const regionSelect = document.getElementById("region-select");
+    const doctorsContainer = document.getElementById("doctors-container");
+
+    regionSelect.addEventListener("change", function () {
+      const selectedRegionId = this.value;
+      doctorsContainer.innerHTML = 'Yüklənir...';
+
+      fetch(ajaxUrl + '?region_id=' + selectedRegionId)
+        .then(response => response.json())
+        .then(data => {
+          if (data.doctors.length > 0) {
+            let html = '';
+            data.doctors.forEach(doctor => {
+              html += `
+                <div class="row align-items-center mb-2 p-2 rounded" style="background-color: #ebebeb;">
+                  <div class="col-md-3">
+                    <button type="button" class="btn btn w-100 text-start">${doctor.ad}</button>
+                  </div>
+                  <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
+                    <input type="number" name="razilasma_${doctor.id}" class="form-control" style="max-width: 120px;" />
+                  </div>
+                </div>
+              `;
+            });
+            doctorsContainer.innerHTML = html;
+          } else {
+            doctorsContainer.innerHTML = '<div class="text-center text-muted">Bu bölgədə həkim tapılmadı</div>';
+          }
+        })
+        .catch(() => {
+          doctorsContainer.innerHTML = '<div class="text-center text-danger">Xəta baş verdi</div>';
+        });
+    });
+  });
+
+  // Razılaşma sayını cəmlə
+  document.addEventListener("input", function(event) {
+    if (event.target.matches('input[name^="razilasma_"]')) {
+      let total = 0;
+      document.querySelectorAll('input[name^="razilasma_"]').forEach(input => {
+        let val = parseFloat(input.value);
+        if (!isNaN(val)) {
+          total += val;
+        }
+      });
+      document.getElementById('total-razilasma').textContent = total;
+    }
+  });
+</script>
+
+
+
+
+{% endblock %}
