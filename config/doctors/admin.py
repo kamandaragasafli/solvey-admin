@@ -8,8 +8,7 @@ from .models import Doctors, Recipe, RecipeDrug, RealSales, RealSalesDrug
 @admin.register(Doctors)
 class DoctorsAdmin(admin.ModelAdmin):
     list_display = ('ad', 'bolge_info', 'barkod', 'kategoriya', 'derece', 'ixtisas', 'razılaşma',
-                   'borc_display', 'avans_display', 'investisiya_display', 
-                    'action_buttons')
+                   'borc_display', 'action_buttons')
     
 
     list_display_links = ('ad', 'bolge_info')
@@ -27,7 +26,7 @@ class DoctorsAdmin(admin.ModelAdmin):
             'fields': ('ad', 'barkod', 'bolge', 'kategoriya', 'ixtisas')
         }),
         ('Maliyyə Məlumatları', {
-            'fields': ('borc', 'avans', 'investisiya', 'previous_debt', 
+            'fields': ('borc',  'previous_debt', 
                       'hesablanan_miqdar', 'hekimden_silinen',"razılaşma")
         }),
         
@@ -49,15 +48,8 @@ class DoctorsAdmin(admin.ModelAdmin):
         color = 'red' if (obj.borc or 0) > 0 else 'green'
         return format_html('<span style="color: {};">{}</span>', color, borc_str)
 
-    
-    def avans_display(self, obj):
-        return f"{obj.avans or 0:.2f} ₼"
-    avans_display.short_description = 'Avans'
-    
-    def investisiya_display(self, obj):
-        return f"{obj.investisiya or 0:.2f} ₼"
-    investisiya_display.short_description = 'İnvestisiya'
-    
+
+
     def borc_display(self, obj):
         borc_str = "{:.2f} ₼".format(obj.borc or 0)
         color = 'red' if (obj.borc or 0) > 0 else 'green'
@@ -81,8 +73,7 @@ class DoctorsAdmin(admin.ModelAdmin):
     def reset_financial_data(self, request, queryset):
         updated = queryset.update(
             borc=0,
-            avans=0,
-            investisiya=0,
+        
             hesablanan_miqdar=0,
             hekimden_silinen=0
         )
@@ -98,15 +89,12 @@ class DoctorsAdmin(admin.ModelAdmin):
         total_debt = Doctors.objects.aggregate(
             total=Coalesce(Sum('borc'), 0, output_field=DecimalField())
         )['total']
-        total_avans = Doctors.objects.aggregate(
-            total=Coalesce(Sum('avans'), 0, output_field=DecimalField())
-        )['total']
+       
         
         extra_context = extra_context or {}
         extra_context.update({
             'total_doctors': total_doctors,
             'total_debt': total_debt,
-            'total_avans': total_avans,
         })
         return super().changelist_view(request, extra_context=extra_context)
 
