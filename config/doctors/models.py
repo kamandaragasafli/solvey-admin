@@ -4,7 +4,7 @@ import random
 import string
 from medicine.models import Medical
 from decimal import Decimal as d
-
+from django.db.models import Sum
 
 
 
@@ -31,9 +31,10 @@ class Doctors(models.Model):
     ]
     İXTİSAS_SECIMI = [
         ('CA', 'CA'), ('TE', 'TE'), ('SU', 'SU'), ('TR', 'TR'),
-        ('NE', 'NE'), ('PE', 'PE'), ('EN', 'EN'), ('GI', 'GI'),
+        ('NE', 'NE'), ('PE', 'PE'), ('EN', 'EN'), ('GN', 'GN'),
         ('DE', 'DE'), ('OR', 'OR'), ('PS', 'PS'), ('UR', 'UR'),
-        ('ON', 'ON'), ('RE', 'RE'), ('AL', 'AL'),
+        ('ON', 'ON'), ('RE', 'RE'), ('AL', 'AL'), ('END', 'END'),
+        ('GA', 'GA'), ('LOR', 'LOR'), ('DV', 'DV'), ('NP', 'NP')
     ]
 
     ixtisas = models.CharField(max_length=100, choices=İXTİSAS_SECIMI)
@@ -50,9 +51,7 @@ class Doctors(models.Model):
 
     razılaşma = models.DecimalField(max_digits=5, decimal_places=1, default=0)
     # Hesabat üçün maliyyə sahələri
-    avans = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    investisiya = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    geriqaytarma = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+     
     previous_debt = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     hesablanan_miqdar = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     hekimden_silinen = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -61,7 +60,26 @@ class Doctors(models.Model):
     yekun_borc = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
 
-
+    @property
+    def avans(self):
+        result = self.odenisler.filter(payment_type='Avans').aggregate(total=Sum('pay'))
+        return result['total'] or 0
+    
+    @property
+    def investisiya(self):
+        result = self.odenisler.filter(payment_type='İnvest').aggregate(total=Sum('pay'))
+        return result['total'] or 0
+    
+    @property
+    def geriqaytarma(self):
+        result = self.odenisler.filter(payment_type='Geri_qaytarma').aggregate(total=Sum('pay'))
+        return result['total'] or 0
+    
+    @property
+    def umumi_odenis(self):
+        result = self.odenisler.aggregate(total=Sum('pay'))
+        return result['total'] or 0    
+    
     def get_last_recipe(self):
         return self.recipe_set.order_by('-date').first()
 

@@ -88,13 +88,14 @@
             <th>Həkimə silinən</th>
             <th>Avans</th>
             <th>İnvestisiya</th>
+            <th>Geri qaytarma</th>
             <th>Datasiya</th>
             <th>Yekun Borc</th>
           </tr>
         </thead>
         <tbody id="dataTable" style="font-size: 0.75rem;">
           <tr>
-            <td colspan="25" class="text-muted fst-italic">Bölgə seçin</td>
+            <td colspan="37" class="text-muted fst-italic">Bölgə seçin</td>
           </tr>
         </tbody>
       </table>
@@ -118,10 +119,14 @@ function getCookie(name) {
   if (parts.length === 2) return parts.pop().split(';').shift();
 }
 
-function loadRegionData(regionId, month) {
+let currentPage = 1;
+let totalPages = 1;
+let allResults = []; // Bütün nəticələri saxlayır
+
+function loadRegionData(regionId, month, page = 1) {
   const borcFilter = document.getElementById('borc-status').value;
 
-  fetch(`/reports/ajax/region-report/?region_id=${regionId}&month=${month}&borc=${borcFilter}`)
+  fetch(`/reports/ajax/region-report/?region_id=${regionId}&month=${month}&borc=${borcFilter}&page=${page}`)
     .then(response => {
       if (!response.ok) throw new Error("Server cavabı düzgün deyil");
       return response.json();
@@ -130,8 +135,13 @@ function loadRegionData(regionId, month) {
       const tbody = document.getElementById('dataTable');
       tbody.innerHTML = "";
 
+      // Pagination məlumatlarını saxla
+      currentPage = data.current_page || 1;
+      totalPages = data.total_pages || 1;
+
       if (!data.results || data.results.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="35" class="text-muted fst-italic" id="noResultRow">Seçilən bölgəyə və aya uyğun məlumat tapılmadı.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="37" class="text-muted fst-italic" id="noResultRow">Seçilən bölgəyə və aya uyğun məlumat tapılmadı.</td></tr>`;
+        updatePagination(); // Paginationı yenilə
         return;
       }
 
@@ -155,12 +165,14 @@ function loadRegionData(regionId, month) {
           drugCells += `<td ${cellClass}>${count}</td>`;
         });
 
+        const globalIndex = (currentPage - 1) * 10 + index + 1;
+
         const row = `
-          <tr>
-            <td>${index + 1}</td>
+          <tr class="small-font-row">
+            <td>${globalIndex}</td>
             <td>${item.bolge}</td>
             <td>
-              <a href="/doctors/details/${item.doctor_id}/" class="text-primary fw-semibold text-decoration-none">
+              <a href="/doctors/details/${item.doctor_id}/" class="text-primary fw-semibold text-start text-decoration-none">
                 ${item.doctor}
               </a>
             </td>
@@ -185,6 +197,9 @@ function loadRegionData(regionId, month) {
             <td class="${formatBoldIfPositive(item.investisiya)}">
               ${Number(item.investisiya || 0).toFixed(2)}
             </td>
+            <td class="${formatBoldIfPositive(item.geriqaytarma)}">
+              ${Number(item.geriqaytarma || 0).toFixed(2)}
+            </td>
             <td class="${formatBoldIfPositive(item.datasiya)}">
               ${Number(item.datasiya || 0).toFixed(2)}
             </td>
@@ -196,12 +211,70 @@ function loadRegionData(regionId, month) {
 
         tbody.insertAdjacentHTML('beforeend', row);
       });
+
+      updatePagination(); // Paginationı yenilə
     })
     .catch(error => {
       const tbody = document.getElementById('dataTable');
-      tbody.innerHTML = `<tr><td colspan="30" class="text-danger">Xəta baş verdi.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="37" class="text-danger">Xəta baş verdi.</td></tr>`;
       console.error(error);
+      updatePagination(); // Paginationı yenilə
     });
+}
+
+// Pagination funksiyası
+function updatePagination() {
+  let paginationContainer = document.getElementById('pagination-container');
+  
+  if (!paginationContainer) {
+    paginationContainer = document.createElement('div');
+    paginationContainer.id = 'pagination-container';
+    paginationContainer.className = 'd-flex justify-content-center align-items-center mt-3';
+    document.querySelector('.card-body').appendChild(paginationContainer);
+  }
+
+  if (totalPages <= 1) {
+    paginationContainer.innerHTML = '';
+    return;
+  }
+
+  paginationContainer.innerHTML = `
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+          <button class="page-link" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+            &laquo; Əvvəl
+          </button>
+        </li>
+        
+        <li class="page-item disabled">
+          <span class="page-link text-dark">
+            Səhifə ${currentPage} / ${totalPages}
+          </span>
+        </li>
+        
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+          <button class="page-link" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+            Sonra &raquo;
+          </button>
+        </li>
+      </ul>
+    </nav>
+  `;
+}
+
+// Səhifə dəyişmə funksiyası
+function changePage(page) {
+  if (page < 1 || page > totalPages) return;
+  
+  const regionSelect = document.getElementById('region-select');
+  const monthSelect = document.getElementById('month-select');
+  const regionId = regionSelect.value;
+  const month = monthSelect.value;
+  
+  if (regionId) {
+    loadRegionData(regionId, month, page);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -213,11 +286,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateData() {
     const regionId = regionSelect.value;
     const month = monthSelect.value;
+    currentPage = 1; // Hər yeni sorğuda 1-ci səhifəyə qayıt
     if (regionId) {
-      loadRegionData(regionId, month);
+      loadRegionData(regionId, month, 1);
     } else {
       const tbody = document.getElementById('dataTable');
       tbody.innerHTML = `<tr><td colspan="25" class="text-muted fst-italic">Bölgə seçin</td></tr>`;
+      updatePagination(); // Paginationı yenilə
     }
   }
 
@@ -226,8 +301,9 @@ document.addEventListener('DOMContentLoaded', () => {
   borcSelect.addEventListener('change', () => {
     const regionId = regionSelect.value;
     const month = monthSelect.value;
+    currentPage = 1; // Filter dəyişəndə 1-ci səhifəyə qayıt
     if (regionId) {
-      loadRegionData(regionId, month);
+      loadRegionData(regionId, month, 1);
     }
   });
 
@@ -269,8 +345,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return cookieValue;
   }
 
-
-
   document.getElementById('excel-btn').addEventListener('click', function (e) {
     e.preventDefault();
     const regionId = regionSelect.value;
@@ -297,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const initialRegion = regionSelect.value || "{{ request.GET.region|default:'' }}";
   const initialMonth = monthSelect.value || "{{ request.GET.month|default:'' }}";
   if (initialRegion) {
-    loadRegionData(initialRegion, initialMonth);
+    loadRegionData(initialRegion, initialMonth, 1);
   }
 });
 </script>
