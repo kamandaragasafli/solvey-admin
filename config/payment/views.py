@@ -503,7 +503,7 @@ def hesabat_bagla(request):
                     )
                     total_drugs = sum(item.number for recipe in recipes for item in recipe.drugs.all())
 
-                    # Cari ay üçün hesabat yarat və ya yenilə
+                    # Cari ay üçün hesabat yarat və ya yenilə - YALNIZ MÖVCUD FIELD-LƏR
                     MonthlyDoctorReport.objects.update_or_create(
                         doctor=doctor,
                         report_month=ay_tarixi,
@@ -512,11 +512,8 @@ def hesabat_bagla(request):
                             "borc": float(borc),
                             "avans": float(avans_total),
                             "investisiya": float(invest_total),
-                            "geriqaytarma": float(geriqaytarma_total),
                             "hekimden_silinen": float(hekimden_silinen),
                             "hesablanan_miqdar": float(hesablanan_miqdar),
-                            "datasiya": float(datasiya),
-                            "previous_debt": float(previous_debt),
                             "yekun_borc": float(yekun_borc),
                             "recipe_total_drugs": total_drugs,
                         }
@@ -532,9 +529,6 @@ def hesabat_bagla(request):
                     doctor.datasiya = 0
                     doctor.hesablanan_miqdar = 0
                     
-                    # 3. @property-lər (avans, investisiya, geriqaytarma) avtomatik olaraq 
-                    #    Payment_doctor-dan oxunduğu üçün onları sıfırlamağa ehtiyac yoxdur
-                    
                     doctor.save()
 
             return JsonResponse({
@@ -546,7 +540,6 @@ def hesabat_bagla(request):
             return JsonResponse({"success": False, "message": f"Xəta baş verdi: {str(e)}"})
 
     return JsonResponse({"success": False, "message": "Yalnız POST icazəlidir."})
-
 
 
     
