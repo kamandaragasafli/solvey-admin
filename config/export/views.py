@@ -385,7 +385,7 @@ def import_doctors_from_excel(request):
                 telefon = row.get("telefon")
                 telefon = str(telefon).strip() if pd.notna(telefon) else ""  # "None" stringi düşməsin
                 klinika_adi = str(row.get("klinika", "")).strip()
-                ixtisas = str(row.get("ixtisas", "")).strip()
+                ixtisas = str(row.get("ixtisas", "")).strip().upper()
 
                 if not bolge_adi or not hekim_adi:
                     continue  # boş dəyərləri atla
