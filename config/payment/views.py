@@ -27,7 +27,7 @@ from django.http import HttpResponse
 from decimal import Decimal as d
 from collections import defaultdict
 from django.views.decorators.csrf import csrf_exempt
-
+from django.core.paginator import Paginator
 
 
 
@@ -43,7 +43,7 @@ def get_doctors_by_region(request):
 def add_pay_dr(request, region_id=None):
 
     
-    region = Region.objects.all()
+    region = Region.objects.all().order_by('id')
 
     if region_id:
         
@@ -88,34 +88,7 @@ def add_pay_dr(request, region_id=None):
                 date=pay_date
             )
             
-
-            if payment_type == "Avans":
-                dr.avans = borc_miqdari
-                dr.investisiya = 0
-                dr.geriqaytarma = 0
-                # dr.borc += borc_miqdari  # <-- bunu sil
-
-            elif payment_type == "İnvest":
-                dr.investisiya = borc_miqdari
-                dr.avans = 0
-                dr.geriqaytarma = 0
-                # dr.borc -= borc_miqdari  # <-- bunu sil
-
-            elif payment_type == "Geri_qaytarma":
-                dr.geriqaytarma = borc_miqdari
-                dr.avans = 0
-                dr.investisiya = 0
-
-                # Bu hissə qalır, çünki "ödəniş" kimi düşünülür
-                if dr.borc > 0:
-                    dr.borc -= borc_miqdari
-                else:
-                    dr.borc += borc_miqdari
-
-
-
-            dr.save()
-
+ 
             messages.success(request, "Ödəniş uğurla əlavə edildi.")
             return redirect("doctor_detail", doctor_id=doctor_id)
 
@@ -134,7 +107,7 @@ def add_pay_dr(request, region_id=None):
 
 
 def document_add(request):
-    region = Region.objects.all()  # Bölgələri template'a göndərin
+    region = Region.objects.all().order_by('id')  # Bölgələri template'a göndərin
     
     if request.method == 'POST':
         try:
@@ -174,8 +147,6 @@ def document_add(request):
     return render(request, 'crud/add_document.html', context)
 
 
-
-
 def financial_documents(request):
     documents = Financial_document.objects.select_related(
         'check_dr', 'check_region'
@@ -211,7 +182,7 @@ def financial_documents(request):
 
 def create_sale(request):
     drug_all = Medical.objects.all().order_by('id')
-    region_all = Region.objects.all()
+    region_all = Region.objects.all().order_by('id')
 
     if request.method == "POST":
         region_id = request.POST.get("region")
@@ -282,7 +253,7 @@ def create_sale(request):
 
 def sales(request):
     # Get all regions and drugs
-    all_region = Region.objects.all()
+    all_region = Region.objects.all().order_by('id')
     all_drug = Medical.objects.all().order_by('id')
 
     # Get available years for the year dropdown
@@ -332,7 +303,7 @@ def sales(request):
     return render(request, "reports/sales.html", context)
 
 def report_list(request):
-    region = Region.objects.all()
+    region = Region.objects.all().order_by('id')
     drug = Medical.objects.all().order_by('id')
 
     context = {
@@ -349,14 +320,15 @@ def d(v):
         return Decimal('0')
     
 
-
 def ajax_region_report(request):
     region_id = request.GET.get("region_id")
     month = request.GET.get("month")
     borc_filter = request.GET.get("borc")
+    page = request.GET.get("page", 1)  # Page parametri
+    per_page = 10 
 
     if not region_id:
-        return JsonResponse({"results": []})
+        return JsonResponse({"results": [], "total_pages": 0, "current_page": 1})
 
     doctors = Doctors.objects.filter(bolge_id=region_id)
     result = []
@@ -373,6 +345,16 @@ def ajax_region_report(request):
     sales_exist = sales.exists()
 
     for doctor in doctors:
+        # BÜTÜN dəyişənləri əvvəlcədən təyin et
+        previous_debt = d(0)
+        borc = d(0)
+        avans = d(0)
+        investisiya = d(0)
+        geriqaytarma = d(0)  # ƏVVƏLCƏDƏN TƏYİN ET
+        datasiya = d(0)
+        hekimden_silinen = d(0)
+        hesablanan_miqdar = d(0)
+
         # Seçilən ay üçün mövcud hesabatı tap
         monthly_report = None
         if month:
@@ -393,11 +375,13 @@ def ajax_region_report(request):
             datasiya = d(0)
             hekimden_silinen = d(monthly_report.hekimden_silinen or 0)
             hesablanan_miqdar = d(monthly_report.hesablanan_miqdar or 0)
+            # monthly_report-da geriqaytarma olmadığı üçün 0 qalır
         else:
             previous_debt = d(doctor.previous_debt or 0)
             borc = d(doctor.borc or 0)
             avans = d(doctor.avans or 0)
             investisiya = d(doctor.investisiya or 0)
+            geriqaytarma = d(doctor.geriqaytarma or 0)  # Burada təyin olunur
             datasiya = d(doctor.datasiya or 0)
             hekimden_silinen = d(doctor.hekimden_silinen or 0)
             hesablanan_miqdar = d(doctor.hesablanan_miqdar or 0)
@@ -430,7 +414,7 @@ def ajax_region_report(request):
             })
             total += d_item['total_count']
 
-        yekun_borc = previous_debt + avans + investisiya + datasiya - hekimden_silinen
+        yekun_borc = previous_debt + avans + investisiya - geriqaytarma +  datasiya - hekimden_silinen
 
         if borc_filter == "borclu" and yekun_borc <= 0:
             continue
@@ -449,6 +433,7 @@ def ajax_region_report(request):
             "borc": float(borc),
             "avans": float(avans),
             "investisiya": float(investisiya),
+            "geriqaytarma": float(geriqaytarma),  # Artıq həmişə təyin olunub
             "datasiya": float(datasiya),
             "hekimden_silinen": float(hekimden_silinen),
             "hesablanan_miqdar": float(hesablanan_miqdar),
@@ -457,8 +442,23 @@ def ajax_region_report(request):
             "yekun_borc": float(yekun_borc),
         })
 
-    return JsonResponse({"results": result}, json_dumps_params={'ensure_ascii': False})
+    paginator = Paginator(result, per_page)
+    
+    try:
+        current_page = paginator.page(page)
+        paginated_results = list(current_page.object_list)
+    except:
+        current_page = paginator.page(1)
+        paginated_results = list(current_page.object_list)
 
+    return JsonResponse({
+        "results": paginated_results,
+        "total_pages": paginator.num_pages,
+        "current_page": current_page.number,
+        "has_previous": current_page.has_previous(),
+        "has_next": current_page.has_next(),
+        "total_results": len(result)
+    }, json_dumps_params={'ensure_ascii': False})
 
 
 
@@ -565,7 +565,7 @@ def export_region_report_excel(request):
     headers = [
         "№", "Bölgə", "Həkim", "Kod", "Kateqoriya", "Dərəcə", "İxtisas", "Əvvəlki Borc"
     ] + [d.med_name for d in drugs] + [
-        "Total", "Hesablanan Miqdar", "Həkimdən Silinən", "Avans", "İnvestisiya", "Datasiya", "Yekun Borc"
+        "Total", "Hesablanan Miqdar", "Həkimdən Silinən", "Avans", "İnvestisiya", "Geri qaytarma", "Datasiya", "Yekun Borc"
     ]
 
     ws.append([])  # Boş sətir
@@ -592,6 +592,7 @@ def export_region_report_excel(request):
     hekimden_silinen_total = d(0)
     avans_total = d(0)
     investisiya_total = d(0)
+    geriqaytarma_total = d(0)
     datasiya_total = d(0)
     yekun_borc_total = d(0)
     previous_debt_total = d(0)
@@ -616,6 +617,7 @@ def export_region_report_excel(request):
             borc = d(monthly_report.borc or 0)
             avans = d(monthly_report.avans or 0)
             investisiya = d(monthly_report.investisiya or 0)
+            geriqaytarma = d(monthly_report.geriqaytarma or 0)
             datasiya = d(0)
             hekimden_silinen = d(monthly_report.hekimden_silinen or 0)
             hesablanan_miqdar = d(monthly_report.hesablanan_miqdar or 0)
@@ -625,6 +627,7 @@ def export_region_report_excel(request):
             borc = d(doctor.borc or 0)
             avans = d(doctor.avans or 0)
             investisiya = d(doctor.investisiya or 0)
+            geriqaytarma = d(doctor.geriqaytarma or 0)
             datasiya = d(doctor.datasiya or 0)
             hekimden_silinen = d(doctor.hekimden_silinen or 0)
             hesablanan_miqdar = d(doctor.hesablanan_miqdar or 0)
@@ -634,7 +637,7 @@ def export_region_report_excel(request):
             hekimden_silinen = d(0)
             hesablanan_miqdar = d(0)
 
-        yekun_borc = previous_debt + avans + investisiya + datasiya - hekimden_silinen
+        yekun_borc = previous_debt + avans + investisiya - geriqaytarma + datasiya - hekimden_silinen
 
         # Recipes və drug məlumatları (month filter ilə)
         recipes = Recipe.objects.filter(dr=doctor, region_id=region_id)
@@ -659,6 +662,7 @@ def export_region_report_excel(request):
         hekimden_silinen_total += hekimden_silinen
         avans_total += avans
         investisiya_total += investisiya
+        geriqaytarma_total += geriqaytarma
         datasiya_total += datasiya
         yekun_borc_total += yekun_borc
         total_total += total
@@ -686,6 +690,7 @@ def export_region_report_excel(request):
             float(hekimden_silinen),
             float(avans),
             float(investisiya),
+            float(geriqaytarma),
             float(datasiya),
             float(yekun_borc)
         ]
@@ -713,8 +718,9 @@ def export_region_report_excel(request):
     ws.cell(row=total_row_idx, column=base_col + 2, value=float(hekimden_silinen_total)).font = Font(bold=True)
     ws.cell(row=total_row_idx, column=base_col + 3, value=float(avans_total)).font = Font(bold=True)
     ws.cell(row=total_row_idx, column=base_col + 4, value=float(investisiya_total)).font = Font(bold=True)
-    ws.cell(row=total_row_idx, column=base_col + 5, value=float(datasiya_total)).font = Font(bold=True)
-    ws.cell(row=total_row_idx, column=base_col + 6, value=float(yekun_borc_total)).font = Font(bold=True)
+    ws.cell(row=total_row_idx, column=base_col + 5, value=float(geriqaytarma_total)).font = Font(bold=True)
+    ws.cell(row=total_row_idx, column=base_col + 6, value=float(datasiya_total)).font = Font(bold=True)
+    ws.cell(row=total_row_idx, column=base_col + 7, value=float(yekun_borc_total)).font = Font(bold=True)
 
     # Hüceyrələrə border və hizalama (alt sətir üçün)
     thin = Side(style='thin', color="BFBFBF")

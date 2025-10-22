@@ -822,6 +822,8 @@ def ajax_region_data(request):
     date_range = request.GET.get("date_range")
     name_filter = request.GET.get("name_filter")
     month = request.GET.get("month")
+    page = request.GET.get("page", 1)  # Pagination parametri
+    per_page = 10  # Hər səhifədə 10 nəticə
 
     try:
         region_id = int(region_id)
@@ -835,7 +837,6 @@ def ajax_region_data(request):
         doctors = doctors.filter(Q(ad__icontains='dannı') | Q(ad__icontains='dannisi') | Q(ad__icontains='dannısı'))
     elif name_filter == 'without_dannisi':
         doctors = doctors.exclude(Q(ad__icontains='dannı') | Q(ad__icontains='dannisi') | Q(ad__icontains='dannısı'))
-
 
     # Tarix aralığı və ay filteri
     start_date = end_date = None
@@ -926,10 +927,24 @@ def ajax_region_data(request):
             "total": float(total)
         })
 
-    return JsonResponse({"results": result})
+    # PAGINATION
+    paginator = Paginator(result, per_page)
+    
+    try:
+        current_page = paginator.page(page)
+        paginated_results = list(current_page.object_list)
+    except:
+        current_page = paginator.page(1)
+        paginated_results = list(current_page.object_list)
 
-
-
+    return JsonResponse({
+        "results": paginated_results,
+        "total_pages": paginator.num_pages,
+        "current_page": current_page.number,
+        "has_previous": current_page.has_previous(),
+        "has_next": current_page.has_next(),
+        "total_results": len(result)
+    })
 
 def export_region_excel(request):
     region_id = request.GET.get('region_id')
