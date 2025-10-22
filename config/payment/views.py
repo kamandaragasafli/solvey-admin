@@ -462,8 +462,6 @@ def ajax_region_report(request):
 
 
 
-
-
 @csrf_exempt
 def hesabat_bagla(request):
     if request.method == "POST":
@@ -473,7 +471,6 @@ def hesabat_bagla(request):
             region_id = request.POST.get("region_id")
             ay_tarixi = date(il, ay, 1)
 
-            # Həkimləri seç
             if region_id:
                 doctors_qs = Doctors.objects.filter(bolge_id=region_id)
             else:
@@ -481,16 +478,23 @@ def hesabat_bagla(request):
 
             with transaction.atomic():
                 for doctor in doctors_qs.select_for_update():
+                    # @property metodlarından oxu (avans, investisiya)
+                    avans_total = D(doctor.avans or 0)
+                    invest_total = D(doctor.investisiya or 0)
+                    geriqaytarma_total = D(doctor.geriqaytarma or 0)
+                    
+                    # Database field-lərindən oxu
                     previous_debt = D(doctor.previous_debt or 0)
                     borc = D(doctor.borc or 0)
-                    avans = D(doctor.avans or 0)
-                    investisiya = D(doctor.investisiya or 0)
                     hekimden_silinen = D(doctor.hekimden_silinen or 0)
                     datasiya = D(doctor.datasiya or 0)
+                    hesablanan_miqdar = D(doctor.hesablanan_miqdar or 0)
 
-                    yekun_borc = previous_debt + avans + investisiya + datasiya - hekimden_silinen
+                    # Yekun borcu hesabla
+                    yekun_borc = (previous_debt + borc + avans_total + invest_total + 
+                                 datasiya - hekimden_silinen - geriqaytarma_total)
 
-                    # Reseptləri götür
+                    # Reseptləri götür və dərman sayını hesabla
                     recipes = Recipe.objects.filter(
                         dr=doctor,
                         region=doctor.bolge,
@@ -499,28 +503,39 @@ def hesabat_bagla(request):
                     )
                     total_drugs = sum(item.number for recipe in recipes for item in recipe.drugs.all())
 
-                    # Cari ay üçün hesabat
+                    # Cari ay üçün hesabat yarat və ya yenilə
                     MonthlyDoctorReport.objects.update_or_create(
                         doctor=doctor,
                         report_month=ay_tarixi,
                         defaults={
                             "region": doctor.bolge,
                             "borc": float(borc),
-                            "avans": float(avans),
-                            "investisiya": float(investisiya),
+                            "avans": float(avans_total),
+                            "investisiya": float(invest_total),
+                            "geriqaytarma": float(geriqaytarma_total),
                             "hekimden_silinen": float(hekimden_silinen),
-                            "hesablanan_miqdar": float(doctor.hesablanan_miqdar or 0),
+                            "hesablanan_miqdar": float(hesablanan_miqdar),
+                            "datasiya": float(datasiya),
+                            "previous_debt": float(previous_debt),
                             "yekun_borc": float(yekun_borc),
                             "recipe_total_drugs": total_drugs,
                         }
                     )
 
-                    # Növbəti aya devr: həkim modelində previous_debt yenilə
+                    # Növbəti aya devr et:
+                    # 1. Köhnə borcu yekun_borc et
                     doctor.previous_debt = yekun_borc
-                    doctor.avans = 0
-                    doctor.investisiya = 0
+                    
+                    # 2. Cari ayın məlumatlarını sıfırla (sadece database field-ləri)
+                    doctor.borc = 0
+                    doctor.hekimden_silinen = 0
                     doctor.datasiya = 0
-                    doctor.save(update_fields=["previous_debt","avans", "investisiya", "datasiya"])
+                    doctor.hesablanan_miqdar = 0
+                    
+                    # 3. @property-lər (avans, investisiya, geriqaytarma) avtomatik olaraq 
+                    #    Payment_doctor-dan oxunduğu üçün onları sıfırlamağa ehtiyac yoxdur
+                    
+                    doctor.save()
 
             return JsonResponse({
                 "success": True,
@@ -531,7 +546,6 @@ def hesabat_bagla(request):
             return JsonResponse({"success": False, "message": f"Xəta baş verdi: {str(e)}"})
 
     return JsonResponse({"success": False, "message": "Yalnız POST icazəlidir."})
-
 
 
 
