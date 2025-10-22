@@ -62,29 +62,38 @@ class Doctors(models.Model):
 
     @property
     def avans(self):
+        if not self.pk:  # Əgər hələ save olunmayıbsa
+            return 0
         result = self.odenisler.filter(payment_type='Avans').aggregate(total=Sum('pay'))
         return result['total'] or 0
-    
+
     @property
     def investisiya(self):
+        if not self.pk:  # Əgər hələ save olunmayıbsa
+            return 0
         result = self.odenisler.filter(payment_type='İnvest').aggregate(total=Sum('pay'))
         return result['total'] or 0
-    
+
     @property
     def geriqaytarma(self):
+        if not self.pk:  # Əgər hələ save olunmayıbsa
+            return 0
         result = self.odenisler.filter(payment_type='Geri_qaytarma').aggregate(total=Sum('pay'))
         return result['total'] or 0
-    
+
     @property
     def umumi_odenis(self):
+        if not self.pk:  # Əgər hələ save olunmayıbsa
+            return 0
         result = self.odenisler.aggregate(total=Sum('pay'))
-        return result['total'] or 0    
+        return result['total'] or 0
     
     def get_last_recipe(self):
         return self.recipe_set.order_by('-date').first()
 
     @property
     def cinsiyyet_from_name(self):
+        
         if not self.ad:
             return "Naməlum"
         soyad = self.ad.strip().split()[0]

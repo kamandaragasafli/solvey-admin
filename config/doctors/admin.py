@@ -38,11 +38,22 @@ class DoctorsAdmin(admin.ModelAdmin):
             'all': ('admin/css/custom.css',)
         }
         js = ('admin/js/custom.js',)
-    
+        
     def bolge_info(self, obj):
+        if not obj.pk:  # Yeni həkim üçün
+            return '-'
         return obj.bolge.region_name if obj.bolge else '-'
     bolge_info.short_description = 'Bölgə'
     bolge_info.admin_order_field = 'bolge__region_name'
+
+    def borc_display(self, obj):
+        if not obj.pk:  # Yeni həkim üçün
+            return format_html('<span style="color: #999;">0.00 ₼</span>')
+        
+        borc_str = "{:.2f} ₼".format(obj.borc or 0)
+        color = 'red' if (obj.borc or 0) > 0 else 'green'
+        return format_html('<span style="color: {};">{}</span>', color, borc_str)
+    borc_display.short_description = 'Borc'
     
     def borc_display(self, obj):
         borc_str = "{:.2f} ₼".format(obj.borc or 0)
@@ -58,6 +69,10 @@ class DoctorsAdmin(admin.ModelAdmin):
 
     
     def action_buttons(self, obj):
+        # Əgər hələ save olunmayıbsa (primary key yoxdursa)
+        if not obj.pk:
+            return format_html('<span style="color: #999;">Yeni həkim - əvvəlcə yadda saxlayın</span>')
+        
         return format_html(
             '<div class="btn-group">'
             '<a href="{}" class="btn btn-xs btn-info" style="margin-right:2px;">Reseptlər</a>'
