@@ -9,7 +9,7 @@
     <!-- Filter Section -->
     <form method="GET" class="row g-3 align-items-end">
       <div class="col-md-3">
-        <label for="region-select" class="form-label small text-muted">Bölgə seçin</label>
+        <label for="region-select" class="form-label small ">Bölgə seçin</label>
         <select id="region-select" name="region" class="form-select" required>
           <option value="" disabled selected>Bölgə Seçin</option>
           {% for r in region %}
@@ -21,7 +21,7 @@
       </div>
 
       <div class="col-md-2">
-        <label for="year-select" class="form-label small text-muted">İl seçin</label>
+        <label for="year-select" class="form-label small">İl seçin</label>
         <select name="year" id="year-select" class="form-select" required>
           <option value="" disabled selected>İl seçin</option>
           {% for year in years %}
@@ -31,7 +31,7 @@
       </div>
 
       <div class="col-md-2">
-        <label for="month-select" class="form-label small text-muted">Ay seçin</label>
+        <label for="month-select" class="form-label small ">Ay seçin</label>
         <select name="month" id="month-select" class="form-select" required>
           <option value="" disabled selected>Ay seçin</option>
           {% for ay_id, ay_ad in aylar %}
@@ -60,8 +60,8 @@
 
     <!-- Cədvəl -->
     <div class="table-responsive">
-      <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
-        <thead class="table-light text-muted" style="font-size: 0.65rem;">
+      <table class="table table-dark table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
+        <thead class="table-dark text-muted" style="font-size: 0.65rem;">
           <tr>
             <th>#</th>
             <th>Bölgə</th>
@@ -93,16 +93,98 @@
 </div>
 
 <!-- Stil -->
+
 <style>
+  body {
+    background-color: #030b1a;
+    color: #f9fafb;
+    font-family: "Inter", sans-serif;
+  }
+
+  .card {
+    background-color: #273549;
+    border: none;
+    border-radius: 16px;
+    color: #f9fafb;
+  }
+
+  .form-control, .form-select {
+    background-color: #1a2533 !important;
+    color: #f1f1f1 !important;
+    border: 1px solid #2d3c51;
+    transition: 0.2s ease;
+  }
+
+  .form-control:focus, .form-select:focus {
+    background-color: #1f2a3a !important;
+    border-color: #2596ffff !important;
+    box-shadow: 0 0 0 0.25rem rgba(26, 87, 255, 0.25);
+  }
+
+  .btn-success {
+    background-color: #2596ffff;
+    border: none;
+  }
+
+  .btn-success:hover {
+    background-color: #2596ffff;
+  }
+
+  .btn-outline-light:hover {
+    background-color: #ffffff;
+    color: #000000;
+  }
+
+  table.table-dark tr:hover {
+    background-color: #1a2333 !important;
+  }
+
+  td:last-child, td:nth-child(4) {
+    font-weight: 600;
+    text-align: center;
+  }
+
+  th {
+    border-bottom: 1px solid #3a4a5f !important;
+  }
+  /* Scrollbar ümumi */
+::-webkit-scrollbar {
+  width: 10px; /* vertical scrollbar eni */
+  height: 10px; /* horizontal scrollbar eni */
+}
+
+/* Scrollbar track (arxa plan) */
+::-webkit-scrollbar-track {
+  background: #1a2533; /* track background */
+  border-radius: 10px;
+}
+
+/* Scrollbar thumb (sürüşdürülən hissə) */
+::-webkit-scrollbar-thumb {
+  background-color: #1a2533 !important; /* əsas vurğu rəngi */
+  border-radius: 10px;
+  border: 2px solid #1a2533; /* track ilə uyğunlaşması üçün sərhəd */
+}
+
+/* Hover effekti */
+::-webkit-scrollbar-thumb:hover {
+  background-color: #1a2533 !important;
+}
+
+/* Firefox üçün */
+* {
+  scrollbar-width: thin;           /* incə scrollbar */
+  scrollbar-color: #1a2533 !important; #1a2533; /* thumb / track */
+}
+
+
+
   td:last-child, td:nth-child(4) {
     font-weight: bold;
     text-align: center;
   }
-  .table-responsive {
-    max-height: 70vh;
-    overflow-y: auto;
-  }
 </style>
+
 
 <!-- JavaScript -->
 <script>

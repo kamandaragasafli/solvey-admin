@@ -99,21 +99,38 @@ class Doctors(models.Model):
         soyad = self.ad.strip().split()[0]
         return "Qadın" if soyad[-1].lower() == 'a' else "Kişi"
 
+    @property
+    def hesablanmis_borc(self):
+        """
+        Əvvəlki borc + avans + investisiya + datasiya - geriqaytarma
+        """
+        return (
+            d(self.previous_debt or 0)
+            + d(self.avans or 0)
+            + d(self.investisiya or 0)
+            + d(self.datasiya or 0)
+            - d(self.geriqaytarma or 0)
+        )
+
     def save(self, *args, **kwargs):
         # Cinsiyyəti avtomatik təyin et
         if self.ad:
             soyad = self.ad.strip().split()[0]
             self.cinsiyyet = "Qadın" if soyad[-1].lower() == 'a' else "Kişi"
 
-        # Yekun borcu hesabla
+        # Borcu və yekun borcu avtomatik hesabla
+        self.borc = self.hesablanmis_borc  # əsas borc
         self.yekun_borc = (
-            d(self.previous_debt or 0)
-            + d(self.borc or 0)
-            + d(self.avans or 0)
-            + d(self.investisiya or 0)
-            - d(self.hekimden_silinen or 0)
-            - d(self.geriqaytarma or 0)
+            d(self.borc)
+            + d(self.hekimden_silinen or 0)
+            + d(self.hesablanan_miqdar or 0)
         )
+
+        # Barkod avtomatik generasiya et
+        if not self.barkod:
+            self.barkod = self.generate_barkod_for_region(self.bolge.region_name)
+
+        super().save(*args, **kwargs)
 
         # Barkod avtomatik generasiya et (əgər yoxdursa)
         if not self.barkod:

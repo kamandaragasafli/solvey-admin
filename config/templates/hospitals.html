@@ -2,61 +2,91 @@
 {% block content %}
 
 <style>
-  .region-card {
-    border: 1px solid #f0f0f0;
-    border-radius: 15px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: 0.3s ease;
-    width: 400px
+  /* Dark Table */
+  .table-dark-mode {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #1f2937;
+    color: #f9fafb;
+    border-radius: 12px;
+    overflow: hidden;
   }
 
-  .region-card:hover {
-    transform: translateY(-5px);
-  }
-
-  .region-icon {
-    font-size: 2rem;
-    color: #4850b9;
-    margin-right: 10px;
-  }
-
-  .region-title {
+  .table-dark-mode thead {
+    background-color: #273549;
+    color: #b5bcc7;
     font-weight: 600;
-    font-size: 1.2rem;
-    color: #333;
+    position: sticky;
+    top: 0;
+    z-index: 1;
   }
 
-  .clinic-count {
-    font-size: 0.95rem;
-    color: #666;
+  .table-dark-mode th,
+  .table-dark-mode td {
+    padding: 12px 10px;
+    text-align: center;
+    border-bottom: 1px solid #374151;
+  }
+
+  .table-dark-mode tbody tr:nth-child(even) {
+    background-color: #1f2937;
+  }
+
+  .table-dark-mode tbody tr:nth-child(odd) {
+    background-color: #273549;
+  }
+
+  .table-dark-mode tbody tr:hover {
+    background-color: #2d75faff;
+    color: #f9fafb;
+    transition: 0.3s;
+  }
+
+  .badge-dark-mode {
+    padding: 0.35em 0.65em;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  /* Scrollbar */
+  .table-responsive::-webkit-scrollbar {
+    width: 8px;
+  }
+  .table-responsive::-webkit-scrollbar-track {
+    background: #1f2937;
+  }
+  .table-responsive::-webkit-scrollbar-thumb {
+    background-color: #1f63e2ff;
+    border-radius: 10px;
   }
 </style>
 
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="mb-0">📍 Bölgələr və Klinikalar</h2>
+    <h2 class="mb-0 text-light">📍 Bölgələr və Klinikalar</h2>
     <button type="button" class="btn btn-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#addHospitalModal">
       <i class="bi bi-plus-circle"></i> Klinika/Xəstəxana Əlavə et
     </button>
   </div>
 
   <div class="table-responsive">
-    <table class="table table-bordered table-hover align-middle">
-      <thead class="table-light">
+    <table class="table-dark-mode align-middle">
+      <thead>
         <tr>
-          <th scope="col">#</th>
-          <th scope="col">Klinika / Xəstəxana Adı</th>
-          <th scope="col">Bölgə</th>
-          <th scope="col">Şəhər sayı</th>
+          <th>#</th>
+          <th>Klinika / Xəstəxana Adı</th>
+          <th>Bölgə</th>
+          <th>Şəhər sayı</th>
         </tr>
       </thead>
       <tbody>
         {% for hospital in hospitals %}
         <tr>
-          <th scope="row">{{ forloop.counter }}</th>
+          <th>{{ forloop.counter }}</th>
           <td><strong>{{ hospital.hospital_name }}</strong></td>
-          <td><span class="badge bg-success">{{ hospital.region_net.region_name }}</span></td>
-          <td><span class="badge bg-warning">{{ hospital.city }}</span></td>
+          <td><span class="badge-dark-mode bg-success">{{ hospital.region_net.region_name }}</span></td>
+          <td><span class="badge-dark-mode bg-warning text-dark">{{ hospital.city }}</span></td>
         </tr>
         {% empty %}
         <tr>
@@ -71,22 +101,22 @@
 <!-- Modal -->
 <div class="modal fade" id="addHospitalModal" tabindex="-1" aria-labelledby="addHospitalModalLabel" aria-hidden="true">
   <div class="modal-dialog">
-    <div class="modal-content">
+    <div class="modal-content" style="background-color: #1f2937; color: #f9fafb;">
       <form method="POST" action="{% url 'add-hospital' %}">
         {% csrf_token %}
         <div class="modal-header">
           <h5 class="modal-title" id="addHospitalModalLabel">Yeni Klinikaya Əlavə Et</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Bağla"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
             <label for="hospital_name" class="form-label">Klinika Adı</label>
-            <input type="text" class="form-control" id="hospital_name" name="hospital_name" required>
+            <input type="text" class="form-control" id="hospital_name" name="hospital_name" required style="background-color: #273549; color: #f9fafb; border: none;">
           </div>
 
           <div class="mb-3">
             <label for="region_net" class="form-label">Bölgə Seçin</label>
-            <select class="form-select" id="region_net" name="region_net" required>
+            <select class="form-select" id="region_net" name="region_net" required style="background-color: #273549; color: #f9fafb; border: none;">
               <option selected disabled>Seçin...</option>
               {% for r in regions %}
                 <option value="{{ r.id }}">{{ r.region_name }}</option>
@@ -96,7 +126,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İmtina</button>
-          <button type="submit" class="btn btn-primary">
+          <button type="submit" class="btn btn-success">
             <i class="bi bi-plus-circle me-1"></i> Əlavə Et
           </button>
         </div>

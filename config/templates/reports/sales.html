@@ -4,19 +4,19 @@
 
 
 {% block content %}
-<div class="card shadow-sm" style="width: 85%; margin: auto;">
+<div class="card shadow-sm" style="width: 85%; margin: auto; background-color: #1f2937; color: #f9fafb; border-radius: 14px;">
   <div class="card-body">
     <h5 class="card-title mb-4">Aylıq Satışlar</h5>
 
     <!-- Filter Section -->
     <form method="GET" class="row g-3 align-items-end">
       <div class="col-md-3">
-        <label for="searchInput" class="form-label small text-muted">Bölgə Axtar</label>
-        <input type="text" id="searchInput" name="region_search" class="form-control" placeholder="Bölgə..." value="{{ request.GET.region_search }}">
+        <label for="searchInput" class="form-label small ">Bölgə Axtar</label>
+        <input type="text" id="searchInput" name="region_search" class="form-control" placeholder="Bölgə..." value="{{ request.GET.region_search }}" style="background-color: #273549; color: #f9fafb; border: none;">
       </div>
       <div class="col-md-3">
-        <label for="regionSelect" class="form-label small text-muted">Bölgə Seç</label>
-        <select id="regionSelect" name="region" class="form-select">
+        <label for="regionSelect" class="form-label small">Bölgə Seç</label>
+        <select id="regionSelect" name="region" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
           <option value="">Hamısı</option>
           {% for region in all_region %}
             <option value="{{ region.id }}" {% if request.GET.region == region.id|stringformat:"s" %}selected{% endif %}>{{ region.region_name }}</option>
@@ -24,8 +24,8 @@
         </select>
       </div>
       <div class="col-md-2">
-        <label for="monthSelect" class="form-label small text-muted">Ay Seç</label>
-        <select id="monthSelect" name="month" class="form-select">
+        <label for="monthSelect" class="form-label small ">Ay Seç</label>
+        <select id="monthSelect" name="month" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
           <option value="">Hamısı</option>
           <option value="1" {% if request.GET.month == "1" %}selected{% endif %}>Yanvar</option>
           <option value="2" {% if request.GET.month == "2" %}selected{% endif %}>Fevral</option>
@@ -41,17 +41,17 @@
           <option value="12" {% if request.GET.month == "12" %}selected{% endif %}>Dekabr</option>
         </select>
       </div>
-      <div class="col-md-2">
+      {% comment %} <div class="col-md-2">
         <label for="yearSelect" class="form-label small text-muted">İl Seç</label>
-        <select id="yearSelect" name="year" class="form-select">
+        <select id="yearSelect" name="year" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
           <option value="">Hamısı</option>
           {% for year in years %}
             <option value="{{ year }}" {% if request.GET.year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
           {% endfor %}
         </select>
-      </div>
+      </div> {% endcomment %}
       <div class="col-md-1 d-grid">
-        <button type="submit" class="btn btn-primary">Filtrlə</button>
+        <button type="submit" class="btn" style="background-color: #5b70f3; color: #f9fafb;">Filtrlə</button>
       </div>
     </form>
 
@@ -67,26 +67,26 @@
         <i class="bi bi-plus"></i> Əlavə Et
       </button></a>
     </div>
-    <hr>
+    <hr style="border-color: #374151;">
 
     <!-- Table -->
-    <div class="table-responsive">
-      <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
-        <thead class="table-light text-muted" style="font-size: 0.65rem;">
+    <div class="table-responsive" style="max-height: auto; ">
+      <table class="table table-striped table-dark table-sm align-middle text-center" style="width: 100%; color: #f9fafb; border-collapse: separate; border-spacing: 0;">
+        <thead style="background-color: #374151; color: #b5bcc7; font-size: 0.75rem; position: sticky; top: 0; z-index: 1;">
           <tr>
             <th>#</th>
             <th>Bölgə</th>
             {% for d in all_drug %}
-              <th>{{ d.med_name }}</th>
+              <th  style="font-size:0.65rem">{{ d.med_name }}</th>
             {% endfor %}
             <th>Total</th>
           </tr>
         </thead>
-        <tbody id="table-body">
+        <tbody style="font-size: 0.75rem;">
           {% for region in all_region %}
-            <tr>
+            <tr style="background-color: {% cycle '#273549' '#1f2937' %}; transition: background 0.3s;">
               <td>{{ forloop.counter }}</td>
-              <td>{{ region.region_name }}</td>
+              <td style="font-size:0.65rem">{{ region.region_name }}</td>
               {% for drug in all_drug %}
                 {% with sales_dict|get_item:region.id|get_item:drug.id as qty %}
                   {% if qty %}
@@ -104,6 +104,26 @@
     </div>
   </div>
 </div>
+
+<style>
+  body {
+    background-color: #030b1a;
+    color: #f9fafb;
+    font-family: "Inter", sans-serif;
+  }
+  /* Table hover effekti */
+  table tbody tr:hover {
+    background-color: #396fe4ff !important;
+    color: #f9fafb;
+  }
+
+  table td, table th {
+    border: none;
+    padding: 8px 10px;
+  }
+
+
+</style>
 
 <!-- JavaScript for Client-Side Filtering -->
 <script>

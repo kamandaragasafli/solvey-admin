@@ -22,87 +22,138 @@
 
 </head>
 <body>
-<div class="sidebar d-flex flex-column">
-  <h4 class="text-center py-4 fw-bold"><img src="{% static 'img/solvey logo.png' %}"style="widht:100%; height:50px"></h4>
-  <hr>
+<div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-container">
+                <div class="logo-text">
+                     <h4 class="text-center py-4 fw-bold"><img src="{% static 'img/solvey logo.png' %}"style="widht:100%; height:50px"></h4>
+                </div>
+            </div>
+        </div>
 
-   <!-- Dashboard -->
-  <a class="nav-link active" href="{% url 'index' %}">
-    <i class="bi bi-speedometer2"></i> Dashboard
-  </a>
+<div class="sidebar-nav">
 
-  <!-- Həkimlər -->
-  <a class="nav-link" href="{% url 'doctors' %}">
-    <i class="bi bi-people-fill"></i> Həkim Siyahısı
-  </a>
-  <a class="nav-link" href="{% url 'add-doctor' %}">
-    <i class="bi bi-person-plus-fill"></i> Həkim Əlavə et
-  </a>
-   <a class="nav-link" href="{% url 'add-pay-dr' %}">
-    <i class="bi bi-credit-card-fill"></i> Ödəniş et
-  </a>
-  <a class="nav-link" href="{% url 'datasiya' %}">
-    <i class="bi bi-graph-up"></i> Datasiya
-  </a>
-  <a class="nav-link" href="{% url 'razilasma' %}">
-    <i class="bi bi-file-earmark-text"></i> Razılaşma
-  </a>
-   <a class="nav-link" href="{% url 'finance_view' %}">
-   <i class="bi bi-wallet2"></i> Maliyyə
-  </a>
-  <hr>
+    <a href="{% url 'index' %}" class="nav-item {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+        </svg>
+        <span>Dashboard</span>
+    </a>
 
-  <!-- Dərmanlar -->
-  <a class="nav-link" href="{% url 'drugs' %}">
-    <i class="bi bi-capsule" style="color: green"></i> Dərmanlar
-  </a>
-   <a class="nav-link" href="{% url 'create_recipe' %}">
-    <i class="bx bx-plus-circle" style="color: green"></i>Qeydiyyat Əlavə et
-  </a>
-  <a class="nav-link" href="{% url 'data_list' %}">
-    <i class="bi bi-clipboard-data" style="color: green"></i> Aylıq Qeydiyyat
-  </a>
-  
-  <hr>
+    <a href="{% url 'doctors' %}" class="nav-item {% if request.resolver_match.url_name == 'doctors' %}active{% endif %}">
+        <i class="fa-solid fa-user-doctor"></i>
+        <span>Həkimlər</span>
+    </a>
 
-  <!-- Satış -->
-  <a class="nav-link" href="{% url 'create_real_sales' %}">
-    <i class="bi bi-cart-plus-fill"></i> Real Satış Əlavə et
-  </a>
-  
-  <!-- Aylıq Hesabat -->
-  <a class="nav-link" href="{% url 'report' %}">
-    <i class="bi bi-cash-stack"></i> Borcalacaq
-  </a>
-  <a class="nav-link" href="{% url 'closed_accounts' %}">
-    <i class="bi bi-archive"></i> Köhnə Hesabat
-  </a>
-  <a class="nav-link" href="{% url 'sales' %}">
-    <i class="bi bi-bar-chart-fill"></i> Aylıq Satışlar
-  </a>
-  <hr>
+    <a href="{% url 'add-pay-dr' %}" class="nav-item {% if request.resolver_match.url_name == 'add-pay-dr' %}active{% endif %}">
+        <i class="fa-solid fa-credit-card"></i>
+        <span>Ödəniş Əlavə et</span>
+    </a>
 
-  <!-- Klinikalar -->
-  <a class="nav-link" href="{% url 'hospital_list' %}">
-    <i class="bi bi-hospital"></i> Klinikalar
-  </a>
-  <a class="nav-link" href="{% url 'region_list' %}">
-    <i class="bi bi-geo-alt-fill"></i> Bölgələr
-  </a>
-  <hr>
+    <a href="{% url 'add-doctor' %}" class="nav-item {% if request.resolver_match.url_name == 'add-doctor' %}active{% endif %}">
+        <i class="bi bi-person-plus-fill"></i>
+        <span>Həkim əlavə et</span>
+    </a>
 
-  <!-- Admin -->
-  {% if request.user.is_superuser %}
-  <a class="nav-link" href="{% url 'admin' %}">
-    <i class="bi bi-gear-fill"></i> Admin
-  </a>
-  {% endif %}
+    <a href="{% url 'datasiya' %}" class="nav-item {% if request.resolver_match.url_name == 'datasiya' %}active{% endif %}">
+        <i class="bi bi-clipboard-data"></i>
+        <span>Datasiya</span>
+    </a>
+
+    <a href="{% url 'razilasma' %}" class="nav-item {% if request.resolver_match.url_name == 'razilasma' %}active{% endif %}">
+        <i class="fa-solid fa-handshake"></i>
+        <span>Razılaşma</span>
+    </a>
+
+    <a href="{% url 'finance_view' %}" class="nav-item {% if request.resolver_match.url_name == 'finance_view' %}active{% endif %}">
+        <i class="bi bi-cash-coin"></i>
+        <span>Maliyyələr</span>
+    </a>
+
+    <div class="prescription-divider"></div>
+
+    <a href="{% url 'drugs' %}" class="nav-item {% if request.resolver_match.url_name == 'drugs' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/>
+        </svg>
+        <span>Dərmanlar</span>
+    </a>
+
+    <a href="{% url 'data_list' %}" class="nav-item {% if request.resolver_match.url_name == 'data_list' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+        </svg>
+        <span>Aylıq Qeydiyyat</span>
+    </a>
+
+    <a href="{% url 'create_recipe' %}" class="nav-item {% if request.resolver_match.url_name == 'create_recipe' %}active{% endif %}">
+        <i class="fa-solid fa-plus"></i>
+        <span>Qeydiyyat Əlavə et</span>
+    </a>
+
+    <div class="prescription-divider"></div>
+
+    <a href="{% url 'sales' %}" class="nav-item {% if request.resolver_match.url_name == 'sales' %}active{% endif %}">
+        <i class='bx bx-wallet-alt  icon'></i>
+        <span>Aylıq Satışlar</span>
+    </a>
+
+    <a href="{% url 'report' %}" class="nav-item {% if request.resolver_match.url_name == 'report' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+        </svg>
+        <span>Aylıq Hesabat</span>
+    </a>
+
+    <a href="{% url 'closed_accounts' %}" class="nav-item {% if request.resolver_match.url_name == 'closed_accounts' %}active{% endif %}">
+        <i class="bi bi-archive"></i>
+        <span>Köhnə Hesabat</span>
+    </a>
+
+    <a href="{% url 'create_real_sales' %}" class="nav-item {% if request.resolver_match.url_name == 'create_real_sales' %}active{% endif %}">
+        <i class="bi bi-cart-plus-fill"></i>
+        <span>Real Satış Əlavə et</span>
+    </a>
+
+    <div class="prescription-divider"></div>
+
+    <a href="{% url 'region_list' %}" class="nav-item {% if request.resolver_match.url_name == 'region_list' %}active{% endif %}">
+        <i class="bi bi-geo-alt"></i>
+        <span>Bölgələr</span>
+    </a>
+
+    <a href="{% url 'hospital_list' %}" class="nav-item {% if request.resolver_match.url_name == 'hospital_list' %}active{% endif %}">
+        <i class="bi bi-hospital"></i>
+        <span>Klinikalar</span>
+    </a>
+
+    {% if request.user.is_superuser %}
+    <a href="{% url 'admin' %}" class="nav-item {% if request.resolver_match.url_name == 'admin' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+        <span>Ayarlar</span>
+    </a>
+    {% endif %}
+
+</div>
+
+
+
+        <div class="sidebar-footer">
+            <button class="logout-btn">
+                <i class='bx bx-log-out'></i>
+                <span>Çıxış</span>
+            </button>
+        </div>
+    </div>
+{% comment %}
 
   <!-- İzləmə -->
   <a class="nav-link" href="{% url 'movqe-gonder' %}">
     <i class="bi bi-geo-fill"></i> İzləmə
   </a>
-</div>
+</div> {% endcomment %}
 
 
 <div class="content">
@@ -123,16 +174,7 @@
   <i class="bx bx-dollar-circle"></i> Həkimə Ödəniş Əlavə et
 </a>
 
-         <!-- Dark Mode Toggle -->
-                    {% comment %} <button id="darkModeToggle" class="dark-mode-btn">
-                        <i class="fas fa-moon"></i>
-                    </button> {% endcomment %}
-
-                    <!-- Notifications -->
-                    {% comment %} <button class="notification-btn">
-                      <i class="bi bi-bell"></i> {% endcomment %}
-                      {% comment %} <span class="notification-badge">3</span> {% endcomment %}
-                  </button>
+        
 
 
                     <!-- User Profile -->

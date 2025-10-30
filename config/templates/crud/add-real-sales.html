@@ -5,92 +5,91 @@
 
 <form method="POST" action="{% url 'create_real_sales' %}">
   {% csrf_token %}
-  <div class="card shadow-sm" style="width: 80%; margin: auto;">
-  <div style="width: 70%">
-    <div class="card-body">
-      
-      <!-- Başlıq -->
-      <div class="d-flex align-items-center mb-4">
-        <i class="fa-solid fa-prescription-bottle-medical fa-xl me-2 text-primary"></i>
-        <h5 class="card-title mb-0">Real Satış Əlavə Et</h5>
-      </div>
+  <div class="card shadow-sm" style="width: 80%; margin: auto; background-color: #1f2937; color: #f9fafb; border-radius: 14px;">
+    <div style="width: 70%; padding: 20px;">
+      <div class="card-body">
 
-      <!-- Bölgə seçimi -->
-      <div class="mb-3">
-        <label for="region" class="form-label small text-muted">Bölgə<span style="color:red">*</span></label>
-        <select id="region-select" name="region" class="form-select">
-          <option disabled selected>Bölgə Seçin</option>
-          {% for r in regions %}
-            <option value="{{ r.id }}" {% if r.id|stringformat:"s" == selected_region %}selected{% endif %}>
-              {{ r.region_name }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
+        <!-- Başlıq -->
+        <div class="d-flex align-items-center mb-4">
+          <i class="fa-solid fa-prescription-bottle-medical fa-xl me-2" style="color: #0099ffff;"></i>
+          <h5 class="card-title mb-0">Real Satış Əlavə Et</h5>
+        </div>
 
-      <!-- Həkim, Tarix, Yekun -->
-      <div class="row mb-4">
-        <!-- Həkim -->
-        <div class="col-md-6">
-          <label for="doctor" class="form-label small text-muted">Həkim seçin<span style="color:red">*</span></label>
-          <select id="doctor-select" name="doctor" class="form-select">
-            <option selected disabled>Əvvəl bölgə seçin</option>
+        <!-- Bölgə seçimi -->
+        <div class="mb-3">
+          <label for="region" class="form-label small ">Bölgə<span style="color:red">*</span></label>
+          <select id="region-select" name="region" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
+            <option disabled selected>Bölgə Seçin</option>
+            {% for r in regions %}
+              <option value="{{ r.id }}" {% if r.id|stringformat:"s" == selected_region %}selected{% endif %}>
+                {{ r.region_name }}
+              </option>
+            {% endfor %}
           </select>
         </div>
 
-        <!-- Tarix -->
-        <div class="col-md-3">
-          <label for="tarix" class="form-label small text-muted">Tarix<span style="color:red">*</span></label>
-          <input type="date" name="date" value="{% now 'Y-m-d' %}" class="form-control" />
-        </div>
-
-        <!-- Yekun Say -->
-        <div class="col-md-3">
-          <label class="form-label small text-muted">Yekun Say<span style="color:red">*</span></label>
-          <input type="text" id="total-count" class="form-control text-end" readonly value="0" />
-        </div>
-      </div>
-
-      <hr>
-
-      <!-- Dərmanlar -->
-      <div class="mb-4">
-        <label class="form-label">Dərmanlar</label>
-        {% for d in drugs %}
-          <div class="d-flex mb-3 justify-content-start align-items-center">
-            <!-- Dərman adı düymə kimi -->
-            <button type="button" class="fs-6 fw-bold me-3"
-              style="width: 60%; background-color: #f0f0f0; border-radius: 10px; border: none; padding: 10px; color: #3b3b3bff; text-align: left; display: block;"
-              disabled>
-              {{ d.med_full_name }}
-            </button>
-
-            <!-- Say inputu -->
-            <div style="width: 120px;">
-              <input type="number" name="quantity_{{ d.id }}" class="form-control" min="0" />
-            </div>
+        <!-- Həkim, Tarix, Yekun -->
+        <div class="row mb-4">
+          <!-- Həkim -->
+          <div class="col-md-6">
+            <label for="doctor" class="form-label small ">Həkim seçin<span style="color:red">*</span></label>
+            <select id="doctor-select" name="doctor" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
+              <option selected disabled>Əvvəl bölgə seçin</option>
+            </select>
           </div>
-        {% endfor %}
-      </div>
 
-      <hr>
+          <!-- Tarix -->
+          <div class="col-md-3">
+            <label for="tarix" class="form-label small ">Tarix<span style="color:red">*</span></label>
+            <input type="date" name="date" value="{% now 'Y-m-d' %}" class="form-control" style="background-color: #273549; color: #f9fafb; border: none;" />
+          </div>
 
-      <!-- Əməliyyat düymələri -->
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <button type="submit" class="btn btn-success">
+          <!-- Yekun Say -->
+          <div class="col-md-3">
+            <label class="form-label small ">Yekun Say<span style="color:red">*</span></label>
+            <input type="text" id="total-count" class="form-control text-end" readonly value="0" style="background-color: #273549; color: #f9fafb; border: none;" />
+          </div>
+        </div>
+
+        <hr style="border-color: #374151;">
+
+        <!-- Dərmanlar -->
+        <div class="mb-4">
+          <label class="form-label fw-bold">Dərmanlar</label>
+          {% for d in drugs %}
+            <div class="d-flex mb-3 justify-content-start align-items-center">
+              <!-- Dərman adı düymə kimi -->
+              <button type="button" class="fs-6 fw-bold me-3"
+                style="width: 60%; background-color: #374151; border-radius: 10px; border: none; padding: 10px; color: #f9fafb; text-align: left;"
+                disabled>
+                {{ d.med_full_name }}
+              </button>
+
+              <!-- Say inputu -->
+              <div style="width: 120px;">
+                <input type="number" name="quantity_{{ d.id }}" class="form-control" min="0" style="background-color: #273549; color: #f9fafb; border: none;" />
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <hr style="border-color: #374151;">
+
+        <!-- Əməliyyat düymələri -->
+        <div class="d-flex justify-content-start align-items-center mb-3 gap-2">
+          <button type="submit" class="btn" style="background-color: #0373f3ff; color: #f9fafb;">
             <i class="fa-solid fa-floppy-disk me-1"></i> Yadda Saxla
           </button>
-          <button type="reset" class="btn btn-danger ms-2">
+          <button type="reset" class="btn" style="background-color: #e9042e; color: #f9fafb;">
             <i class="fa-solid fa-rotate-right me-1"></i> Sıfırla
           </button>
         </div>
-      </div>
 
+      </div>
     </div>
   </div>
-  </div>
 </form>
+
 
 <script>
   const ajaxUrl = "{% url 'ajax_doctors_by_region' %}";
