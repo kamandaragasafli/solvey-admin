@@ -20,80 +20,17 @@ body {
     min-height: 100vh;
 }
 
-/* Header Styles */
-.dashboard-header {
-    background: linear-gradient(135deg, #1476ff 0%, #135bd8 100%);
-    border-radius: 20px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    color: white;
-    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
-}
-
-.header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 2rem;
-}
-
-.header-title h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.header-title p {
-    font-size: 1.1rem;
-    opacity: 0.9;
-    font-weight: 300;
-}
-
-.header-stats {
-    display: flex;
-    gap: 1.5rem;
-}
-
-.stat-card {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 1.5rem;
-    text-align: center;
-    min-width: 120px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.stat-number {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
-
-.stat-label {
-    font-size: 0.9rem;
-    opacity: 0.9;
-    font-weight: 400;
-}
-
-.text-success { color: #48bb78; }
-.text-warning { color: #ed8936; }
-
 /* Filters Section */
 .filters-section {
     margin-bottom: 2rem;
 }
 
 .filters-card {
-    background: white;
+    background:  #1f2937;
     border-radius: 20px;
     padding: 2rem;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.8);
+    border: 1px solid  #1f2937;
 }
 
 .filters-form {
@@ -111,7 +48,7 @@ body {
 .filter-label {
     font-weight: 600;
     margin-bottom: 0.5rem;
-    color: #4a5568;
+    color: #f1f1f1;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -121,17 +58,19 @@ body {
 .filter-select,
 .filter-input {
     padding: 0.75rem 1rem;
-    border: 2px solid #e2e8f0;
+    border: 2px solid #324258;
     border-radius: 12px;
     font-size: 1rem;
     transition: all 0.3s ease;
-    background: white;
+    background: #324258;
+    color: #f1f1f1;
+
 }
 
 .filter-select:focus,
 .filter-input:focus {
     outline: none;
-    border-color: #284fff;
+    border-color: #0289e2;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     transform: translateY(-1px);
 }
@@ -213,11 +152,12 @@ body {
 }
 
 .table-card {
-    background: white;
+    background: #1f2937;
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.8);
+    border: 1px solid #1f2937;
+    color: #f1f1f1;
 }
 
 .table-responsive {
@@ -238,16 +178,17 @@ body {
     padding: 1.25rem 1rem;
     text-align: left;
     font-weight: 600;
-    color: #4a5568;
-    border-bottom: 2px solid #e2e8f0;
+    color: #f1f1f1;
+    border-bottom: 2px solid #0e1114;
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    background-color: #1f2937;
 }
 
 .data-table td {
     padding: 1.25rem 1rem;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid #0e1114;
     vertical-align: middle;
 }
 
@@ -256,7 +197,7 @@ body {
 }
 
 .data-table tbody tr:hover {
-    background: #f8fafc;
+    background: #405572;
     transform: scale(1.01);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
@@ -264,7 +205,7 @@ body {
 /* Table Cell Styles */
 .row-number {
     font-weight: 600;
-    color: #718096;
+    color: #e0e0e0;
 }
 
 .barcode {
@@ -273,14 +214,14 @@ body {
     padding: 0.25rem 0.5rem;
     border-radius: 6px;
     font-weight: 600;
-    color: #4a5568;
+    color: #e0e0e0;
 }
 
 .location {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #4a5568;
+    color: #dddddd;
 }
 
 .doctor-info {
@@ -292,7 +233,7 @@ body {
 .doctor-avatar {
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #008cff 0%, #0252ff 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -302,14 +243,14 @@ body {
 }
 
 .doctor-name {
-    color: #667eea;
+    color: #008cff;
     text-decoration: none;
     font-weight: 600;
     transition: color 0.3s ease;
 }
 
 .doctor-name:hover {
-    color: #764ba2;
+    color: #008cff;
 }
 
 .payment-info {
@@ -324,7 +265,7 @@ body {
 }
 
 .phone-link {
-    color: #667eea;
+    color: #008cff;
     text-decoration: none;
     display: flex;
     align-items: center;
@@ -333,7 +274,7 @@ body {
 }
 
 .phone-link:hover {
-    color: #764ba2;
+    color: #008cff;
 }
 
 /* Badge Styles */
@@ -440,9 +381,9 @@ body {
 }
 
 .page-item.active .page-link {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #008cff 0%, #0059a1 100%);
     color: white;
-    border-color: #667eea;
+    border-color: #008cff;
 }
 
 .page-item.disabled .page-link {
@@ -453,7 +394,7 @@ body {
 
 .page-link:hover:not(.page-item.disabled .page-link) {
     background: #f7fafc;
-    border-color: #667eea;
+    border-color: #008cff;
     transform: translateY(-1px);
 }
 
@@ -478,7 +419,7 @@ body {
 
 .loading-spinner {
     text-align: center;
-    color: #667eea;
+    color: #008cff;
 }
 
 .loading-spinner i {
@@ -634,12 +575,12 @@ body {
 }
 
 .table-responsive::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #008cff 0%, #2130bb 100%);
     border-radius: 4px;
 }
 
 .table-responsive::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    background: linear-gradient(135deg, #008cff 0%, #2130bb 100%);
 }
 
 /* Focus Styles for Accessibility */
@@ -647,7 +588,7 @@ body {
 .filter-select:focus,
 .filter-input:focus,
 .page-link:focus {
-    outline: 2px solid #667eea;
+    outline: 2px solid #008cff;
     outline-offset: 2px;
 }
 
