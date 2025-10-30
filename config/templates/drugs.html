@@ -1,61 +1,84 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+  body {
+    background-color: #273549;
+  }
 
+  .drug-item:hover {
+    background-color: #1e1e1e;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 255, 150, 0.1);
+  }
+
+  .list-group-item h6 {
+    color: #ffffff;
+  }
+
+  .badge {
+    font-size: 0.85rem;
+  }
+
+  .btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+  }
+</style>
 <div class="container mt-4">
-  <h4 class="mb-3">💊 Dərman Siyahısı</h4>
-<div class="col-md-3 mb-3">
-  <button type="button" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2" data-bs-toggle="modal" data-bs-target="#addDrugModal">
-    <i class="bi bi-plus-circle fs-5"></i> Dərman Əlavə et
-  </button>
-</div>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="text-light mb-0"><i class="bi bi-capsule me-2 text-success"></i>Dərman Siyahısı</h4>
+    <button type="button" class="btn btn-success d-flex align-items-center gap-2 px-3 py-2" data-bs-toggle="modal" data-bs-target="#addDrugModal">
+      <i class="bi bi-plus-circle fs-5"></i> Əlavə et
+    </button>
+  </div>
 
   {% if drugs %}
-    {% for drug in drugs %}
-      <div class="row align-items-center mb-2 p-2 rounded" style="background-color: #f8f9fa;">
-        <!-- Dərmanın adı button kimi -->
-        <div class="col-md-3">
-          <button type="button" class="btn btn w-100 text-start">
-            {{ drug.med_name }}
-          </button>
-        </div>
+    <div class="list-group">
+      {% for drug in drugs %}
+        <div class="list-group-item  text-light border-0 mb-2 rounded-4 
+        shadow-sm p-3 d-flex align-items-center justify-content-between drug-item" 
+        style="transition: all 0.2s; background-color: #273549;">
+          <div class="d-flex align-items-center gap-3">
+            <i class="bi bi-capsule-fill fs-3 text-success"></i>
+            <div>
+              <h6 class="mb-0 fw-bold">{{ drug.med_name }}</h6>
+              <small class="text-secondary">Qiymət: ₼{{ drug.med_price }}</small>
+            </div>
+          </div>
 
-        <!-- Qiymət -->
-        <div class="col-md-2 fw-bold text-center text-dark">
-          Qiymət: ₼{{ drug.med_price }}
-        </div>
+          <div class="d-flex align-items-center gap-3">
+            <!-- Komissiya -->
+            <span class="badge bg-success px-3 py-2">₼{{ drug.komissiya }}</span>
 
-        <!-- Komissiya -->
-        <div class="col-md-2 text-center">
-          <span class="badge bg-success" title="Komissiya">₼{{ drug.komissiya }}</span>
-        </div>
+            <!-- Status -->
+            {% if drug.status %}
+              <span class="badge bg-primary px-3 py-2">Aktiv</span>
+            {% else %}
+              <span class="badge bg-secondary px-3 py-2">Passiv</span>
+            {% endif %}
 
-        <!-- Status -->
-        <div class="col-md-2 text-center">
-          {% if drug.status %}
-            <span class="badge bg-primary">Aktiv</span>
-          {% else %}
-            <span class="badge bg-secondary">Passiv</span>
-          {% endif %}
+            <!-- Sil -->
+            <a href="{% url 'remove' drug.id %}" class="btn btn-outline-danger btn-sm rounded-circle d-flex align-items-center justify-content-center" title="Sil">
+              <i class="bi bi-trash3"></i>
+            </a>
+          </div>
         </div>
-
-        <!-- Sil düyməsi -->
-        <div class="col-md-2 text-center">
-          <a href="{% url 'remove' drug.id %}" class="btn btn-sm btn-outline-danger" title="Sil">
-            <i class="bi bi-trash3"></i>
-          </a>
-        </div>
-      </div>
-    {% endfor %}
+      {% endfor %}
+    </div>
   {% else %}
     <div class="text-muted">Dərman yoxdur</div>
   {% endif %}
 </div>
+
+<!-- Modal -->
 <div class="modal fade" id="addDrugModal" tabindex="-1" aria-labelledby="addDrugModalLabel" aria-hidden="true">
   <div class="modal-dialog">
-    <div class="modal-content rounded-4">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title" id="addDrugModalLabel">💊 Yeni Dərman Əlavə et</h5>
+    <div class="modal-content text-light border-0 rounded-4 shadow-lg"style="background-color: #273549;">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title d-flex align-items-center gap-2">
+          <i class="bi bi-capsule text-success"></i> Yeni Dərman Əlavə et
+        </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Bağla"></button>
       </div>
       <form method="POST" action="{% url 'add-drug' %}">
@@ -63,19 +86,23 @@
         <div class="modal-body">
           <div class="mb-3">
             <label for="medName" class="form-label">Dərman adı</label>
-            <input type="text" class="form-control" id="medName" name="drug_name" required>
+            <input type="text" class="form-control bg-secondary text-light border-0" id="medName" name="drug_name" required>
+          </div>
+         <div class="mb-3">
+            <label for="medName" class="form-label">Dərman tam adı</label>
+            <input type="text" class="form-control bg-secondary text-light border-0" id="medName" name="drug_name" >
           </div>
           <div class="mb-3">
             <label for="medPrice" class="form-label">Satış Qiyməti</label>
-            <input type="number" step="0.01" class="form-control" id="medPrice" name="price" required>
+            <input type="number" step="0.01" class="form-control bg-secondary text-light border-0" id="medPrice" name="price" required>
           </div>
           <div class="mb-3">
             <label for="komissiya" class="form-label">Komissiya</label>
-            <input type="number" step="0.01" class="form-control" id="komissiya" name="komissiya" required>
+            <input type="number" step="0.01" class="form-control bg-secondary text-light border-0" id="komissiya" name="komissiya" required>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Bağla</button>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Bağla</button>
           <button type="submit" class="btn btn-success">Əlavə et</button>
         </div>
       </form>

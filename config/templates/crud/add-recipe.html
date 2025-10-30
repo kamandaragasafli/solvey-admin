@@ -4,20 +4,22 @@
 
 <form method="POST" action="{% url 'create_recipe' %}">
   {% csrf_token %}
-  <div class="card shadow-sm d-flex" style="width: 80%; margin: auto;">
-    <div style="width: 70%;">
+  <div class="card shadow-sm d-flex flex-row" style="width: 80%; margin: auto; background-color: #1f2937; color: #f9fafb; border-radius: 14px;">
+    
+    <!-- Sol bölmə -->
+    <div style="width: 70%; padding: 20px;">
       <div class="card-body">
 
         <!-- Başlıq -->
         <div class="d-flex align-items-center mb-4">
-          <i class="fa-solid fa-prescription-bottle-medical fa-xl me-2 text-primary"></i>
+          <i class="fa-solid fa-prescription-bottle-medical fa-xl me-2" style="color: #5b70f3;"></i>
           <h5 class="card-title mb-0">Qeydiyyat Əlavə Et</h5>
         </div>
 
         <!-- Bölgə seçimi -->
         <div class="mb-3">
-          <label for="region" class="form-label small text-muted">Bölgə<span style="color:red">*</span></label>
-          <select id="region-select" name="region" class="form-select">
+          <label for="region" class="form-label small ">Bölgə<span style="color:red">*</span></label>
+          <select id="region-select" name="region" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
             <option disabled {% if not selected_region %}selected{% endif %}>Bölgə Seçin</option>
             {% for r in regions %}
               <option value="{{ r.id }}" {% if selected_region and r.id|stringformat:"s" == selected_region %}selected{% endif %}>
@@ -30,8 +32,8 @@
         <!-- Həkim və Tarix -->
         <div class="row mb-4">
           <div class="col-md-6">
-            <label for="doctor" class="form-label small text-muted">Həkim seçin<span style="color:red">*</span></label>
-            <select id="doctor-select" name="doctor" class="form-select">
+            <label for="doctor" class="form-label small ">Həkim seçin<span style="color:red">*</span></label>
+            <select id="doctor-select" name="doctor" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
               <option disabled {% if not selected_doctor %}selected{% endif %}>Həkim seçin</option>
               {% for d in doctors %}
                 <option value="{{ d.id }}" {% if d.id|stringformat:"s" == selected_doctor %}selected{% endif %}>
@@ -42,15 +44,12 @@
           </div>
 
           <div class="col-md-3">
-            <label for="tarix" class="form-label small text-muted">Tarix<span style="color:red">*</span></label>
-            <input type="date" name="date" value="{% now 'Y-m-d' %}" class="form-control" />
+            <label for="tarix" class="form-label  small ">Tarix<span style="color:red">*</span></label>
+            <input type="date" name="date" value="{% now 'Y-m-d' %}" class="form-control" style="background-color: #273549; color: #f9fafb; border: none;" />
           </div>
         </div>
 
-        <hr>
-
-        <!-- Ən Son Qeydiyyat Bölümü -->
-        
+        <hr style="border-color: #374151;">
 
         <!-- Dərmanlar -->
         <div class="mb-4">
@@ -58,78 +57,133 @@
           {% for d in drugs %}
             <div class="d-flex mb-3 justify-content-start align-items-center">
               <button type="button" class="fs-6 fw-bold me-3"
-                style="width: 60%; background-color: #f0f0f0; border-radius: 10px; border: none; padding: 10px; color: #3b3b3bff; text-align: left;"
+                style="width: 60%; background-color: #374151; border-radius: 10px; border: none; padding: 10px; color: #f9fafb; text-align: left;"
                 disabled>
                 {{ d.med_full_name }}
               </button>
               <div style="width: 120px;">
-                <input type="number" name="quantity_{{ d.id }}" class="form-control" min="0"step="0.1" />
+                <input type="number" name="quantity_{{ d.id }}" class="form-control" min="0" step="0.1" style="background-color: #273549; color: #f9fafb; border: none;" />
               </div>
             </div>
           {% endfor %}
         </div>
 
-        <hr>
+        <hr style="border-color: #374151;">
 
         <!-- Əməliyyat düymələri -->
         <div class="d-flex justify-content-between align-items-center mb-3">
           <div class="d-flex align-items-center gap-2">
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn" style="background-color: #1975ffff; color: #f9fafb;">
               <i class="fa-solid fa-floppy-disk me-1"></i> Yadda Saxla
             </button>
-            <button type="reset" class="btn btn-danger">
+            <button type="reset" class="btn" style="background-color: #e9042e; color: #f9fafb;">
               <i class="fa-solid fa-rotate-right me-1"></i> Sıfırla
             </button>
-            <input type="text" id="total-count" class="form-control text-end" readonly value="0" style="width: 100px;" />
+            <input type="text" id="total-count" class="form-control text-end" readonly value="0" style="width: 100px; background-color: #273549; color: #f9fafb; border: none;" />
           </div>
         </div>
 
       </div>
-      
-
-
     </div>
-    <div class="card mb-4">
-          <div class="card-body">
-            <div class="d-flex align-items-center mb-3">
-              <i class="fa-solid fa-clipboard-list fa-lg me-2 text-primary"></i>
-              <h6 class="card-title mb-0">Ən Son Qeydiyyat (Son 5)</h6>
-            </div>
 
-            {% if last_recipes %} 
-              <table class="table table-bordered table-striped align-middle">
-                <thead class="table-light">
-                  <tr>
-                    <th scope="col">#</th>
-                    <th scope="col">Tarix</th>
-                    <th scope="col">Həkim</th>
-                    <th scope="col">Bölgə</th>
-                    <th scope="col">Dərman</th>
-                    <th scope="col">Say</th>
-                  </tr>
-                </thead>
-                <tbody>
-                   {% for record in last_recipes %} 
-                    <tr>
-                     <td>{{ forloop.counter }}</td>
-                     <td>{{ record.created_at }}</td>
-                     <td>{{ record.recipe.dr.ad }}</td>
-                      <td>{{ record.recipe.region.region_name }}</td>
-                      <td>{{ record.drug.med_full_name }}</td>
-                      <td>{{ record.number }}</td> 
-                    </tr>
-                   {% endfor %} 
-                </tbody>
-              </table>
-           {% else %}
-              <p class="text-muted">Hələ qeydiyyat yoxdur.</p>
-         {% endif %}
-          </div>
-        </div>
+    <!-- Sağ bölmə: Ən Son Qeydiyyat -->
+<!-- Sağ bölmə: Ən Son Qeydiyyat -->
+<div class="card mb-4" style="background-color: #273549; color: #f9fafb; width: 30%; margin: 20px; display: flex; flex-direction: column;">
+  <div class="card-body" style="flex: 1 1 auto; display: flex; flex-direction: column;">
+    <div class="d-flex align-items-center mb-3">
+      <i class="fa-solid fa-clipboard-list fa-lg me-2" style="color: #0084ffff;"></i>
+      <h6 class="card-title mb-0">Ən Son Qeydiyyat (Son 5)</h6>
+    </div>
+
+{% if last_recipes %} 
+  <div class="table-responsive" style="flex: 1 1 auto; max-height: 350px; overflow-y: auto;">
+    <table class="custom-dark-table table-sm align-middle text-center">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tarix</th>
+          <th>Həkim</th>
+          <th>Bölgə</th>
+          <th>Dərman</th>
+          <th>Say</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in last_recipes %} 
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ record.created_at }}</td>
+          <td class="text-primary fw-bold">{{ record.recipe.dr.ad }}</td>
+          <td>{{ record.recipe.region.region_name }}</td>
+          <td class="text-success fw-bold">{{ record.drug.med_name }}</td>
+          <td class="text-warning fw-bold">{{ record.number }}</td> 
+        </tr>
+        {% endfor %} 
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="text-muted mt-auto">Hələ qeydiyyat yoxdur.</p>
+{% endif %}
+  </div>
+</div>
+
+
+
+
   </div>
 </form>
 
 
+<style>
+.custom-dark-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.55rem;
+  color: #f9fafb;
+  background-color: #1f2937;
+}
+
+.custom-dark-table thead {
+  background-color: #374151;
+  color: #b5bcc7;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.custom-dark-table th, .custom-dark-table td {
+  padding: 10px;
+  border-bottom: 1px solid #273549;
+}
+
+.custom-dark-table tbody tr:nth-child(even) {
+  background-color: #273549;
+}
+
+.custom-dark-table tbody tr:nth-child(odd) {
+  background-color: #1f2937;
+}
+
+.custom-dark-table tbody tr:hover {
+  background-color: #0077ffff !important;
+  color: #f9fafb;
+  transition: 0.3s;
+}
+
+/* Scrollbar dizaynı */
+.table-responsive::-webkit-scrollbar {
+  width: 8px;
+}
+.table-responsive::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+.table-responsive::-webkit-scrollbar-thumb {
+  background-color: #0077ffff;
+  border-radius: 10px;
+}
+</style>
 <script>
 const ajaxUrl = "{% url 'ajax_doctors_by_region' %}";
 

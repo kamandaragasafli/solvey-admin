@@ -1,15 +1,17 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card shadow-sm" style="width: 85%; margin: auto;">
+<div class="card shadow-lg p-3 mb-5" style="width: 90%; margin: auto;">
   <div class="card-body">
-    <h5 class="card-title mb-4">Aylıq Dannılar</h5>
+    <h4 class="card-title mb-4 fw-semibold text-light d-flex align-items-center gap-2">
+      <i class="bi bi-calendar2-week text-success"></i> Aylıq Dannılar
+    </h4>
 
-    <!-- Filter Section -->
+    <!-- Filter Bölməsi -->
     <form method="GET" class="row g-3 align-items-end">
       <div class="col-md-2">
-        <label for="region-select" class="form-label small text-muted">Bölgə seçin</label>
-        <select id="region-select" name="region" class="form-select" required>
+        <label for="region-select" class="form-label small text-secondary">Bölgə seçin</label>
+        <select id="region-select" name="region" class="form-select bg-dark text-light border-0 rounded-3" required>
           <option value="" disabled selected>Bölgə Seçin</option>
           {% for r in region %}
             <option value="{{ r.id }}" {% if request.GET.region == r.id|stringformat:"i" %}selected{% endif %}>{{ r.region_name }}</option>
@@ -18,13 +20,13 @@
       </div>
 
       <div class="col-md-2">
-        <label for="searchInput" class="form-label small text-muted">Axtar</label>
-        <input type="text" id="searchInput" name="search" class="form-control" placeholder="Həkim, dərman..." value="{{ request.GET.search }}">
+        <label for="searchInput" class="form-label small text-secondary">Axtar</label>
+        <input type="text" id="searchInput" name="search" class="form-control bg-dark text-light border-0 rounded-3" placeholder="Həkim, dərman..." value="{{ request.GET.search }}">
       </div>
 
       <div class="col-md-2">
-        <label for="month-select" class="form-label small text-muted">Ay Seçin</label>
-        <select id="month-select" name="month" class="form-control">
+        <label for="month-select" class="form-label small text-secondary">Ay Seçin</label>
+        <select id="month-select" name="month" class="form-select bg-dark text-light border-0 rounded-3">
           <option value="">Ay seçin</option>
           <option value="1" {% if request.GET.month == "1" %}selected{% endif %}>Yanvar</option>
           <option value="2" {% if request.GET.month == "2" %}selected{% endif %}>Fevral</option>
@@ -42,13 +44,13 @@
       </div>
 
       <div class="col-md-2">
-        <label for="date-range" class="form-label small text-muted">Tarix Aralığı</label>
-        <input type="text" id="date-range" name="date_range" class="form-control" placeholder="Tarix seçin" value="{{ request.GET.date_range }}">
+        <label for="date-range" class="form-label small text-secondary">Tarix Aralığı</label>
+        <input type="text" id="date-range" name="date_range" class="form-control bg-dark text-light border-0 rounded-3" placeholder="Tarix seçin" value="{{ request.GET.date_range }}">
       </div>
 
       <div class="col-md-2">
-        <label for="name-filter-select" class="form-label small text-muted">Yazılış Filteri</label>
-        <select id="name-filter-select" name="name_filter" class="form-select">
+        <label for="name-filter-select" class="form-label small text-secondary">Yazılış Filteri</label>
+        <select id="name-filter-select" name="name_filter" class="form-select bg-dark text-light border-0 rounded-3">
           <option value="" selected>Hamısı</option>
           <option value="with_dannisi" {% if request.GET.name_filter == "with_dannisi" %}selected{% endif %}>Adında dannısı olmayanlar</option>
           <option value="without_dannisi" {% if request.GET.name_filter == "without_dannisi" %}selected{% endif %}>Adında dannısı olanlar</option>
@@ -56,26 +58,27 @@
       </div>
 
       <div class="col-md-2 d-flex gap-2 mt-4">
-        <button type="submit" class="btn btn-primary">Filtrlə</button>
-        <a href="{% url 'data_list' %}" class="btn btn-warning">Təmizlə</a>
+        <button type="submit" class="btn btn-success w-50">Filtrlə</button>
+        <a href="{% url 'data_list' %}" class="btn btn-outline-light w-50">Təmizlə</a>
       </div>
     </form>
 
-    <!-- Action Buttons -->
+    <!-- Əlavə Düymələr -->
     <div class="d-flex justify-content-end align-items-center mt-4 gap-2">
-      <a href="#" id="excel-btn" class="btn btn-success btn-sm">
+      <a href="#" id="excel-btn" class="btn btn-success btn-sm d-flex align-items-center gap-1">
         <i class="fa-solid fa-file-excel"></i> Excel
       </a>
-      <a href="#" id="pdf-btn" class="btn btn-danger btn-sm">
+      <a href="#" id="pdf-btn" class="btn btn-danger btn-sm d-flex align-items-center gap-1">
         <i class="bi bi-file-earmark-pdf"></i> PDF
       </a>
     </div>
-    <hr>
+
+    <hr class="border-secondary">
 
     <!-- Cədvəl -->
     <div class="table-responsive">
-      <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
-        <thead class="table-light text-muted" style="font-size: 0.65rem;">
+      <table class="table table-dark table-hover align-middle text-center"style="background-color: #1a2533 " id="result-table">
+        <thead style="background-color: #1d2635; color: #b5bcc7; font-size: 0.75rem;">
           <tr>
             <th>#</th>
             <th>Bölgə</th>
@@ -83,14 +86,14 @@
             <th>Son Ödəniş</th>
             <th>Kod</th>
             {% for d in drug %}
-            <th>{{ d.med_name }}</th>
+              <th>{{ d.med_name }}</th>
             {% endfor %}
             <th>Total</th>
           </tr>
         </thead>
-        <tbody id="table-body" style="font-size: 0.65rem;">
+        <tbody id="table-body" style="font-size: 0.75rem;">
           <tr>
-            <td colspan="25" class="text-muted fst-italic">Bölgə seçin</td>
+            <td colspan="25" class="text-secondary fst-italic">Bölgə seçin...</td>
           </tr>
         </tbody>
       </table>
@@ -99,11 +102,90 @@
 </div>
 
 <style>
+  body {
+    background-color: #030b1a;
+    color: #f9fafb;
+    font-family: "Inter", sans-serif;
+  }
+
+  .card {
+    background-color: #273549;
+    border: none;
+    border-radius: 16px;
+    color: #f9fafb;
+  }
+
+  .form-control, .form-select {
+    background-color: #1a2533 !important;
+    color: #f1f1f1 !important;
+    border: 1px solid #2d3c51;
+    transition: 0.2s ease;
+  }
+
+  .form-control:focus, .form-select:focus {
+    background-color: #1f2a3a !important;
+    border-color: #55e0a3 !important;
+    box-shadow: 0 0 0 0.25rem rgba(85, 224, 163, 0.25);
+  }
+
+  .btn-success {
+    background-color: #55e0a3;
+    border: none;
+  }
+
+  .btn-success:hover {
+    background-color: #42c58a;
+  }
+
+  .btn-outline-light:hover {
+    background-color: #ffffff;
+    color: #000000;
+  }
+
+  table.table-dark tr:hover {
+    background-color: #1a2333 !important;
+  }
+
   td:last-child, td:nth-child(4) {
-    font-weight: bold;
+    font-weight: 600;
     text-align: center;
   }
+
+  th {
+    border-bottom: 1px solid #3a4a5f !important;
+  }
+  /* Scrollbar ümumi */
+::-webkit-scrollbar {
+  width: 10px; /* vertical scrollbar eni */
+  height: 10px; /* horizontal scrollbar eni */
+}
+
+/* Scrollbar track (arxa plan) */
+::-webkit-scrollbar-track {
+  background: #1a2533; /* track background */
+  border-radius: 10px;
+}
+
+/* Scrollbar thumb (sürüşdürülən hissə) */
+::-webkit-scrollbar-thumb {
+  background-color: #1a2533 !important; /* əsas vurğu rəngi */
+  border-radius: 10px;
+  border: 2px solid #1a2533; /* track ilə uyğunlaşması üçün sərhəd */
+}
+
+/* Hover effekti */
+::-webkit-scrollbar-thumb:hover {
+  background-color: #1a2533 !important;
+}
+
+/* Firefox üçün */
+* {
+  scrollbar-width: thin;           /* incə scrollbar */
+  scrollbar-color: #1a2533 !important; #1a2533; /* thumb / track */
+}
+
 </style>
+
 
 <script>
 function getCookie(name) {
@@ -175,7 +257,7 @@ function loadRegionData(regionId, page = 1) {
         drugNames.forEach(drugName => {
           const drugObj = item.drugs.find(d => d.name === drugName);
           const count = drugObj ? drugObj.count : 0;
-          const cellClass = count > 0 ? 'style="background-color: #d7f7c4ff; font-weight: bold;"' : '';
+          const cellClass = count > 0 ? 'style="background-color: #030303ff; font-weight: bold;"' : '';
           drugCells += `<td ${cellClass}>${count}</td>`;
         });
 

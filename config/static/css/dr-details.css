@@ -19,19 +19,6 @@
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-/* Dark Mode Variables */
-[data-theme="dark"] {
-  --bg-primary: #111827;
-  --bg-secondary: #1f2937;
-  --bg-card: #1f2937;
-  --text-primary: #f9fafb;
-  --text-secondary: #d1d5db;
-  --text-muted: #9ca3af;
-  --border-color: #374151;
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
-}
 
 /* Reset and Base Styles */
 * {
@@ -42,7 +29,7 @@
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: var(--bg-secondary);
+  background-color: #030b1a;
   color: var(--text-primary);
   line-height: 1.6;
   transition: all 0.3s ease;
@@ -161,12 +148,12 @@ body {
 
 /* Doctor Info Card */
 .doctor-info-card {
-  background-color: var(--bg-card);
+  background-color: #1f2937;
   border-radius: 1rem;
   padding: 2rem;
   margin-bottom: 2rem;
   box-shadow: var(--shadow-lg);
-  border: 1px solid var(--border-color);
+  border: 1px solid #1f2937;
   display: flex;
   align-items: flex-start;
   gap: 2rem;
@@ -191,7 +178,7 @@ body {
 .doctor-name {
   font-size: 1.875rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: rgb(231, 231, 231);
   margin-bottom: 1rem;
 }
 
@@ -205,16 +192,17 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+
 }
 
 .info-label {
   font-weight: 600;
-  color: var(--text-secondary);
+  color: rgb(150, 150, 150);
   min-width: 80px;
 }
 
 .info-value {
-  color: var(--text-primary);
+  color: rgb(231, 231, 231);
   font-weight: 500;
 }
 
@@ -292,11 +280,11 @@ body {
 }
 
 .stat-card {
-  background-color: var(--bg-card);
+  background-color: #1f2937;
   border-radius: 1rem;
   padding: 2rem;
   box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
+  border: 1px solid #1f2937;
   text-align: center;
   transition: all 0.3s ease;
 
@@ -344,12 +332,12 @@ body {
 .stat-value {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: rgb(255, 255, 255);
   margin-bottom: 0.5rem;
 }
 
 .stat-label {
-  color: var(--text-secondary);
+  color: rgb(189, 189, 189);
   font-weight: 500;
 }
 
@@ -367,27 +355,27 @@ body {
 }
 
 .table-card {
-  background-color: var(--bg-card);
+  background-color: #1f2937;
   border-radius: 1rem;
   box-shadow: var(--shadow);
-  border: 1px solid var(--border-color);
+  border: 1px solid #1f2937;
   overflow: hidden;
 
 }
 
 .table-header {
-  background-color: var(--bg-secondary);
+  background-color: #1f2937;
   padding: 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #1f2937;
 }
 
 .table-header h3 {
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: white;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -425,23 +413,23 @@ body {
 .data-table td {
   padding: 1rem;
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #2c2c2c;
 }
 
 .data-table th {
-  background-color: var(--bg-secondary);
+  background-color: #1f2937;
   font-weight: 600;
-  color: var(--text-primary);
+  color: white;
   font-size: 0.875rem;
 }
 
 .data-table td {
-  color: var(--text-secondary);
+  color: white;
   font-size: 0.875rem;
 }
 
 .data-table tbody tr:hover {
-  background-color: var(--bg-secondary);
+  background-color: #1f293793;
 }
 
 /* Badges */
@@ -455,7 +443,7 @@ body {
 }
 
 .badge.success {
-  background-color: rgba(16, 185, 129, 0.1);
+  background-color: rgba(0, 248, 165, 0.986);
   color: var(--success-color);
 }
 
