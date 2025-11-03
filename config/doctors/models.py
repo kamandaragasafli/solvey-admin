@@ -113,30 +113,26 @@ class Doctors(models.Model):
         )
 
     def save(self, *args, **kwargs):
-        # Cinsiyyəti avtomatik təyin et
+    # Cinsiyyəti avtomatik təyin et
         if self.ad:
             soyad = self.ad.strip().split()[0]
             self.cinsiyyet = "Qadın" if soyad[-1].lower() == 'a' else "Kişi"
 
         # Borcu və yekun borcu avtomatik hesabla
-        self.borc = self.hesablanmis_borc  # əsas borc
+        self.borc = self.hesablanmis_borc
         self.yekun_borc = (
             d(self.borc)
             + d(self.hekimden_silinen or 0)
             + d(self.hesablanan_miqdar or 0)
         )
 
-        # Barkod avtomatik generasiya et
-        if not self.barkod:
-            self.barkod = self.generate_barkod_for_region(self.bolge.region_name)
-
-        super().save(*args, **kwargs)
-
         # Barkod avtomatik generasiya et (əgər yoxdursa)
         if not self.barkod:
             self.barkod = self.generate_barkod_for_region(self.bolge.region_name)
 
+        # Yalnız **bir dəfə** save et!
         super().save(*args, **kwargs)
+
 
     @staticmethod
     def generate_barkod_for_region(bolge_adi):
