@@ -589,7 +589,7 @@ def import_recipes_from_excel(request):
                     # Yeni: Seçilmiş tarixi istifadə et
                     recipe = Recipe.objects.create(region=region, dr=doctor, date=import_date)
 
-                    for drug_name in df.columns[3:]:
+                    for drug_name in df.columns[2:]:
                         try:
                             say_str = str(row[drug_name]).replace(",", ".").strip()
                             say = float(say_str)
