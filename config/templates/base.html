@@ -155,12 +155,14 @@
   </a>
 </div> {% endcomment %}
 
-
+ {% if request.user.is_superuser %}
 <div class="content">
   <div class="top-bar">
         <a href="{% url 'test' %}"style="background-color: rgba(0, 132, 255, 1)">
   <i class="bx bx-file-blank"></i> Komissiya Hesabatı
 </a>
+{% endif %}
+
 
 <a href="{% url 'create_recipe' %}"style="background-color: rgba(0, 132, 255, 1)">
   <i class="bx bx-plus-circle"></i> Qeydiyyat Əlavə et
