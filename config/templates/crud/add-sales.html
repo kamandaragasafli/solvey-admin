@@ -4,7 +4,7 @@
 
 <form method="POST" action="{% url 'add-sell' %}">
   {% csrf_token %}
-  <div class="card shadow-sm" style="width: 80%; margin: auto;">
+  <div class="card shadow-sm" style="width: 80%; margin: auto; background-color: #1f2937; color: #f9fafb; border-radius: 14px;">
   <div style="width: 70%">
     <div class="card-body">
       
@@ -15,15 +15,15 @@
           <h5 class="card-title mb-0">Dərman Satışı Əlavə Et</h5>
         </div>
         <div class="text-end">
-          <strong class="text-muted">Toplam dərman sayı: <span id="total-count">0</span></strong>
+          <strong class="">Toplam dərman sayı: <span id="total-count">0</span></strong>
         </div>
       </div>
 
       <!-- Bölgə və Tarix -->
       <div class="row mb-4">
         <div class="col-md-9">
-          <label for="pharm" class="form-label small text-muted">Bölgə adı<span style="color:red">*</span></label>
-          <select id="aptek-adi" name="region" class="form-select">
+          <label for="pharm" class="form-label small">Bölgə adı<span style="color:red">*</span></label>
+          <select id="aptek-adi" name="region" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
             <option selected disabled>Bölgə seçin</option>
             {% for r in region_all %}
               <option value="{{ r.id }}">{{ r.region_name }}</option>
@@ -31,7 +31,7 @@
           </select>
         </div>
         <div class="col-md-3">
-          <label for="tarix" class="form-label small text-muted">Tarix<span style="color:red">*</span></label>
+          <label for="tarix" class="form-label small">Tarix<span style="color:red">*</span></label>
           <input type="date" name="date" value="{% now 'Y-m-d' %}" class="form-control" />
         </div>
       </div>
@@ -45,14 +45,14 @@
           <div class="d-flex mb-3 justify-content-start align-items-center">
             <!-- Dərman adı düymə kimi -->
             <button type="button" class="fs-6 fw-bold me-3"
-              style="width: 60%; background-color: #f0f0f0; border-radius: 10px; border: none; padding: 10px; color: #3b3b3bff; text-align: left; display: block;"
+              style="width: 60%; background-color: #374151; border-radius: 10px; border: none; padding: 10px; color: #f9fafb; display: block; text-align: left;"
               disabled>
               {{ d.med_full_name }}
             </button>
 
             <!-- Say inputu -->
             <div style="width: 120px;">
-              <input type="number" name="quantity_{{ d.id }}" class="form-control" min="0" />
+              <input type="number" name="quantity_{{ d.id }}" class="form-control" min="0" style="background-color: #273549; color: #f9fafb; border: none;" />
             </div>
           </div>
         {% endfor %}
@@ -63,7 +63,7 @@
       <!-- Əməliyyat düyməsi -->
       <div class="d-flex justify-content-end">
         <button type="submit" class="btn btn-primary">
-          <i class="fa-solid fa-plus me-1"></i> Sifarişi Əlavə Et
+          <i class="fa-solid fa-plus me-1"></i> Satış Əlavə Et
         </button>
       </div>
 

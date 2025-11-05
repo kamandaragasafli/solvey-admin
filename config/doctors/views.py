@@ -823,7 +823,7 @@ def ajax_region_data(request):
     name_filter = request.GET.get("name_filter")
     month = request.GET.get("month")
     page = request.GET.get("page", 1)  # Pagination parametri
-    per_page = 10  # Hər səhifədə 10 nəticə
+    per_page = 30  # Hər səhifədə 10 nəticə
 
     try:
         region_id = int(region_id)
