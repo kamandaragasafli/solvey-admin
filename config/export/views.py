@@ -552,7 +552,6 @@ def import_recipes_from_excel(request):
             return redirect("admin")
 
         try:
-            # DÜZƏLİŞ: datetime.strptime yerine düzgün istifadə
             import_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
             
             df = pd.read_excel(excel_file)
@@ -560,12 +559,21 @@ def import_recipes_from_excel(request):
             not_found_doctors = set()
             not_found_regions = set()
             not_found_drugs = set()
-
-            # Dərmanları əvvəlcədən bazadan çək və sadələşdirilmiş formada dictionary qur
             med_map = {}
             for med in Medical.objects.all():
-                ad = med.med_name.strip().lower().replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c")
-                med_map.setdefault(ad, []).append(med)
+                # Əsas ad
+                original_name = med.med_name.strip()
+                
+                # Müxtəlif normalizasiya variantları
+                variants = [
+                    original_name.lower(),
+                    original_name.lower().replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c"),
+                    original_name.lower().replace(" ", ""),  # Boşluqları sil
+                    original_name.lower().replace(" ", "").replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c")
+                ]
+                
+                for variant in variants:
+                    med_map[variant] = med
 
             for _, row in df.iterrows():
                 hekim_adi = str(row.get("Həkim", "")).strip()
@@ -586,9 +594,9 @@ def import_recipes_from_excel(request):
                     continue
 
                 for doctor in doctors:
-                    # Yeni: Seçilmiş tarixi istifadə et
                     recipe = Recipe.objects.create(region=region, dr=doctor, date=import_date)
 
+                    # Dərman sütunlarını emal et (3-cü sütundan başlayaraq)
                     for drug_name in df.columns[2:]:
                         try:
                             say_str = str(row[drug_name]).replace(",", ".").strip()
@@ -599,15 +607,24 @@ def import_recipes_from_excel(request):
                         if say <= 0:
                             continue
 
-                        drug_key = drug_name.strip().lower().replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c")
-
-                        meds = med_map.get(drug_key)
-                        if not meds:
+                        # Dərman adını müxtəlif şəkildə normalizasiya et
+                        drug_variants = [
+                            drug_name.strip().lower(),
+                            drug_name.strip().lower().replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c"),
+                            drug_name.strip().lower().replace(" ", ""),
+                            drug_name.strip().lower().replace(" ", "").replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c")
+                        ]
+                        
+                        med_found = None
+                        for drug_variant in drug_variants:
+                            if drug_variant in med_map:
+                                med_found = med_map[drug_variant]
+                                break
+                        
+                        if med_found:
+                            RecipeDrug.objects.create(recipe=recipe, drug=med_found, number=say)
+                        else:
                             not_found_drugs.add(drug_name.strip())
-                            continue
-
-                        for med in meds:
-                            RecipeDrug.objects.create(recipe=recipe, drug=med, number=say)
 
                     added_count += 1
 
