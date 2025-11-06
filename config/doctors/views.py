@@ -1163,7 +1163,7 @@ def region_report(request, region_id):
         sales = sales.filter(sale_date__month=ay)
 
     # Dərəcə faktorları
-    dereceler = {"VİP": 1.00, "I": 0.90, "II": 0.65, "III": 0.40}
+    dereceler = {"VIP": 1.00, "I": 0.90, "II": 0.65, "III": 0.40}
 
     report_data = []
     for hekim in hekimler:
