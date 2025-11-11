@@ -98,109 +98,68 @@
                         </tr>
                     </thead>
                     <tbody id="tableBody">
-                    {% for d in page_obj %}
-                    <tr>
-                        <td>#{{ forloop.counter }}</td>
-                        <td>{{ d.doctor.barkod }}</td>
-                        <td>
-                            <div class="location">
-                                <i class="fas fa-map-marker-alt"></i>
-                                {{ d.doctor.bolge }}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="doctor-info">
-                                <div class="doctor-avatar"><i class="fas fa-user-md"></i></div>
-                                <a href="{% url 'doctor_detail' d.doctor.id %}" class="doctor-name">Dr. {{ d.doctor.ad }}</a>
-                            </div>
-                        </td>
-                        <td>
-                            {% if d.doctor.avans %}
-                                <span class="badge badge-success"><i class="fas fa-arrow-up"></i>₼{{ d.doctor.avans }}</span>
-                            {% elif d.doctor.investisiya %}
-                                <span class="badge bg-primary"><i class="fas fa-arrow-down"></i>-₼{{ d.doctor.investisiya }}</span>
-                            {% elif d.doctor.geriqaytarma %}
-                                <span class="badge bg-warning"><i class="fas fa-undo"></i>₼{{ d.doctor.geriqaytarma }}</span>
-                            {% else %}
-                                <span class="text-muted">-</span>
-                            {% endif %}
-                            <small class="payment-date">{{ d.last_payment_date|date:"d.m.Y" }}</small>
-                        </td>
-               
-                        <td>{{ d.doctor.ixtisas }}</td>
-                        <td>
-                        {% if d.doctor.get_derece_display == "ViP Dərəcə" %}
-                            <span class="badge badge-high">{{ d.doctor.get_derece_display }}</span>
-                        {% elif d.doctor.get_derece_display == "I Dərəcə" %}
-                            <span class="badge badge-medium">{{ d.doctor.get_derece_display }}</span>
-                        {% else %}
-                            <span class="badge badge-low">{{ d.doctor.get_derece_display }}</span>
-                        {% endif %}
-                        </td>
+                    {% for d in doctors %}
+                        <tr>
+                            <td>#{{ forloop.counter }}</td>
+                            <td>{{ d.doctor.barkod }}</td>
+                            <td>
+                                <div class="location">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    {{ d.doctor.bolge }}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="doctor-info">
+                                    <div class="doctor-avatar"><i class="fas fa-user-md"></i></div>
+                                    <a href="{% url 'doctor_detail' d.doctor.id %}" class="doctor-name">Dr. {{ d.doctor.ad }}</a>
+                                </div>
+                            </td>
+                            <td>
+                                {% if d.doctor.avans %}
+                                    <span class="badge badge-success"><i class="fas fa-arrow-up"></i>₼{{ d.doctor.avans }}</span>
+                                {% elif d.doctor.investisiya %}
+                                    <span class="badge bg-primary"><i class="fas fa-arrow-down"></i>-₼{{ d.doctor.investisiya }}</span>
+                                {% elif d.doctor.geriqaytarma %}
+                                    <span class="badge bg-warning"><i class="fas fa-undo"></i>₼{{ d.doctor.geriqaytarma }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                                <small class="payment-date">{{ d.last_payment_date|date:"d.m.Y" }}</small>
+                            </td>
+                        
+                            <td>{{ d.doctor.ixtisas }}</td>
+                            <td>
+                                {% if d.doctor.get_derece_display == "ViP Dərəcə" %}
+                                    <span class="badge badge-high">{{ d.doctor.get_derece_display }}</span>
+                                {% elif d.doctor.get_derece_display == "I Dərəcə" %}
+                                    <span class="badge badge-medium">{{ d.doctor.get_derece_display }}</span>
+                                {% else %}
+                                    <span class="badge badge-low">{{ d.doctor.get_derece_display }}</span>
+                                {% endif %}
+                            </td>
 
+                            <td>{{ d.doctor.kategoriya }} kategoriya</td>
+                            <td>{{ d.doctor.klinika }}</td>
+                            <td>
+                                <a href="tel:{{ d.doctor.number }}" class="phone-link"><i class="fas fa-phone"></i>{{ d.doctor.number }}</a>
+                            </td>
+                            <td>
+                                {% if d.doctor.previous_debt > 0 %}
+                                    <span class="badge badge-debt-positive">₼{{ d.doctor.previous_debt }}</span>
+                                {% elif d.doctor.previous_debt < 0 %}
+                                    <span class="badge badge-debt-negative">₼{{ d.doctor.previous_debt }}</span>
+                                {% else %}
+                                    <span class="badge badge-debt-zero">₼{{ d.doctor.previous_debt }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
 
-
-                        <td>{{ d.doctor.kategoriya }} kategoriya</td>
-                        <td>{{ d.doctor.klinika }}</td>
-                        <td>
-                            <a href="tel:{{ d.doctor.number }}" class="phone-link"><i class="fas fa-phone"></i>{{ d.doctor.number }}</a>
-                        </td>
-                        <td>
-                            {% if d.doctor.previous_debt >= 0 %}
-                                <span class="badge badge-debt-positive">₼{{ d.doctor.previous_debt }}</span>
-                            {% else %}
-                                <span class="badge badge-debt-negative">₼{{ d.doctor.previous_debt }}</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                    </tbody>
 
                 </div>
             </div>
         </section>
-
-     <section class="pagination-section">
-    <nav class="pagination-nav">
-        <div class="pagination-info text-center mb-2">
-            Səhifə <strong>{{ page_obj.number }}</strong> / <strong>{{ page_obj.paginator.num_pages }}</strong>
-        </div>
-        <ul class="pagination justify-content-center">
-            {% if page_obj.has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
-                        <i class="fas fa-chevron-left"></i> Əvvəlki
-                    </a>
-                </li>
-            {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link"><i class="fas fa-chevron-left"></i> Əvvəlki</span>
-                </li>
-            {% endif %}
-
-            {% for num in page_obj.paginator.page_range %}
-                {% if num == page_obj.number %}
-                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"10" %}
-                    <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-                {% endif %}
-            {% endfor %}
-
-            {% if page_obj.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">
-                        Növbəti <i class="fas fa-chevron-right"></i>
-                    </a>
-                </li>
-            {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link">Növbəti <i class="fas fa-chevron-right"></i></span>
-                </li>
-            {% endif %}
-        </ul>
-    </nav>
-</section>
-
 
 
         <!-- Loading Overlay -->
@@ -220,7 +179,7 @@
     const rows = document.querySelectorAll('#dataTable tr');
 
     rows.forEach(row => {
-      const cell = row.querySelectorAll('td')[3];  // 3 = "Ad" sütunu
+      const cell = row.querySelectorAll('td')[3];  
       if (cell && cell.textContent.toLowerCase().includes(query)) {
         row.style.display = '';
       } else {

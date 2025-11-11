@@ -9,7 +9,16 @@ admin.site.register(Sale)
 
 admin.site.register(Financial_document)
 
-admin.site.register(Payment_doctor)
+@admin.register(Payment_doctor)
+class PaymentDoctorAdmin(admin.ModelAdmin):
+    list_display = ('id', 'doctor', 'payment_type', 'pay', 'date')
+    list_filter = ('payment_type', 'doctor__bolge')  
+    search_fields = ('doctor__ad', 'doctor__barkod')  
+    ordering = ('-date',) 
+    list_per_page = 50  
+    list_editable = ('payment_type', 'pay',)
+    list_select_related = ('doctor',)
+
 
 class MonthFilter(admin.SimpleListFilter):
     title = _('Ay')  # Filterin başlığı

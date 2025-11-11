@@ -325,7 +325,7 @@ def ajax_region_report(request):
     month = request.GET.get("month")
     borc_filter = request.GET.get("borc")
     page = request.GET.get("page", 1)  # Page parametri
-    per_page = 10 
+    per_page = 20 
 
     if not region_id:
         return JsonResponse({"results": [], "total_pages": 0, "current_page": 1})
@@ -350,7 +350,7 @@ def ajax_region_report(request):
         borc = d(0)
         avans = d(0)
         investisiya = d(0)
-        geriqaytarma = d(0)  # ƏVVƏLCƏDƏN TƏYİN ET
+        geriqaytarma = d(0)  
         datasiya = d(0)
         hekimden_silinen = d(0)
         hesablanan_miqdar = d(0)
@@ -517,7 +517,14 @@ def hesabat_bagla(request):
                             "yekun_borc": float(yekun_borc),
                             "recipe_total_drugs": total_drugs,
                         }
-                    )
+                    )   
+
+                    Payment_doctor.objects.filter(
+                        doctor=doctor,
+                        date__year=ay_tarixi.year,
+                        date__month=ay_tarixi.month
+                    ).update(is_closed=True)
+
 
                     # Növbəti aya devr et:
                     # 1. Köhnə borcu yekun_borc et

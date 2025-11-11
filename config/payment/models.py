@@ -18,6 +18,7 @@ class Payment_doctor(models.Model):
     payment_type = models.CharField(max_length=200 , choices=PAYMENT_TYPE , default="Avans")
     pay = models.DecimalField(max_digits=10,decimal_places=2)
     date = models.DateField()
+    is_closed = models.BooleanField(default=False) 
 
     def __str__(self):
         return f"{self.doctor.ad}-{self.payment_type}-{self.pay}"

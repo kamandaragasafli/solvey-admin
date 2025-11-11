@@ -59,80 +59,74 @@ class Doctors(models.Model):
     borc = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     yekun_borc = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
-
     @property
     def avans(self):
-        if not self.pk:  # Əgər hələ save olunmayıbsa
+        if not self.pk:
             return 0
-        result = self.odenisler.filter(payment_type='Avans').aggregate(total=Sum('pay'))
+        result = self.odenisler.filter(payment_type='Avans', is_closed=False).aggregate(total=Sum('pay'))
         return result['total'] or 0
 
     @property
     def investisiya(self):
-        if not self.pk:  # Əgər hələ save olunmayıbsa
+        if not self.pk:
             return 0
-        result = self.odenisler.filter(payment_type='İnvest').aggregate(total=Sum('pay'))
+        result = self.odenisler.filter(payment_type='İnvest', is_closed=False).aggregate(total=Sum('pay'))
         return result['total'] or 0
 
     @property
     def geriqaytarma(self):
-        if not self.pk:  # Əgər hələ save olunmayıbsa
+        if not self.pk:
             return 0
-        result = self.odenisler.filter(payment_type='Geri_qaytarma').aggregate(total=Sum('pay'))
+        result = self.odenisler.filter(payment_type='Geri_qaytarma', is_closed=False).aggregate(total=Sum('pay'))
         return result['total'] or 0
 
     @property
     def umumi_odenis(self):
-        if not self.pk:  # Əgər hələ save olunmayıbsa
+        if not self.pk:
             return 0
         result = self.odenisler.aggregate(total=Sum('pay'))
         return result['total'] or 0
     
+    @property
+    def cari_yekun_borc(self):
+        """
+        Bu, yalnız görünüş (display) üçündür.
+        Real bazaya yazılmır, sadəcə hesablanıb göstərilir.
+        """
+        previous_debt = self.previous_debt or 0
+        avans = self.avans or 0
+        investisiya = self.investisiya or 0
+        geriqaytarma = self.geriqaytarma or 0
+        datasiya = self.datasiya or 0
+        hekimden_silinen = self.hekimden_silinen or 0
+
+        # Hesablama
+        yekun = previous_debt + avans + investisiya + datasiya - hekimden_silinen - geriqaytarma
+        return round(yekun, 2)
+
+
     def get_last_recipe(self):
         return self.recipe_set.order_by('-date').first()
 
     @property
     def cinsiyyet_from_name(self):
-        
         if not self.ad:
             return "Naməlum"
         soyad = self.ad.strip().split()[0]
         return "Qadın" if soyad[-1].lower() == 'a' else "Kişi"
 
-    @property
-    def hesablanmis_borc(self):
-        """
-        Əvvəlki borc + avans + investisiya + datasiya - geriqaytarma
-        """
-        return (
-            d(self.previous_debt or 0)
-            + d(self.avans or 0)
-            + d(self.investisiya or 0)
-            + d(self.datasiya or 0)
-            - d(self.geriqaytarma or 0)
-        )
-
     def save(self, *args, **kwargs):
-    # Cinsiyyəti avtomatik təyin et
+        # Cinsiyyəti avtomatik təyin et
         if self.ad:
             soyad = self.ad.strip().split()[0]
             self.cinsiyyet = "Qadın" if soyad[-1].lower() == 'a' else "Kişi"
-
-        # Borcu və yekun borcu avtomatik hesabla
-        self.borc = self.hesablanmis_borc
-        self.yekun_borc = (
-            d(self.borc)
-            + d(self.hekimden_silinen or 0)
-            + d(self.hesablanan_miqdar or 0)
-        )
 
         # Barkod avtomatik generasiya et (əgər yoxdursa)
         if not self.barkod:
             self.barkod = self.generate_barkod_for_region(self.bolge.region_name)
 
-        # Yalnız **bir dəfə** save et!
+        # Sadəcə yaddaşa yaz
         super().save(*args, **kwargs)
-
 
     @staticmethod
     def generate_barkod_for_region(bolge_adi):
