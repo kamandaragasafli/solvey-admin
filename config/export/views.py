@@ -426,31 +426,43 @@ def import_debts_from_excel(request):
         excel_file = request.FILES.get("excel_debt_file")
         if not excel_file:
             messages.error(request, "Fayl seçilməyib.")
-            return redirect("import_debts")
+            return redirect("admin")
 
         try:
             df = pd.read_excel(excel_file, header=0)
             updated_count = 0
             not_found = []
 
+            # Faylda olan bütün bölgə və həkimləri yoxlayırıq
             for _, row in df.iterrows():
-                ad = str(row.get('ad', '')).strip()
-                borc = row.get('Əvvəlki Borc', 0)
+                bolge = str(row.get("Bölgə", "")).strip()
+                ad = str(row.get("Həkim", "")).strip()
+                borc = row.get("Əvvəlki Borc", 0)
 
-                if not ad:
+                if not ad or not bolge:
                     continue
 
-                # Həkimi adına görə tap
-                doctors = Doctors.objects.filter(ad__iexact=ad)
+                # Həkimi həm bölgə, həm ad ilə tapırıq (qarışma olmur)
+                doctor = Doctors.objects.filter(ad__iexact=ad, bolge__iexact=bolge).first()
 
-                if not doctors.exists():
-                    not_found.append(f"{ad}")
-                    continue
-
-                for doctor in doctors:
-                    doctor.previous_debt = borc  # Əvəzləyir, += yazsan üzərinə gələcək
+                if doctor:
+                    doctor.previous_debt = float(borc) if pd.notna(borc) else 0.0
                     doctor.save()
                     updated_count += 1
+                else:
+                    not_found.append(f"{bolge} - {ad}")
+
+            # Əgər Excel-də olmayan həkimlər varsa onların borcunu sıfırla
+            all_doctors = Doctors.objects.all()
+            for doctor in all_doctors:
+                # Əgər həmin həkim Excel-də yoxdursa → borc 0.00 olur
+                exists_in_excel = df[
+                    (df["Bölgə"].astype(str).str.strip().str.lower() == doctor.bolge.strip().lower()) &
+                    (df["Həkim"].astype(str).str.strip().str.lower() == doctor.ad.strip().lower())
+                ]
+                if exists_in_excel.empty:
+                    doctor.previous_debt = 0.0
+                    doctor.save()
 
             messages.success(request, f"{updated_count} həkimin borcu yeniləndi.")
             if not_found:
@@ -459,10 +471,9 @@ def import_debts_from_excel(request):
         except Exception as e:
             messages.error(request, f"Xəta baş verdi: {str(e)}")
 
-        return redirect("doctors")
+        return redirect("admin")
 
-    return render(request, "import_excel.html")
-
+    return render(request, "admin.html")
 
 
 
@@ -480,52 +491,52 @@ def import_avn_inv_from_excel(request):
             return redirect("admin")
 
         try:
-            # Seçilmiş tarixi datetime obyektinə çevir
             import_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
-            
             df = pd.read_excel(excel_file, header=0)
+
             created_count = 0
             not_found = []
 
             for _, row in df.iterrows():
                 ad = str(row.get('ad', '')).strip()
+                bolge = str(row.get('bolge', '')).strip()  # 🔹 Fayldan bölgəni oxuyuruq
                 avans = row.get('avans', 0)
                 investisiya = row.get('invest', 0)
 
-                if not ad:
+                if not ad or not bolge:
                     continue
 
-                doctors = Doctors.objects.filter(ad__iexact=ad)
+                # 🔹 Həm ad, həm də bölgəyə görə həkimi tapırıq
+                doctor = Doctors.objects.filter(ad__iexact=ad, bolge__iexact=bolge).first()
 
-                if not doctors.exists():
-                    not_found.append(ad)
+                if not doctor:
+                    not_found.append(f"{ad} ({bolge})")
                     continue
 
-                for doctor in doctors:
-                    # Region məlumatını doctor modelindən alırıq
-                    region = doctor.bolge
-                    
-                    # Avans ödənişi yarat
-                    if avans and float(avans) != 0:
-                        Payment_doctor.objects.create(
-                            area=region,
-                            doctor=doctor,
-                            payment_type='Avans',
-                            pay=avans,
-                            date=import_date
-                        )
-                        created_count += 1
-                    
-                    # Investisiya ödənişi yarat
-                    if investisiya and float(investisiya) != 0:
-                        Payment_doctor.objects.create(
-                            area=region,
-                            doctor=doctor,
-                            payment_type='İnvest',
-                            pay=investisiya,
-                            date=import_date
-                        )
-                        created_count += 1
+                # Region məlumatını doctor modelindən alırıq
+                region = doctor.bolge
+
+                # Avans ödənişi yarat
+                if avans and float(avans) != 0:
+                    Payment_doctor.objects.create(
+                        area=region,
+                        doctor=doctor,
+                        payment_type='Avans',
+                        pay=avans,
+                        date=import_date
+                    )
+                    created_count += 1
+
+                # İnvest ödənişi yarat
+                if investisiya and float(investisiya) != 0:
+                    Payment_doctor.objects.create(
+                        area=region,
+                        doctor=doctor,
+                        payment_type='İnvest',
+                        pay=investisiya,
+                        date=import_date
+                    )
+                    created_count += 1
 
             messages.success(request, f"{created_count} ödəniş qeydi {import_date} tarixinə əlavə edildi.")
             if not_found:
@@ -537,6 +548,7 @@ def import_avn_inv_from_excel(request):
         return redirect("admin")
 
     return render(request, "admin.html")
+
 
 def import_recipes_from_excel(request):
     if request.method == "POST":

@@ -7,30 +7,33 @@ from .models import Doctors, Recipe, RecipeDrug, RealSales, RealSalesDrug
 
 @admin.register(Doctors)
 class DoctorsAdmin(admin.ModelAdmin):
-    list_display = ('ad', 'bolge_info', 'barkod', 'kategoriya', 'derece', 'ixtisas', 'razılaşma',
-                   'borc_display', 
-                    'action_buttons')
-    
-
+    list_display = ('id','ad', 'previous_debt',  'yekun_borc','bolge_info',  'kategoriya', 'derece', 'ixtisas' , 'avans', 'investisiya',
+                   'borc_display', 'action_buttons')
     list_display_links = ('ad', 'bolge_info')
     list_filter = ('bolge', 'kategoriya', 'ixtisas')
-    search_fields = ('ad', 'barkod', 'bolge__region_name', 'ixtisas')
+    list_editable = ('previous_debt', 'kategoriya', 'derece',)
+
+    search_fields = ('ad','bolge__region_name', )
     ordering = ('bolge__region_name', 'ad')
     list_per_page = 50
     list_select_related = ('bolge',)
-    readonly_fields = ('barkod',)
     
+    # Yalnız barkod readonly olsun
+    readonly_fields = ('barkod', 'avans', 'investisiya') 
+
     actions = ['reset_financial_data', 'export_doctors_data']
-    
+
     fieldsets = (
         ('Əsas Məlumatlar', {
             'fields': ('ad', 'barkod', 'bolge', 'kategoriya', 'ixtisas')
         }),
         ('Maliyyə Məlumatları', {
-            'fields': ('borc', 'previous_debt', 
-                      'hesablanan_miqdar', 'hekimden_silinen',"razılaşma")
+            'fields': (
+                'previous_debt', 'borc', 'hesablanan_miqdar', 
+                'hekimden_silinen', 'razılaşma', 
+                'avans', 'investisiya'  # 💥 Buraya əlavə olunur
+            )
         }),
-        
     )
 
     class Media:

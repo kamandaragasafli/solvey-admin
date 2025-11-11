@@ -69,7 +69,7 @@
 
     <!-- Cədvəl -->
     <div class="table-responsive">
-      <table class="table table-dark table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
+      <table class="custom-dark-table" id="result-table">
         <thead class="table-dark text-muted" style="font-size: 0.65rem;">
           <tr>
             <th>#</th>
@@ -146,19 +146,106 @@
     color: #000000;
   }
 
-  table.table-dark tr:hover {
-    background-color: #1a2333 !important;
-  }
+      .custom-dark-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
 
-  td:last-child, td:nth-child(4) {
-    font-weight: 600;
-    text-align: center;
-  }
+    .custom-dark-table thead {
+      background: #0f172a;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
 
-  th {
-    border-bottom: 1px solid #3a4a5f !important;
-  }
-  /* Scrollbar ümumi */
+    .custom-dark-table thead th {
+      color: #b5bcc7;
+      font-size: 0.60rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 1rem;
+      text-align: center;
+      border-bottom: 2px solid #334155;
+      white-space: nowrap;
+
+
+  /* Yazını üzü yuxarı çevirmək üçün */
+    writing-mode: vertical-rl;  /* və ya vertical-lr */
+    transform: rotate(180deg); 
+    }
+
+    .custom-dark-table tbody {
+      font-size: 0.75rem;
+    }
+
+    .custom-dark-table tbody tr {
+      background: #1e293b;
+      transition: all 0.2s ease;
+    }
+
+    .custom-dark-table tbody tr:hover {
+      background: #334155;
+      transform: scale(1.01);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .custom-dark-table tbody td {
+      padding: 1rem;
+      color: #e2e8f0;
+      text-align: center;
+      border-bottom: 1px solid #334155;
+      transition: color 0.2s ease;
+    }
+
+    .custom-dark-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .text-secondary {
+      color: #64748b !important;
+    }
+
+    .fst-italic {
+      font-style: italic;
+    }
+
+    .table-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: #3b82f6;
+      color: white;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+
+    .total-cell {
+      font-weight: 700;
+      color: #10b981;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+
+      .table-header {
+        padding: 1.5rem;
+      }
+
+      .table-header h1 {
+        font-size: 1.25rem;
+      }
+
+      .custom-dark-table thead th,
+      .custom-dark-table tbody td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.7rem;
+      }
+    }
 ::-webkit-scrollbar {
   width: 10px; /* vertical scrollbar eni */
   height: 10px; /* horizontal scrollbar eni */
@@ -229,6 +316,11 @@ function loadRegionData(regionId, month, page = 1) {
         updatePagination(); // Paginationı yenilə
         return;
       }
+      function formatPreviousDebt(num) {
+        if (num === null || num === undefined || Number(num) === 0) return 'text-warning'; // 0 sarı
+        if (Number(num) > 0) return 'text-danger'; // +dirsə qırmızı
+        return 'text-success'; // -dirsə yaşıl
+      }
 
       const heads = Array.from(document.querySelectorAll('#result-table thead th'))
         .map(th => th.textContent.trim());
@@ -246,7 +338,7 @@ function loadRegionData(regionId, month, page = 1) {
         drugNames.forEach(drugName => {
           const drugObj = (item.drugs || []).find(d => d.name.toLowerCase() === drugName.toLowerCase());
           const count = drugObj ? Number(drugObj.count) : 0;
-          const cellClass = count > 0 ? 'style="background-color:rgba(9, 179, 185, 0.43); font-weight:bold; color:rgba(0, 26, 82, 1); "' : '';
+          const cellClass = count > 0 ? 'style="background-color: #0f172a; font-weight:bold; color:rgba(212, 212, 212, 1); "' : '';
           drugCells += `<td ${cellClass}>${count}</td>`;
         });
 
@@ -265,9 +357,10 @@ function loadRegionData(regionId, month, page = 1) {
             <td>${item.kategoriya || '–'}</td>
             <td>${item.derece || '–'}</td>
             <td>${item.ixtisas || '–'}</td>
-            <td class="${formatBoldIfPositive(item.previous_debt, 'text-danger')}">
+            <td class="${formatPreviousDebt(item.previous_debt, 'fw-bold')}">
               ${Number(item.previous_debt || 0).toFixed(2)}
             </td>
+
             ${drugCells}
             <td class="fw-bold">${Number(item.total || 0)}</td>
             <td class="${formatBoldIfPositive(item.hesablanan_miqdar)}">
@@ -288,7 +381,7 @@ function loadRegionData(regionId, month, page = 1) {
             <td class="${formatBoldIfPositive(item.datasiya)}">
               ${Number(item.datasiya || 0).toFixed(2)}
             </td>
-            <td class="${formatBoldIfPositive(item.yekun_borc, 'fw-bold')}">
+            <td class="${formatPreviousDebt(item.yekun_borc, 'fw-bold')}">
               ${Number(item.yekun_borc || 0).toFixed(2)}
             </td>
           </tr>
@@ -376,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
       loadRegionData(regionId, month, 1);
     } else {
       const tbody = document.getElementById('dataTable');
-      tbody.innerHTML = `<tr><td colspan="25" class="text-muted fst-italic">Bölgə seçin</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="25" class="fst-italic">Bölgə seçin</td></tr>`;
       updatePagination(); // Paginationı yenilə
     }
   }
@@ -386,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
   borcSelect.addEventListener('change', () => {
     const regionId = regionSelect.value;
     const month = monthSelect.value;
-    currentPage = 1; // Filter dəyişəndə 1-ci səhifəyə qayıt
+    currentPage = 1; 
     if (regionId) {
       loadRegionData(regionId, month, 1);
     }
@@ -398,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let found = false;
 
     rows.forEach(row => {
-      const cell = row.querySelectorAll('td')[2]; // Həkim adı sütunu
+      const cell = row.querySelectorAll('td')[2]; 
       if (cell && cell.textContent.toLowerCase().includes(query)) {
         row.style.display = '';
         found = true;

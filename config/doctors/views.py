@@ -60,12 +60,8 @@ def doctors_list(request):
             "last_payment_amount": last_payment.pay if last_payment else 0
         })
 
-    # Pagination
-    paginator = Paginator(doctor_data, 30)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    return render(request, "doctors.html", {"page_obj": page_obj, "regions": regions})
+    # Pagination ləğv edildi
+    return render(request, "doctors.html", {"doctors": doctor_data, "regions": regions})
 
 
 def create_doctor(request):
@@ -159,12 +155,22 @@ def doctor_detail(request, doctor_id):
     recibe_total = RecipeDrug.objects.filter(recipe__dr=doctor).aggregate(total=Sum('number'))['total'] or 0
 
 
+    monthly_reports = MonthlyDoctorReport.objects.filter(doctor=doctor).order_by('-report_month')
+    silinme_list = []
+    for report in monthly_reports:
+        silinme_list.append({
+            "month": report.report_month.strftime("%B %Y"),  
+            "hekimden_silinen": report.hekimden_silinen
+        })
+
+
 
     context = {
         "doctor": doctor,
         "payments": payments,
         "recibe_total": recibe_total,
         "recipe": recipe,
+        "silinme_list": silinme_list,
     }
     return render(request, "doctor-details.html", context)
 
@@ -822,99 +828,120 @@ def ajax_region_data(request):
     date_range = request.GET.get("date_range")
     name_filter = request.GET.get("name_filter")
     month = request.GET.get("month")
-    page = request.GET.get("page", 1)  # Pagination parametri
-    per_page = 30  # Hər səhifədə 10 nəticə
+    page = request.GET.get("page", 1)
+    per_page = 30
 
     try:
         region_id = int(region_id)
     except (TypeError, ValueError):
         return JsonResponse({"results": []})
 
+    # Əsas queryset
     doctors = Doctors.objects.filter(bolge=region_id)
 
-    # Name filter tətbiqi
+    # Name filter
     if name_filter == 'with_dannisi':
-        doctors = doctors.filter(Q(ad__icontains='dannı') | Q(ad__icontains='dannisi') | Q(ad__icontains='dannısı'))
+        doctors = doctors.filter(
+            Q(ad__icontains='dannı') | Q(ad__icontains='dannisi') | Q(ad__icontains='dannısı')
+        )
     elif name_filter == 'without_dannisi':
-        doctors = doctors.exclude(Q(ad__icontains='dannı') | Q(ad__icontains='dannisi') | Q(ad__icontains='dannısı'))
+        doctors = doctors.exclude(
+            Q(ad__icontains='dannı') | Q(ad__icontains='dannisi') | Q(ad__icontains='dannısı')
+        )
 
     # Tarix aralığı və ay filteri
-    start_date = end_date = None
-    
-    # Əvvəlcə ay filterinə bax
+    month_start = month_end = None
+    dr_start = dr_end = None
+
     if month:
         try:
             month_int = int(month)
             current_year = datetime.now().year
-            start_date = datetime(current_year, month_int, 1).date()
+            month_start = datetime(current_year, month_int, 1).date()
             if month_int == 12:
-                end_date = datetime(current_year + 1, 1, 1).date()
+                month_end = datetime(current_year + 1, 1, 1).date()
             else:
-                end_date = datetime(current_year, month_int + 1, 1).date()
+                month_end = datetime(current_year, month_int + 1, 1).date()
         except ValueError:
             pass
-    # Əgər ay seçilməyibsə, tarix aralığına bax
-    elif date_range:
+
+    if date_range and " - " in date_range:
         try:
-            if " - " in date_range:
-                start_str, end_str = date_range.split(" - ")
-                start_date = datetime.strptime(start_str.strip(), '%Y-%m-%d').date()
-                end_date = datetime.strptime(end_str.strip(), '%Y-%m-%d').date()
-            else:
-                start_date = end_date = datetime.strptime(date_range.strip(), '%Y-%m-%d').date()
+            start_str, end_str = date_range.split(" - ")
+            dr_start = datetime.strptime(start_str.strip(), '%Y-%m-%d').date()
+            dr_end = datetime.strptime(end_str.strip(), '%Y-%m-%d').date()
         except ValueError:
             pass
+
+    # Final start_date və end_date
+    if month_start and month_end and dr_start and dr_end:
+        start_date = max(month_start, dr_start)
+        end_date = min(month_end, dr_end)
+    elif month_start and month_end:
+        start_date = month_start
+        end_date = month_end
+    elif dr_start and dr_end:
+        start_date = dr_start
+        end_date = dr_end
+    else:
+        start_date = end_date = None
 
     result = []
     all_medical_drugs = Medical.objects.all().order_by('id')
 
     for doctor in doctors:
-        filters = {
-            "recipe__dr": doctor,
-            "recipe__region": region_id,
-        }
-        
-        date_filters = {}
-        if start_date and end_date:
-            date_filters["recipe__date__range"] = (start_date, end_date)
+        # RecipeDrug queryset
+        all_drugs = RecipeDrug.objects.filter(recipe__dr=doctor, recipe__region=region_id)
 
-        # Resept dərmanlarını al
-        all_drugs = RecipeDrug.objects.filter(**filters)
-        if date_filters:
-            all_drugs = all_drugs.filter(**date_filters)
+        if start_date and end_date:
+            all_drugs = all_drugs.filter(recipe__date__gte=start_date, recipe__date__lte=end_date)
 
         # Hər dərman üzrə cəmi say
         drugs_agg = all_drugs.values('drug__med_name').annotate(total_count=Sum('number'))
 
-        # Bütün dərmanları əhatə edən struktur yarat
         drugs = []
         total = 0
-        
-        # Bütün mövcud dərmanlar üçün
         for med_drug in all_medical_drugs:
             found_drug = next((d for d in drugs_agg if d['drug__med_name'] == med_drug.med_name), None)
             count = found_drug['total_count'] if found_drug else 0
             drugs.append({"name": med_drug.med_name, "count": count})
             total += count
 
-        # Filter məntiqi: without_dannisi və total=0 olanları göstərmə
+        # Filter: without_dannisi və total=0
         if name_filter == "without_dannisi" and total == 0:
             continue
 
         # Son ödəniş
         last_payment = doctor.odenisler.order_by('-date').first()
+
         if last_payment:
-            odeme = {
-                "amount": float(last_payment.pay),
-                "class": "text-primary fw-bold",
-                "date": last_payment.date.strftime('%Y-%m-%d')
-            }
+            odeme_type = last_payment.payment_type.lower()  # kiçik hərflərə çevir
+            if odeme_type == "avans":
+                odeme_class = "text-primary"  # göy
+            elif odeme_type == "investisiya":
+                odeme_class = "text-warning"  # sarı
+            elif odeme_type == "geriqaytarma":
+                odeme_class = "text-danger"   # qırmızı
+            else:
+                odeme_class = "text-success"  # yaşıl
+
+            odeme_amount = float(last_payment.pay)
+            odeme_date = last_payment.date.strftime('%Y-%m-%d')
+            odeme_type_json = last_payment.payment_type.lower()
         else:
-            odeme = {
-                "amount": 0,
-                "class": "text-muted",
-                "date": None
-            }
+            odeme_class = "text-success"  # heçnə yoxdursa yaşıl
+            odeme_amount = 0
+            odeme_date = None
+            odeme_type_json = ""
+
+        # JSON olaraq göndər
+        odeme = {
+            "amount": odeme_amount,
+            "type": odeme_type_json,
+            "class": odeme_class,
+            "date": odeme_date
+        }
+
 
         result.append({
             "bolge": doctor.bolge.region_name,
@@ -927,9 +954,8 @@ def ajax_region_data(request):
             "total": float(total)
         })
 
-    # PAGINATION
+    # Pagination
     paginator = Paginator(result, per_page)
-    
     try:
         current_page = paginator.page(page)
         paginated_results = list(current_page.object_list)

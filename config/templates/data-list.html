@@ -77,8 +77,8 @@
 
     <!-- Cədvəl -->
     <div class="table-responsive">
-      <table class="table table-dark table-hover align-middle text-center"style="background-color: #1a2533 " id="result-table">
-        <thead style="background-color: #1d2635; color: #b5bcc7; font-size: 0.75rem;">
+      <table class="custom-dark-table"  id="result-table">
+        <thead>
           <tr>
             <th>#</th>
             <th>Bölgə</th>
@@ -142,27 +142,189 @@
     color: #000000;
   }
 
-  table.table-dark tr:hover {
-    background-color: #1a2333 !important;
-  }
+    .table-header {
+      padding: 2rem;
+      background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+      border-bottom: 1px solid #334155;
+    }
 
-  td:last-child, td:nth-child(4) {
-    font-weight: 600;
-    text-align: center;
-  }
+    .table-header h1 {
+      color: #f8fafc;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
 
-  th {
-    border-bottom: 1px solid #3a4a5f !important;
-  }
-  /* Scrollbar ümumi */
-::-webkit-scrollbar {
-  width: 10px; /* vertical scrollbar eni */
-  height: 10px; /* horizontal scrollbar eni */
+    .table-header p {
+      color: #94a3b8;
+      font-size: 0.875rem;
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+      padding: 0;
+    }
+
+    .custom-dark-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .custom-dark-table thead {
+      background: #0f172a;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .custom-dark-table thead th {
+      color: #b5bcc7;
+      font-size: 0.60rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 1rem;
+      text-align: center;
+      border-bottom: 2px solid #334155;
+      white-space: nowrap;
+
+
+  /* Yazını üzü yuxarı çevirmək üçün */
+    writing-mode: vertical-rl;  /* və ya vertical-lr */
+    transform: rotate(180deg); 
+    }
+
+    .custom-dark-table tbody {
+      font-size: 0.75rem;
+    }
+
+    .custom-dark-table tbody tr {
+      background: #1e293b;
+      transition: all 0.2s ease;
+    }
+
+    .custom-dark-table tbody tr:hover {
+      background: #334155;
+      transform: scale(1.01);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .custom-dark-table tbody td {
+      padding: 1rem;
+      color: #e2e8f0;
+      text-align: center;
+      border-bottom: 1px solid #334155;
+      transition: color 0.2s ease;
+    }
+
+    .custom-dark-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .text-secondary {
+      color: #64748b !important;
+    }
+
+    .fst-italic {
+      font-style: italic;
+    }
+
+    .table-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: #3b82f6;
+      color: white;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+
+    .total-cell {
+      font-weight: 700;
+      color: #10b981;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+
+      .table-header {
+        padding: 1.5rem;
+      }
+
+      .table-header h1 {
+        font-size: 1.25rem;
+      }
+
+      .custom-dark-table thead th,
+      .custom-dark-table tbody td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.7rem;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+/* Daterangepicker arxa plan və mətn rəngi */
+.daterangepicker {
+    background-color: #273549 !important;
+    color: #f1f1f1 !important;
+    border-radius: 12px;
+    border: 1px solid #000000ff;
 }
 
+/* Header (ay və il) */
+.daterangepicker .drp-calendar .calendar-table th {
+    color: #273549 !important;
+    font-weight: 600;
+}
+
+/* Günlər */
+.daterangepicker td.available {
+    background-color: #1a2533;
+    color: #f1f1f1;
+}
+
+/* Seçilən tarix (active/in-range) */
+.daterangepicker td.in-range,
+.daterangepicker td.active {
+    background-color: #006eff !important; /* mavi arxa fon */
+    color: #ffffff !important; /* mətn ağ rəngdə */
+    border-radius: 6px;
+    border: none; /* əgər sərhəd lazım deyilsə */
+}
+
+
+/* Apply və Cancel düymələri */
+.daterangepicker .applyBtn {
+    background-color: #0b71ffff !important;
+    color: #000 !important;
+}
+.daterangepicker .cancelBtn {
+    background-color: #ff1616ff !important;
+    color: #fff !important;
+}
 /* Scrollbar track (arxa plan) */
 ::-webkit-scrollbar-track {
-  background: #1a2533; /* track background */
+  background: #15181bff; /* track background */
   border-radius: 10px;
 }
 
@@ -215,18 +377,10 @@ function loadRegionData(regionId, page = 1) {
     page: page 
   });
 
-  if (dateRange) {
-    params.append('date_range', dateRange);
-  }
-  if (nameFilter) {
-    params.append('name_filter', nameFilter);
-  }
-  if (searchTerm) {
-    params.append('search', searchTerm);
-  }
-  if (month) {
-    params.append('month', month);
-  }
+  if (dateRange) params.append('date_range', dateRange);
+  if (nameFilter) params.append('name_filter', nameFilter);
+  if (searchTerm) params.append('search', searchTerm);
+  if (month) params.append('month', month);
 
   fetch(`/doctors/ajax/region-data/?${params.toString()}`)
     .then(response => {
@@ -237,35 +391,39 @@ function loadRegionData(regionId, page = 1) {
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = "";
 
-      // Pagination məlumatlarını saxla
       currentPage = data.current_page || 1;
       totalPages = data.total_pages || 1;
 
       if (!data.results || data.results.length === 0) {
         tbody.innerHTML = `<tr><td colspan="25" class="text-muted fst-italic">Seçilən bölgəyə uyğun məlumat tapılmadı.</td></tr>`;
-        updatePagination(); // Paginationı yenilə
+        updatePagination();
         return;
       }
 
       const allTh = Array.from(document.querySelectorAll('thead th'));
-      const drugNames = allTh
-        .slice(5, allTh.length - 1)
-        .map(th => th.textContent.trim());
+      const drugNames = allTh.slice(5, allTh.length - 1).map(th => th.textContent.trim());
 
       data.results.forEach((item, index) => {
         let drugCells = "";
         drugNames.forEach(drugName => {
           const drugObj = item.drugs.find(d => d.name === drugName);
           const count = drugObj ? drugObj.count : 0;
-          const cellClass = count > 0 ? 'style="background-color: #030303ff; font-weight: bold;"' : '';
+          const cellClass = count > 0 ? 'style="background-color: #0f172a; font-weight: bold;"' : '';
           drugCells += `<td ${cellClass}>${count}</td>`;
         });
 
+        let odemeClass = "text-success"; // default yaşıl
+        if (item.odeme.type === "avans") odemeClass = "text-primary";
+        else if (item.odeme.type === "investisiya") odemeClass = "text-warning";
+        else if (item.odeme.type === "geriqaytarma") odemeClass = "text-danger";
+
         const odemeCell = `
-          <td class="${item.odeme.class}">
+          <td class="${odemeClass}">
             ${parseFloat(item.odeme.amount).toFixed(2)}
-            ${item.odeme.date ? `<small class="d-block text-muted">${item.odeme.date}</small>` : ""}
+            ${item.odeme.date ? `<small class="d-block text-light">${item.odeme.date}</small>` : ""}
           </td>`;
+
+
 
         const globalIndex = (currentPage - 1) * 10 + index + 1;
 
@@ -287,17 +445,17 @@ function loadRegionData(regionId, page = 1) {
         tbody.insertAdjacentHTML('beforeend', row);
       });
 
-      updatePagination(); // Paginationı yenilə
+      updatePagination();
     })
     .catch(error => {
       console.error("Xəta baş verdi:", error);
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = `<tr><td colspan="25" class="text-danger">Xəta baş verdi.</td></tr>`;
-      updatePagination(); // Paginationı yenilə
+      updatePagination();
     });
 }
 
-// Pagination funksiyası
+// Pagination dizaynlı
 function updatePagination() {
   let paginationContainer = document.getElementById('pagination-container');
   
@@ -313,46 +471,45 @@ function updatePagination() {
     return;
   }
 
+  let buttons = "";
+  for (let i = 1; i <= totalPages; i++) {
+    buttons += `
+      <li class="page-item ${currentPage === i ? 'active' : ''}">
+        <button class="page-link" onclick="changePage(${i})">${i}</button>
+      </li>`;
+  }
+
   paginationContainer.innerHTML = `
     <nav>
       <ul class="pagination pagination-sm mb-0">
         <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-          <button class="page-link" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
-            &laquo; Əvvəl
-          </button>
+          <button class="page-link" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&laquo;</button>
         </li>
-        
-        <li class="page-item disabled">
-          <span class="page-link text-dark">
-            Səhifə ${currentPage} / ${totalPages}
-          </span>
-        </li>
-        
+        ${buttons}
         <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-          <button class="page-link" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
-            Sonra &raquo;
-          </button>
+          <button class="page-link" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>&raquo;</button>
         </li>
       </ul>
-    </nav>
-  `;
+    </nav>`;
 }
 
-// Səhifə dəyişmə funksiyası
 function changePage(page) {
   if (page < 1 || page > totalPages) return;
-  
   const regionSelect = document.getElementById('region-select');
   const regionId = regionSelect.value;
-  
-  if (regionId) {
-    loadRegionData(regionId, page);
-  }
+  if (regionId) loadRegionData(regionId, page);
 }
 
+// Axtarış bütün region üzrə
+document.getElementById('searchInput').addEventListener('input', () => {
+  const regionSelect = document.getElementById('region-select');
+  const regionId = regionSelect.value;
+  if (regionId) loadRegionData(regionId, 1); // hər zaman səhifə 1-dən başlayır
+});
+
+// Cari ay, datepicker və digər event-lər əvvəlki kimi qalır
 function initializeDateRangePicker() {
   const dateRangeInput = document.getElementById('date-range');
-  
   if (dateRangeInput && typeof $ !== 'undefined' && $.fn.daterangepicker) {
     $(dateRangeInput).daterangepicker({
       locale: {
@@ -365,7 +522,7 @@ function initializeDateRangePicker() {
         customRangeLabel: 'Xüsusi',
         weekLabel: 'Həftə',
         daysOfWeek: ['Bz', 'Be', 'Ça', 'Ç', 'Ca', 'C', 'Ş'],
-        monthNames: ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'],
+        monthNames: ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'],
         firstDay: 1
       },
       startDate: moment().startOf('month'),
@@ -375,106 +532,35 @@ function initializeDateRangePicker() {
 
     $(dateRangeInput).on('apply.daterangepicker', function (ev, picker) {
       const regionId = document.getElementById('region-select').value;
-      if (regionId) {
-        loadRegionData(regionId, 1);
-      }
+      if (regionId) loadRegionData(regionId, 1);
     });
   }
 }
 
-// Cari ayı təyin et
 function setCurrentMonth() {
   const monthSelect = document.getElementById('month-select');
-  if (monthSelect) {
-    const currentMonth = new Date().getMonth() + 1; // 1-12 arası
-    monthSelect.value = currentMonth.toString();
-  }
+  if (monthSelect) monthSelect.value = (new Date().getMonth() + 1).toString();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   const regionSelect = document.getElementById('region-select');
   const nameFilterSelect = document.getElementById('name-filter-select');
-  const searchInput = document.getElementById('searchInput');
   const monthSelect = document.getElementById('month-select');
   const form = document.querySelector('form');
 
-  // Cari ayı təyin et
   setCurrentMonth();
   initializeDateRangePicker();
 
-  // Əgər URL-də region varsa, avtomatik yüklə
-  const urlParams = new URLSearchParams(window.location.search);
-  const regionParam = urlParams.get('region');
-  if (regionParam && regionSelect.value) {
-    loadRegionData(regionSelect.value, 1);
-  }
+  regionSelect.addEventListener('change', () => loadRegionData(regionSelect.value, 1));
+  nameFilterSelect.addEventListener('change', () => loadRegionData(regionSelect.value, 1));
+  monthSelect.addEventListener('change', () => loadRegionData(regionSelect.value, 1));
 
-  regionSelect.addEventListener('change', () => {
-    const selectedRegionId = regionSelect.value;
-    currentPage = 1; // Yeni region seçildikdə 1-ci səhifəyə qayıt
-    if (selectedRegionId) {
-      loadRegionData(selectedRegionId, 1);
-    }
-  });
-
-  nameFilterSelect.addEventListener('change', () => {
-    const selectedRegionId = regionSelect.value;
-    currentPage = 1;
-    if (selectedRegionId) {
-      loadRegionData(selectedRegionId, 1);
-    }
-  });
-
-  monthSelect.addEventListener('change', () => {
-    const selectedRegionId = regionSelect.value;
-    currentPage = 1;
-    if (selectedRegionId) {
-      loadRegionData(selectedRegionId, 1);
-    }
-  });
-
-  form.addEventListener('submit', function (e) {
+  form.addEventListener('submit', e => {
     e.preventDefault();
-    const selectedRegionId = regionSelect.value;
-    currentPage = 1;
-    if (selectedRegionId) {
-      loadRegionData(selectedRegionId, 1);
-    } else {
-      alert("Zəhmət olmasa bölgə seçin");
-    }
-  });
-
-  document.getElementById('excel-btn').addEventListener('click', function(e){
-    e.preventDefault();
-    const regionId = regionSelect.value;
-    const nameFilter = nameFilterSelect.value;
-    const dateRange = document.getElementById('date-range').value;
-    const searchTerm = searchInput.value.trim();
-    const month = monthSelect.value;
-
-    if(!regionId){
-      alert("Zəhmət olmasa bölgə seçin");
-      return;
-    }
-
-    const params = new URLSearchParams({ region_id: regionId });
-
-    if (dateRange) {
-      params.append('date_range', dateRange);
-    }
-    if (nameFilter) {
-      params.append('name_filter', nameFilter);
-    }
-    if (searchTerm) {
-      params.append('search', searchTerm);
-    }
-    if (month) {
-      params.append('month', month);
-    }
-
-    const url = `/doctors/export-region-excel/?${params.toString()}`;
-    window.location.href = url;
+    if (regionSelect.value) loadRegionData(regionSelect.value, 1);
+    else alert("Zəhmət olmasa bölgə seçin");
   });
 });
+
 </script>
 {% endblock content %}

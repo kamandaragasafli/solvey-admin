@@ -60,8 +60,8 @@
 
     <!-- Cədvəl -->
     <div class="table-responsive">
-      <table class="table table-dark table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
-        <thead class="table-dark text-muted" style="font-size: 0.65rem;">
+      <table class="custom-dark-table" id="result-table">
+        <thead>
           <tr>
             <th>#</th>
             <th>Bölgə</th>
@@ -135,18 +135,129 @@
     color: #000000;
   }
 
-  table.table-dark tr:hover {
-    background-color: #1a2333 !important;
-  }
+     .table-header {
+      padding: 2rem;
+      background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+      border-bottom: 1px solid #334155;
+    }
 
-  td:last-child, td:nth-child(4) {
-    font-weight: 600;
-    text-align: center;
-  }
+    .table-header h1 {
+      color: #f8fafc;
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
 
-  th {
-    border-bottom: 1px solid #3a4a5f !important;
-  }
+    .table-header p {
+      color: #94a3b8;
+      font-size: 0.6rem;
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+      padding: 0;
+    }
+
+      .custom-dark-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .custom-dark-table thead {
+      background: #0f172a;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .custom-dark-table thead th {
+      color: #b5bcc7;
+      font-size: 0.60rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 1rem;
+      text-align: center;
+      border-bottom: 2px solid #334155;
+      white-space: nowrap;
+
+
+  /* Yazını üzü yuxarı çevirmək üçün */
+    writing-mode: vertical-rl;  /* və ya vertical-lr */
+    transform: rotate(180deg); 
+    }
+
+    .custom-dark-table tbody {
+      font-size: 0.75rem;
+    }
+
+    .custom-dark-table tbody tr {
+      background: #1e293b;
+      transition: all 0.2s ease;
+    }
+
+    .custom-dark-table tbody tr:hover {
+      background: #334155;
+      transform: scale(1.01);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .custom-dark-table tbody td {
+      padding: 1rem;
+      color: #e2e8f0;
+      text-align: center;
+      border-bottom: 1px solid #334155;
+      transition: color 0.2s ease;
+    }
+
+    .custom-dark-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .text-secondary {
+      color: #64748b !important;
+    }
+
+    .fst-italic {
+      font-style: italic;
+    }
+
+    .table-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: #3b82f6;
+      color: white;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+
+    .total-cell {
+      font-weight: 700;
+      color: #10b981;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+
+      .table-header {
+        padding: 1.5rem;
+      }
+
+      .table-header h1 {
+        font-size: 1.25rem;
+      }
+
+      .custom-dark-table thead th,
+      .custom-dark-table tbody td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.7rem;
+      }
+    }
   /* Scrollbar ümumi */
 ::-webkit-scrollbar {
   width: 10px; /* vertical scrollbar eni */
