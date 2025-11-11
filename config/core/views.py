@@ -26,6 +26,10 @@ from itertools import chain
 from operator import attrgetter
 from decimal import Decimal, ROUND_HALF_UP
 import urllib.parse
+from django.db.models import Sum, DecimalField, Q
+from django.db.models.functions import Coalesce
+from django.http import JsonResponse
+from datetime import datetime
 
 
 
@@ -215,24 +219,29 @@ def index(request):
     key=lambda r, totals=baki_region_monthly_totals: totals.get(r.region_name, 0),
     reverse=True
 )
-    # Qeydiyyatlar
+    today = timezone.localdate()  # Cari tarix
+    current_month = today.month   # Cari ay
+    current_year = today.year  
     total_other = (
         RecipeDrug.objects
-        .filter(recipe__region__in=diger_region)
-        .aggregate(
-            total=Coalesce(Sum('number', output_field=DecimalField()), Decimal('0.0'))
-        )['total']
-    )
-    total_other = total_other.quantize(Decimal('1.'), rounding=ROUND_HALF_UP)  # yuvarlaqlaşdır
+        .filter(
+            recipe__region__in=diger_region,
+            recipe__date__month=current_month,
+            recipe__date__year=current_year
+        )
+        .aggregate(total=Coalesce(Sum('number', output_field=DecimalField()), Decimal('0.0')))
+    )['total']
+    total_other = total_other.quantize(Decimal('1.'), rounding=ROUND_HALF_UP)
 
-    # Bakı bölgələri üzrə ümumi dərman sayı
     total_baku = (
         RecipeDrug.objects
-        .filter(recipe__region__in=baki_region)
-        .aggregate(
-            total=Coalesce(Sum('number', output_field=DecimalField()), Decimal('0.0'))
-        )['total']
-    )
+        .filter(
+            recipe__region__in=baki_region,
+            recipe__date__month=current_month,
+            recipe__date__year=current_year
+        )
+        .aggregate(total=Coalesce(Sum('number', output_field=DecimalField()), Decimal('0.0')))
+    )['total']
     total_baku = total_baku.quantize(Decimal('1.'), rounding=ROUND_HALF_UP)
 
     # Context dövrün içində deyil, dövr bitdikdən sonra
@@ -269,12 +278,22 @@ def index(request):
 
 # Region data Start
 def region_drug_data_other(request):
+    now = datetime.now()
+    current_month = now.month
+    current_year = now.year
+
     regions = (
         Region.objects
         .filter(region_type='Digər')
         .annotate(
             drug_count=Coalesce(
-                Sum('doctors__recipe__drugs__number'),
+                Sum(
+                    'doctors__recipe__drugs__number',
+                    filter=(
+                        Q(doctors__recipe__date__month=current_month) &
+                        Q(doctors__recipe__date__year=current_year)
+                    )
+                ),
                 0,
                 output_field=DecimalField()
             )
@@ -291,12 +310,22 @@ def region_drug_data_other(request):
     })
 
 def region_drug_data_baku(request):
+    now = datetime.now()
+    current_month = now.month
+    current_year = now.year
+
     regions = (
         Region.objects
         .filter(region_type='Bakı')
         .annotate(
             drug_count=Coalesce(
-                Sum('doctors__recipe__drugs__number'),
+                Sum(
+                    'doctors__recipe__drugs__number',
+                    filter=(
+                        Q(doctors__recipe__date__month=current_month) &
+                        Q(doctors__recipe__date__year=current_year)
+                    )
+                ),
                 0,
                 output_field=DecimalField()
             )
@@ -311,6 +340,7 @@ def region_drug_data_baku(request):
         'labels': labels,
         'data': counts
     })
+
 
 # Region data end
 # Login
