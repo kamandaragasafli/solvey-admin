@@ -1141,7 +1141,7 @@ def export_region_excel(request):
 
 def get_region(request):
     
-    reg = Region.objects.all()
+    reg = Region.objects.all().order_by('id')
     context = {
         "reg": reg
     }
