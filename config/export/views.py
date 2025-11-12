@@ -442,8 +442,8 @@ def import_debts_from_excel(request):
                 if not ad or not bolge:
                     continue
 
-                # Həkimi həm bölgə, həm ad ilə tapırıq (qarışma olmur)
-                doctor = Doctors.objects.filter(ad__iexact=ad, bolge__iexact=bolge).first()
+                doctor = Doctors.objects.filter(ad__iexact=ad, bolge__region_name__iexact=bolge).first()
+
 
                 if doctor:
                     doctor.previous_debt = float(borc) if pd.notna(borc) else 0.0
@@ -457,7 +457,7 @@ def import_debts_from_excel(request):
             for doctor in all_doctors:
                 # Əgər həmin həkim Excel-də yoxdursa → borc 0.00 olur
                 exists_in_excel = df[
-                    (df["Bölgə"].astype(str).str.strip().str.lower() == doctor.bolge.strip().lower()) &
+                    (df["Bölgə"].astype(str).str.strip().str.lower() == doctor.bolge.region_name.strip().lower()) &
                     (df["Həkim"].astype(str).str.strip().str.lower() == doctor.ad.strip().lower())
                 ]
                 if exists_in_excel.empty:

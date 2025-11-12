@@ -344,6 +344,30 @@ def region_drug_data_baku(request):
 
 # Region data end
 # Login
+# def user_login(request):
+#     if request.method == "POST":
+#         username = request.POST.get('username')
+#         password = request.POST.get('password')
+#         user = authenticate(request, username=username, password=password)
+        
+#         if user is not None:
+#             login(request, user)
+
+#             if user.is_superuser:
+#                 return redirect('/admin')  # Superuser admin panelə
+#             elif user.groups.filter(name="Moderator").exists():
+#                 return redirect('/admin')  # Moderator dashboard
+#             elif user.groups.filter(name="İstifadəçi").exists():
+#                 return redirect('movqe_gonder_view')  # Normal istifadəçi
+#             else:
+#                 # Qrup təyin olunmayıbsa normal istifadəçi kimi
+#                 return redirect('movqe_gonder_view')  
+#         else:
+#             error = "İstifadəçi adı və ya şifrə yanlışdır"
+#             return render(request, 'login.html', {'error': error})
+    
+#     return render(request, 'login.html')
+
 def user_login(request):
     if request.method == "POST":
         username = request.POST.get('username')
@@ -352,18 +376,9 @@ def user_login(request):
         
         if user is not None:
             login(request, user)
-
-            if user.is_superuser:
-                return redirect('/admin')  # Superuser admin panelə
-            elif user.groups.filter(name="Moderator").exists():
-                return redirect('/admin')  # Moderator dashboard
-            elif user.groups.filter(name="İstifadəçi").exists():
-                return redirect('movqe_gonder_view')  # Normal istifadəçi
-            else:
-                # Qrup təyin olunmayıbsa normal istifadəçi kimi
-                return redirect('movqe_gonder_view')  
+            return redirect('/admin')  # Superuser admin panelə
         else:
-            error = "İstifadəçi adı və ya şifrə yanlışdır"
+            error = "İstifadəçi adı və ya şifrə yanlışdır"
             return render(request, 'login.html', {'error': error})
     
     return render(request, 'login.html')
