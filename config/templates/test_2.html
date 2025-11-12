@@ -3,98 +3,177 @@
 
 {% block content %}
 <style>
-  .report-card {
-    border: 2px solid #5b70f3;
-    border-radius: 10px;
-    padding: 20px;
+  /* Ümumi Başlıq və Kart Stil */
+  h2 {
+    color: #0199ffff;
     margin-bottom: 30px;
-    background-color: #121725ff;
+    font-weight: 700;
+  }
+
+  .report-card {
+    background-color: #1a1f2b;
+    border: 1px solid #0199ffff;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 35px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     position: relative;
     overflow-x: auto;
+    transition: transform 0.2s;
+  }
+
+  .report-card:hover {
+    transform: translateY(-5px);
   }
 
   .report-card h3 {
-    color: #4850b9;
-    margin-bottom: 10px;
+    color: #f4e7fb;
+    margin-bottom: 12px;
+    font-size: 1.1rem;
   }
 
-  .export-btn {
+  /* Export / Print Button */
+  .export-btn, .print-btn {
     position: absolute;
     top: 20px;
     right: 20px;
-    background-color: #5b70f3;
+    background-color: #0199ffff;
     color: #fff;
     border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 0.85rem;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
+    transition: 0.3s;
   }
 
-  .export-btn:hover {
-    background-color: #4850b9;
+  .export-btn:hover, .print-btn:hover {
+    background-color: #0199ffff;
   }
 
+  /* Form Stil */
+  form {
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  form label {
+    font-weight: 600;
+    color: #0199ffff;
+  }
+
+  form select {
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid #0199ffff;
+    background-color: #f4f7ff;
+    font-weight: 600;
+    color: #000;
+  }
+
+  form button {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: none;
+    background-color: #0199ffff;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.3s;
+  }
+
+  form button:hover {
+    background-color: #0199ffff;
+  }
+
+  /* Cədvəl Stil */
   table {
     border-collapse: collapse;
     width: 100%;
-    min-width: 800px;
-    margin-top: 15px;
+    min-width: 850px;
+    margin-top: 18px;
+    font-size: 0.75rem;
   }
 
   table, th, td {
-    border: 1px solid #5b70f3;
+    border: 1px solid #0199ffff;
   }
 
-  th, td {
+  th {
+    background-color: #0199ffff;
+    color: #f4e7fb;
+    font-weight: 600;
     padding: 8px;
     text-align: center;
   }
 
-  th {
-    background-color: #e0e7ff;
-    color: #ffffffff;
+  td {
+    padding: 7px;
+    text-align: center;
+    color: #fff;
+  }
+
+  tbody tr:nth-child(even) {
+    background-color: rgba(255,255,255,0.05);
   }
 
   tfoot td, tfoot th {
-    font-weight: bold;
-    background-color: #edf2ff;
+    font-weight: 700;
+    background-color: #0199ffff;
+    color: #f4e7fb;
   }
 
-  h2 {
-    color: #4850b9;
-    margin-bottom: 30px;
+  /* Conditional Highlight */
+  td.highlight-green {
+    background-color: #d4edda;
+    color: #155724;
+    font-weight: 600;
+  }
+
+  td.highlight-yellow {
+    background-color: #fff3cd;
+    color: #856404;
+    font-weight: 600;
+  }
+
+  td.highlight-blue {
+    background-color: #cce5ff;
+    color: #004085;
+    font-weight: 600;
+  }
+
+  td.highlight-red {
+    background-color: #f8d7da;
+    color: #721c24;
+    font-weight: 600;
   }
 </style>
 
-
 <h2>{{ region.region_name }} Bölgəsinin Hesabatı</h2>
-<p>Ümumi həkimlərin resept sayı: {{ toplam_hekim_say }}</p>
+<p style="color: #f4e7fb; margin-bottom: 20px;">Ümumi həkimlərin resept sayı: {{ toplam_hekim_say }}</p>
 
-<form method="get" style="margin-bottom: 30px; display: flex; align-items: center; gap: 10px;">
-    <label for="month" style="font-weight: bold; color: #4850b9;">Ay seçin:</label>
-    <select name="month" id="month" 
-            style="padding: 6px 10px; border-radius: 6px; border: 1px solid #5b70f3; background-color: #f4f7ff; color: #000; font-weight: bold;">
+<form method="get">
+    <label for="month">Ay seçin:</label>
+    <select name="month" id="month">
         {% for i in aylar %}
             <option value="{{ i }}" {% if ay == i %}selected{% endif %}>{{ i }}-ay</option>
         {% endfor %}
     </select>
-    <button type="submit" 
-            style="padding: 6px 12px; border-radius: 6px; border: none; background-color: #5b70f3; color: #fff; cursor: pointer; font-weight: bold; transition: 0.3s;">
-        Hesabla
-    </button>
+    <button type="submit">Hesabla</button>
 </form>
 
 <!-- 1. Kart -->
 <div class="report-card">
   <h3>1. Həkimlər üzrə Dərman Sayları</h3>
   <button class="export-btn">⬇️ Export</button>
-  <p>Bu cədvəldə hər həkimin yazdığı dərmanların sayları göstərilir.</p>
+  <p style="color: #f4e7fb;">Bu cədvəldə hər həkimin yazdığı dərmanların sayları göstərilir.</p>
   <table>
-    <thead style="font-size: 0.65rem;">
+    <thead>
       <tr>
         <th>Həkimlər</th>
         {% for derman in dermanlar %}
@@ -103,12 +182,12 @@
         <th>Ümumi</th>
       </tr>
     </thead>
-    <tbody style="font-size: 0.65rem;">
+    <tbody>
       {% for hekim in hekimler_data %}
         <tr>
           <td>{{ hekim.hekim.ad }}</td>
           {% for say in hekim.dermanlar %}
-            <td {% if say > 0 %} style="background-color: #d4edda; color: #155724; font-weight:bold;" {% endif %}>{{ say }}</td>
+            <td class="{% if say > 0 %}highlight-green{% endif %}">{{ say }}</td>
           {% endfor %}
           <td>{{ hekim.toplam }}</td>
         </tr>
@@ -118,7 +197,7 @@
       <tr>
         <td>Ümumi</td>
         {% for toplam in derman_toplamlari %}
-          <td {% if toplam > 0 %} style="background-color: #d4edda; color: #155724; font-weight:bold;" {% endif %}>{{ toplam }}</td>
+          <td class="{% if toplam > 0 %}highlight-green{% endif %}">{{ toplam }}</td>
         {% endfor %}
         <td>{{ toplam_hekim_say }}</td>
       </tr>
@@ -130,9 +209,9 @@
 <div class="report-card">
   <h3>2. Dərəcəyə Görə Bölünmüş Həkim Hesabatı</h3>
   <button class="export-btn">⬇️ Export</button>
-  <p>Burada hər həkimin dərəcələri dərman toplamları göstərilir.</p>
+  <p style="color: #f4e7fb;">Burada hər həkimin dərəcələri və dərman toplamları göstərilir.</p>
   <table>
-    <thead style="font-size: 0.65rem;">
+    <thead>
       <tr>
         <th>Həkim</th>
         <th>Dərəcə</th>
@@ -143,25 +222,25 @@
         <th>Faizli Toplam</th>
       </tr>
     </thead>
-    <tbody style="font-size: 0.65rem;">
+    <tbody>
       {% for row in hekimler_data %}
         <tr>
           <td>{{ row.hekim.ad }}</td>
           <td>{{ row.hekim.derece }}</td>
           {% for say in row.faizli_dermanlar %}
-            <td {% if say > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ say }}</td>
+            <td class="{% if say > 0 %}highlight-yellow{% endif %}">{{ say }}</td>
           {% endfor %}
-          <td {% if row.toplam > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ row.toplam }}</td>
-          <td {% if row.faizli_toplam > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ row.faizli_toplam }}</td>
+          <td class="{% if row.toplam > 0 %}highlight-yellow{% endif %}">{{ row.toplam }}</td>
+          <td class="{% if row.faizli_toplam > 0 %}highlight-yellow{% endif %}">{{ row.faizli_toplam }}</td>
         </tr>
       {% endfor %}
       <tr>
         <th colspan="2">Toplam</th>
         {% for say in faizli_derman_toplamlari %}
-          <th {% if say > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ say }}</th>
+          <th class="{% if say > 0 %}highlight-yellow{% endif %}">{{ say }}</th>
         {% endfor %}
-        <th {% if toplam_hekim_say > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ toplam_hekim_say }}</th>
-        <th {% if toplam_faizli_say > 0 %} style="background-color: #fff3cd; color: #856404; font-weight:bold;" {% endif %}>{{ toplam_faizli_say }}</th>
+        <th class="{% if toplam_hekim_say > 0 %}highlight-yellow{% endif %}">{{ toplam_hekim_say }}</th>
+        <th class="{% if toplam_faizli_say > 0 %}highlight-yellow{% endif %}">{{ toplam_faizli_say }}</th>
       </tr>
     </tbody>
   </table>
@@ -171,9 +250,9 @@
 <div class="report-card">
   <h3>3. Satış Hesablanmış Dərmanlar</h3>
   <button class="export-btn">⬇️ Export</button>
-  <p>Effektivliklə vurulmuş dərmanların hesablanması.</p>
+  <p style="color: #f4e7fb;">Effektivliklə vurulmuş dərmanların hesablanması.</p>
   <table>
-    <thead style="font-size: 0.65rem;">
+    <thead>
       <tr>
         <th>Həkimlər</th>
         {% for derman in dermanlar %}
@@ -182,14 +261,14 @@
         <th>Ümumi</th>
       </tr>
     </thead>
-    <tbody style="font-size: 0.65rem;">
+    <tbody>
       {% for row in hekimler_data %}
         <tr>
           <td>{{ row.hekim.ad }}</td>
           {% for effektiv in row.effektivlikli_dermanlar %}
-            <td {% if effektiv > 0 %} style="background-color: #cce5ff; color: #004085; font-weight:bold;" {% endif %}>{{ effektiv }}</td>
+            <td class="{% if effektiv > 0 %}highlight-blue{% endif %}">{{ effektiv }}</td>
           {% endfor %}
-          <td {% if row.effektivlikli_toplam > 0 %} style="background-color: #cce5ff; color: #004085; font-weight:bold;" {% endif %}>{{ row.effektivlikli_toplam }}</td>
+          <td class="{% if row.effektivlikli_toplam > 0 %}highlight-blue{% endif %}">{{ row.effektivlikli_toplam }}</td>
         </tr>
       {% endfor %}
     </tbody>
@@ -197,9 +276,9 @@
       <tr>
         <td>Ümumi</td>
         {% for toplam in effektivlikli_derman_toplamlari %}
-          <td {% if toplam > 0 %} style="background-color: #cce5ff; color: #004085; font-weight:bold;" {% endif %}>{{ toplam }}</td>
+          <td class="{% if toplam > 0 %}highlight-blue{% endif %}">{{ toplam }}</td>
         {% endfor %}
-        <td {% if toplam_effektivlikli_say > 0 %} style="background-color: #cce5ff; color: #004085; font-weight:bold;" {% endif %}>{{ toplam_effektivlikli_say }}</td>
+        <td class="{% if toplam_effektivlikli_say > 0 %}highlight-blue{% endif %}">{{ toplam_effektivlikli_say }}</td>
       </tr>
     </tfoot>
   </table>
@@ -209,9 +288,9 @@
 <div class="report-card" id="report-card">
   <h3>4. Komissiyaya uyğun Silinən Dərmanlar</h3>
   <button class="print-btn" onclick="printDiv('report-card')">🖨️ Çap et</button>
-  <p>Bu cədvəldə yalnız həkimlərin komissiyadan silinən dərman miqdarları göstərilir.</p>
+  <p style="color: #f4e7fb;">Bu cədvəldə yalnız həkimlərin komissiyadan silinən dərman miqdarları göstərilir.</p>
   <table>
-    <thead style="font-size: 0.65rem;">
+    <thead>
       <tr>
         <th>Həkim Adı</th>
         {% for derman in dermanlar %}
@@ -220,42 +299,28 @@
         <th>Silinən Toplam</th>
       </tr>
     </thead>
-    <tbody style="font-size: 0.65rem;">
+    <tbody>
       {% for row in hekimler_data %}
         <tr>
           <td>{{ row.hekim.ad }}</td>
           {% for _, komissiya in row.hekim_effektiv_komissiya %}
-            <td {% if komissiya > 0 %} style="background-color: #f8d7da; color: #721c24; font-weight:bold; " {% endif %}>{{ komissiya }}</td>
+            <td class="{% if komissiya > 0 %}highlight-red{% endif %}">{{ komissiya }}</td>
           {% endfor %}
-          <td {% if row.hekimden_silinen > 0 %} style="background-color: #f8d7da; color: #721c24; font-weight:bold; " {% endif %}>{{ row.hekimden_silinen }}</td>
+          <td class="{% if row.hekimden_silinen > 0 %}highlight-red{% endif %}">{{ row.hekimden_silinen }}</td>
         </tr>
       {% endfor %}
     </tbody>
     <tfoot>
-  <tr>
-    <th>Toplam</th>
-    {% for komissiya in komissiya_toplamlari %}
-      <th>
-        {% if komissiya > 0 %}
-          <span style="background-color: #f8d7da; color: #721c24;">{{ komissiya }}</span>
-        {% else %}
-          {{ komissiya }}
-        {% endif %}
-      </th>
-    {% endfor %}
-    <th>
-      {% if toplam_komissiya > 0 %}
-        <span style="background-color: #f8d7da; color: #721c24;">{{ toplam_komissiya }}</span>
-      {% else %}
-        {{ toplam_komissiya }}
-      {% endif %}
-    </th>
-  </tr>
-</tfoot>
-
+      <tr>
+        <th>Toplam</th>
+        {% for komissiya in komissiya_toplamlari %}
+          <th class="{% if komissiya > 0 %}highlight-red{% endif %}">{{ komissiya }}</th>
+        {% endfor %}
+        <th class="{% if toplam_komissiya > 0 %}highlight-red{% endif %}">{{ toplam_komissiya }}</th>
+      </tr>
+    </tfoot>
   </table>
 </div>
-
 
 <script>
   function printDiv(divId) {
