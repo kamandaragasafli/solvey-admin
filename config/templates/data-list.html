@@ -65,7 +65,7 @@
 
     <!-- Əlavə Düymələr -->
     <div class="d-flex justify-content-end align-items-center mt-4 gap-2">
-      <a href="#" id="excel-btn" class="btn btn-success btn-sm d-flex align-items-center gap-1">
+      <a href="" id="excel-btn" class="btn btn-success btn-sm d-flex align-items-center gap-1">
         <i class="fa-solid fa-file-excel"></i> Excel
       </a>
       <a href="#" id="pdf-btn" class="btn btn-danger btn-sm d-flex align-items-center gap-1">
@@ -560,6 +560,34 @@ document.addEventListener('DOMContentLoaded', () => {
     if (regionSelect.value) loadRegionData(regionSelect.value, 1);
     else alert("Zəhmət olmasa bölgə seçin");
   });
+  document.getElementById('excel-btn').addEventListener('click', function (e) {
+  e.preventDefault();
+
+  const regionId = regionSelect.value;
+  const nameFilter = nameFilterSelect.value;
+  const dateRange = document.getElementById('date-range').value;
+  const searchTerm = searchInput.value.trim();
+  const month = monthSelect.value;
+
+  if (!regionId) {
+    alert("Zəhmət olmasa bölgə seçin");
+    return;
+  }
+
+  const params = new URLSearchParams({ region_id: regionId });
+
+  if (dateRange) params.append('date_range', dateRange);
+  if (nameFilter) params.append('name_filter', nameFilter);
+  if (searchTerm) params.append('search', searchTerm);
+  if (month) params.append('month', month);
+
+
+  const url = `/doctors/export-region-excel/?${params.toString()}`;
+  window.location.href = url;
+});
+
+
+  
 });
 
 </script>

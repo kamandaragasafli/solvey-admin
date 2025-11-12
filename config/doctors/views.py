@@ -976,6 +976,8 @@ def export_region_excel(request):
     region_id = request.GET.get('region_id')
     date_range = request.GET.get("date_range")
     name_filter = request.GET.get('name_filter')
+    search_term = request.GET.get("search")
+    month = request.GET.get("month")
 
     if not region_id:
         return HttpResponse("Bölgə seçilməyib.", status=400)
@@ -985,6 +987,7 @@ def export_region_excel(request):
     except Region.DoesNotExist:
         return HttpResponse("Bölgə tapılmadı.", status=404)
 
+    # Əsas queryset
     doctors = (
         Doctors.objects
         .filter(bolge=region)
@@ -992,11 +995,20 @@ def export_region_excel(request):
         .prefetch_related('odenisler')
     )
 
+    # 🔹 Axtarış filteri
+    if search_term:
+        doctors = doctors.filter(
+            Q(ad__icontains=search_term) |
+            Q(barkod__icontains=search_term)
+        )
+
+    # 🔹 Dannisi filteri
     if name_filter == 'with_dannisi':
         doctors = doctors.filter(Q(ad__icontains='dannısı') | Q(ad__icontains='dannisi'))
     elif name_filter == 'without_dannisi':
         doctors = doctors.exclude(Q(ad__icontains='dannısı') | Q(ad__icontains='dannisi'))
 
+    # 🔹 Tarix intervalı
     start_date = end_date = None
     if date_range:
         try:
@@ -1004,18 +1016,20 @@ def export_region_excel(request):
                 start_str, end_str = date_range.split("to")
                 start_date = datetime.strptime(start_str.strip(), '%Y-%m-%d').date()
                 end_date = datetime.strptime(end_str.strip(), '%Y-%m-%d').date()
-            else:
-                start_date = datetime.strptime(date_range.strip(), '%Y-%m-%d').date()
-                end_date = start_date
+            elif " - " in date_range:
+                start_str, end_str = date_range.split(" - ")
+                start_date = datetime.strptime(start_str.strip(), '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_str.strip(), '%Y-%m-%d').date()
         except ValueError:
             pass
 
     drugs = list(Medical.objects.all().order_by('id'))
 
-
     recipe_filter = Q(recipe__region=region)
     if start_date and end_date:
         recipe_filter &= Q(recipe__date__range=(start_date, end_date))
+    elif month:
+        recipe_filter &= Q(recipe__date__month=month)
 
     counts_qs = (
         RecipeDrug.objects
@@ -1034,6 +1048,7 @@ def export_region_excel(request):
         doctor_drug_counts[dr_id][drug_id] = total
         doctor_total_counts[dr_id] += total
 
+    # 📊 Excel yaradılması
     wb = Workbook()
     ws = wb.active
     ws.title = f"{region.region_name} - Filterli"
@@ -1058,11 +1073,8 @@ def export_region_excel(request):
     idx = 1
     for doctor in doctors:
         total = doctor_total_counts.get(doctor.id, 0)
-
-        if name_filter == "without_dannisi" and total == 0:
-            continue
-
         last_payment = doctor.odenisler.order_by('-date').first()
+
         if last_payment:
             odeme = f"₼{float(last_payment.pay):.2f} - {last_payment.date.strftime('%Y-%m-%d')}"
         elif doctor.geriqaytarma > 0:
@@ -1085,38 +1097,35 @@ def export_region_excel(request):
         counts_map = doctor_drug_counts.get(doctor.id, {})
         for drug in drugs:
             row.append(counts_map.get(drug.id, 0))
-
         row.append(total)
+
         ws.append(row)
         idx += 1
 
-    # Dərmanların və ümumi cəmin alt sətirini əlavə et
-    start_drug_col = 6  # 1-based sütun indeksi, dərmanlar burada başlayır
-    total_col_idx = len(headers)  # Ümumi "Total" sütunu (1-based)
+    # 📈 Cəmlər
+    start_drug_col = 6
+    total_col_idx = len(headers)
 
-    drug_totals = [0] * (total_col_idx - start_drug_col)  # Dərman sütunları üçün cəmlər
+    drug_totals = [0] * (total_col_idx - start_drug_col)
     overall_total = 0
 
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=start_drug_col, max_col=total_col_idx):
-        for i, cell in enumerate(row[:-1]):  # Son sütun total sütunudur
+        
+        for i, cell in enumerate(row[:-1]):
             try:
-                val = int(cell.value)
-            except (TypeError, ValueError):
-                val = 0
-            drug_totals[i] += val
-
+                drug_totals[i] += int(cell.value or 0)
+            except:
+                pass
         try:
-            overall_total += int(row[-1].value)
-        except (TypeError, ValueError):
+            overall_total += int(row[-1].value or 0)
+        except:
             pass
 
     total_row_idx = ws.max_row + 1
-
-    ws.cell(row=total_row_idx, column=1, value="Cəmi")  # "Son Ödəniş" sütunu yerinə
-
+    ws.cell(row=total_row_idx, column=1, value="Cəmi")
     for i, total in enumerate(drug_totals):
+      
         ws.cell(row=total_row_idx, column=start_drug_col + i, value=total)
-
     ws.cell(row=total_row_idx, column=total_col_idx, value=overall_total)
 
     for cell in ws[total_row_idx]:
@@ -1124,35 +1133,14 @@ def export_region_excel(request):
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal="center")
 
-    # Bütün hüceyrələrə border tətbiq et və 1-ci sütundakı dəyərləri ortala
-    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=len(headers)):
-        for cell in row:
-            cell.border = thin_border
-            if cell.column == 1:
-                cell.alignment = center_align
-
-    # Sütun genişliklərini uyğunlaşdır
-    for col in ws.columns:
-        max_length = 0
-        col_letter = col[0].column_letter
-        for cell in col:
-            try:
-                val_len = len(str(cell.value)) if cell.value else 0
-                if val_len > max_length:
-                    max_length = val_len
-            except:
-                pass
-        ws.column_dimensions[col_letter].width = min(max_length + 2, 60)
-
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     filename = f"{region.region_name} Qeydiyyatı.xlsx"
     response['Content-Disposition'] = f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
     wb.save(response)
     return response
 
 def get_region(request):
+    
     reg = Region.objects.all()
     context = {
         "reg": reg
