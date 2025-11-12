@@ -4,7 +4,7 @@
 {% block content %}
  <link rel="stylesheet" href="{% static 'css/admin.css' %}">
 {% if messages %}
-  <div class="messages">
+  <div class="messages" style="color; white">
     {% for message in messages %}
       <div class="alert alert-{{ message.tags }}">{{ message }}</div>
     {% endfor %}
@@ -25,7 +25,7 @@
                     </button>
                     <button class="tab-btn" data-tab="import">
                         <i class="bi bi-upload"></i>
-                        <span>İmport et</span>
+                        <span>Excel</span>
                     </button>
                     <button class="tab-btn" data-tab="settings">
                         <i class="bi bi-gear"></i>
