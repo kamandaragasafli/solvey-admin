@@ -433,36 +433,38 @@ def import_debts_from_excel(request):
             updated_count = 0
             not_found = []
 
-            # Faylda olan bütün bölgə və həkimləri yoxlayırıq
-            for _, row in df.iterrows():
-                bolge = str(row.get("Bölgə", "")).strip()
-                ad = str(row.get("Həkim", "")).strip()
-                borc = row.get("Əvvəlki Borc", 0)
+            # Excel-də olan bütün bölgələri topla
+            excel_regions = df["Bölgə"].dropna().astype(str).str.strip().unique()
 
-                if not ad or not bolge:
-                    continue
+            # Hər bölgənin həkimlərini yoxlayıb borcu güncəllə
+            for region_name in excel_regions:
+                # Sistemdə bu bölgənin həkimləri
+                doctors_in_region = Doctors.objects.filter(bolge__region_name__iexact=region_name)
 
-                doctor = Doctors.objects.filter(ad__iexact=ad, bolge__region_name__iexact=bolge).first()
+                # Excel-də bu bölgənin həkim adları və borcları
+                excel_data_in_region = df[df["Bölgə"].astype(str).str.strip() == region_name][["Həkim", "Əvvəlki Borc"]]
 
+                # Excel-də olan həkimləri yenilə
+                excel_doctors_names = []
+                for _, row in excel_data_in_region.iterrows():
+                    ad = str(row["Həkim"]).strip()
+                    borc = row["Əvvəlki Borc"]
+                    excel_doctors_names.append(ad)
 
-                if doctor:
-                    doctor.previous_debt = float(borc) if pd.notna(borc) else 0.0
-                    doctor.save()
-                    updated_count += 1
-                else:
-                    not_found.append(f"{bolge} - {ad}")
+                    doctor = doctors_in_region.filter(ad__iexact=ad).first()
+                    if doctor:
+                        doctor.previous_debt = float(borc) if pd.notna(borc) else 0.0
+                        doctor.save()
+                        updated_count += 1
+                    else:
+                        # Excel-də həkim var amma sistemdə yox → yeni həkim yaratmırıq
+                        not_found.append(f"{region_name} - {ad}")
 
-            # Əgər Excel-də olmayan həkimlər varsa onların borcunu sıfırla
-            all_doctors = Doctors.objects.all()
-            for doctor in all_doctors:
-                # Əgər həmin həkim Excel-də yoxdursa → borc 0.00 olur
-                exists_in_excel = df[
-                    (df["Bölgə"].astype(str).str.strip().str.lower() == doctor.bolge.region_name.strip().lower()) &
-                    (df["Həkim"].astype(str).str.strip().str.lower() == doctor.ad.strip().lower())
-                ]
-                if exists_in_excel.empty:
-                    doctor.previous_debt = 0.0
-                    doctor.save()
+                # Excel-də olmayan həkimlərin borcunu sıfırla (yalnız həmin bölgədə)
+                for doctor in doctors_in_region:
+                    if doctor.ad not in excel_doctors_names:
+                        doctor.previous_debt = 0.0
+                        doctor.save()
 
             messages.success(request, f"{updated_count} həkimin borcu yeniləndi.")
             if not_found:
