@@ -34,7 +34,7 @@ from django.core.paginator import Paginator
 def get_doctors_by_region(request):
     region_id = request.GET.get("region_id")
     if region_id:
-        doctors = Doctors.objects.filter(bolge_id=region_id).order_by("ad")
+        doctors = Doctors.objects.filter(bolge_id=region_id).order_by("id")
         doctor_list = [{"id": d.id, "ad": d.ad} for d in doctors]
         return JsonResponse({"doctors": doctor_list})
     return JsonResponse({"doctors": []})
@@ -330,7 +330,7 @@ def ajax_region_report(request):
     if not region_id:
         return JsonResponse({"results": [], "total_pages": 0, "current_page": 1})
 
-    doctors = Doctors.objects.filter(bolge_id=region_id)
+    doctors = Doctors.objects.filter(bolge_id=region_id).order_by("id")
     result = []
 
     # Satışlar (bütün region üçün filtr)

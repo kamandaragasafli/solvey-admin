@@ -248,7 +248,7 @@ def create_recipe(request):
             istifade_olunacaq_tarix = date.fromisoformat(date_str)
         except ValueError:
             messages.error(request, "Zəhmət olmasa düzgün tarix seçin.")
-            doctors = Doctors.objects.filter(bolge_id=region_id) if region_id else Doctors.objects.none()
+            doctors = Doctors.objects.filter(bolge_id=region_id).order_by("id") if region_id else Doctors.objects.none()
             return render(request, "crud/add-recipe.html", {
                 "regions": regions,
                 "doctors": doctors,
@@ -515,7 +515,7 @@ def update_doctor(request, pk):
 
 def create_real_sales(request):
     regions = Region.objects.all().order_by("region_name")
-    doctors = Doctors.objects.all().order_by("ad")
+    doctors = Doctors.objects.all().order_by("id")
     drugs = Medical.objects.all().order_by('id')
 
     selected_region = None
@@ -618,7 +618,7 @@ def create_datasiya(request):
     regions = Region.objects.all().order_by("region_name")
     selected_region = request.GET.get("region") or None
 
-    doctors = Doctors.objects.filter(region_id=selected_region).order_by("ad") if selected_region else []
+    doctors = Doctors.objects.filter(region_id=selected_region).order_by("id") if selected_region else []
 
     if request.method == "POST":
         region_id = request.POST.get("region")
@@ -683,7 +683,7 @@ def finance_view(request):
     current_year = today.year
 
     if selected_region:
-        doctors = Doctors.objects.filter(region_id=selected_region).order_by("ad")
+        doctors = Doctors.objects.filter(region_id=selected_region).order_by("id")
 
         for doctor in doctors:
             # Bu ay üçün Avans və İnvestisiya cəmlərini tapırıq
@@ -718,7 +718,7 @@ def finance_view(request):
 def create_razilasma(request):
     regions = Region.objects.all().order_by("region_name")
     selected_region = request.GET.get("region") or None
-    doctors = Doctors.objects.filter(region_id=selected_region).order_by("ad") if selected_region else []
+    doctors = Doctors.objects.filter(region_id=selected_region).order_by("id") if selected_region else []
 
     if request.method == "POST":
         region_id = request.POST.get("region")
@@ -779,7 +779,7 @@ def ajax_doctors_by_region(request):
     current_year = today.year
     
     # Həkimləri və onların ödəniş məlumatlarını al
-    doctors = Doctors.objects.filter(bolge=region_id)
+    doctors = Doctors.objects.filter(bolge=region_id).order_by("id")
     
     doctor_list = []
     
@@ -837,7 +837,7 @@ def ajax_region_data(request):
         return JsonResponse({"results": []})
 
     # Əsas queryset
-    doctors = Doctors.objects.filter(bolge=region_id)
+    doctors = Doctors.objects.filter(bolge=region_id).order_by("id")
 
     # Name filter
     if name_filter == 'with_dannisi':

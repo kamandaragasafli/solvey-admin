@@ -98,10 +98,10 @@ class Doctors(models.Model):
         investisiya = self.investisiya or 0
         geriqaytarma = self.geriqaytarma or 0
         datasiya = self.datasiya or 0
-        hekimden_silinen = self.hekimden_silinen or 0
+
 
         # Hesablama
-        yekun = previous_debt + avans + investisiya + datasiya - hekimden_silinen - geriqaytarma
+        yekun = previous_debt + avans + investisiya + datasiya  - geriqaytarma
         return round(yekun, 2)
 
 
