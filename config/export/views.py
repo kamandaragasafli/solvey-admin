@@ -17,14 +17,15 @@ import os
 
 
 from .models import Backup
+
 @csrf_exempt
 def create_backup(request):
     if request.method == 'POST':
         db_name = settings.DATABASES['default']['NAME']
         db_user = settings.DATABASES['default']['USER']
         db_password = settings.DATABASES['default']['PASSWORD']
-        db_host = settings.DATABASES['default']['HOST']
-        db_port = settings.DATABASES['default']['PORT']
+        db_host = settings.DATABASES['default']['HOST'] or 'localhost'
+        db_port = settings.DATABASES['default']['PORT'] or '5432'
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_dir = os.path.join(settings.MEDIA_ROOT, 'backups')
@@ -33,7 +34,9 @@ def create_backup(request):
         filename = f'solvey_backup_{timestamp}.sql'
         backup_file = os.path.join(backup_dir, filename)
 
-        pg_dump_path = r'C:\Program Files\PostgreSQL\17\bin\pg_dump.exe'
+        # Linux üçün: pg_dump birbaşa PATH-dadır
+        pg_dump_path = 'pg_dump'
+
         env = os.environ.copy()
         env['PGPASSWORD'] = db_password
 
@@ -47,14 +50,13 @@ def create_backup(request):
                 db_name
             ], check=True, env=env)
 
-            # Fayl ölçüsünü hesablamaq
+            # Fayl ölçüsü (MB)
             size_bytes = os.path.getsize(backup_file)
             size_mb = size_bytes / (1024 * 1024)
             size_str = f"{size_mb:.2f} MB"
 
-            # Modelə qeyd et
             backup_obj = Backup.objects.create(
-                ad='Solvey Backup',
+                ad=f'Solvey Backup {timestamp}',
                 fayl=f'backups/{filename}',
                 olcu=size_str
             )
@@ -62,9 +64,9 @@ def create_backup(request):
             return JsonResponse({
                 'status': 'success',
                 'message': 'Backup uğurla yaradıldı.',
-                'filename': backup_obj.ad,
+                'filename': filename,
                 'file_url': backup_obj.fayl.url,
-                'size': backup_obj.olcu
+                'size': size_str
             })
 
         except subprocess.CalledProcessError as e:
