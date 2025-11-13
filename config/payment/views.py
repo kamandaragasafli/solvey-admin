@@ -820,23 +820,41 @@ def kohne_region_ajax(request):
         return JsonResponse({'error': 'Region və ay seçilməyib'}, status=400)
 
     try:
-        # İli də nəzərə al
         report_month = date(year=int(year), month=int(month), day=1)
     except ValueError:
         return JsonResponse({'error': 'Yanlış tarix dəyəri'}, status=400)
 
     # Hesabatları gətir
     reports = MonthlyDoctorReport.objects.filter(
-        region_id=region_id,  # region sahəsini birbaşa istifadə et
+        region_id=region_id,
         report_month=report_month
     ).select_related('doctor', 'region')
 
     results = []
     for report in reports:
+        # Drugs siyahısını JSON olaraq oxu
         try:
-            drugs = json.loads(report.recipe_drugs_list or '[]')
+            drugs_list = json.loads(report.recipe_drugs_list or '[]')
         except json.JSONDecodeError:
-            drugs = []
+            drugs_list = []
+
+        # Əgər drugs_list boşdursa, həkimə aid RecipeDrug məlumatlarından yarat
+        if not drugs_list:
+            counts_qs = RecipeDrug.objects.filter(recipe__dr_id=report.doctor.id,
+                                                  recipe__date__year=report_month.year,
+                                                  recipe__date__month=report_month.month)
+            temp_drugs = []
+            total_drugs = 0
+            for item in counts_qs:
+                temp_drugs.append({
+                    'name': item.drug.med_name,
+                    'count': float(item.number or 0)
+                })
+                total_drugs += item.number or 0
+            drugs_list = temp_drugs
+            report.recipe_total_drugs = total_drugs  # toplam dərman sayını saxla
+            report.recipe_drugs_list = json.dumps(drugs_list)
+            report.save()
 
         # Həkimə aid əsas məlumatlar
         doctor = report.doctor
@@ -848,7 +866,7 @@ def kohne_region_ajax(request):
             'derece': getattr(doctor, 'derece', ''),
             'ixtisas': getattr(doctor, 'ixtisas', ''),
             'previous_debt': float(report.borc or 0),
-            'drugs': drugs,  # Artıq formatlanmış drugs listi
+            'drugs': drugs_list,
             'total': report.recipe_total_drugs or 0,
             'hekimden_silinen': float(report.hekimden_silinen or 0),
             'hesablanan_miqdar': float(report.hesablanan_miqdar or 0),
@@ -858,4 +876,5 @@ def kohne_region_ajax(request):
         })
 
     return JsonResponse({'results': results})
+
 

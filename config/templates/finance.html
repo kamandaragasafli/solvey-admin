@@ -129,6 +129,14 @@
       </a>
       </div>
     </div>
+        <div class="col-md-2 mb-2 d-flex align-items-end">
+        <a href="javascript:void(0);" onclick="exportExcel()" class="btn btn-success">
+      Excel çıxar
+    </a>
+    </div>
+
+
+    
      <!-- Statistik məlumatlar -->
     <div class="row mb-3">
       <div class="col-md-3">
@@ -191,11 +199,13 @@
             <div class="col-md-2 fw-bold text-center" style="color: #e9042eff;">{{ d.previous_debt }}</div>
             <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
               <span class="text-dark fw-bold">Avans:</span>
-              <input type="number" class="form-control" style="max-width: 120px;" value="{{ d.avans }}" readonly />
+             <input type="number" class="form-control" style="max-width: 120px;" 
+       value="{% if d.avans > 0 %}{{ d.avans }}{% endif %}" readonly />
             </div>
             <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
               <span class="text-dark fw-bold">İnvestisiya:</span>
-              <input type="number" class="form-control" style="max-width: 120px;" value="{{ d.investisiya }}" readonly />
+              <input type="number" class="form-control" style="max-width: 120px;" 
+       value="{% if d.investisiya > 0 %}{{ d.investisiya }}{% endif %}" readonly />
             </div>
           </div>
         {% endfor %}
@@ -210,16 +220,15 @@ const ajaxUrl = "{% url 'ajax_doctors_by_region' %}";
 document.addEventListener("DOMContentLoaded", function () {
   const regionSelect = document.getElementById("region-select");
   const doctorSearch = document.getElementById("doctor-search");
-  const filterBtn = document.getElementById("filter-btn");
   const doctorsContainer = document.getElementById("doctors-container");
-  const totalGivenElement = document.getElementById("total-given");
-  const totalReceivedElement = document.getElementById("total-received");
-  
+
   // Statistik elementlər
   const totalDoctorsElement = document.getElementById("total-doctors");
   const totalAvansElement = document.getElementById("total-avans");
   const totalInvestElement = document.getElementById("total-invest");
   const financeGivenCountElement = document.getElementById("finance-given-count");
+  const totalGivenElement = document.getElementById("total-given");
+  const totalReceivedElement = document.getElementById("total-received");
 
   let allDoctors = []; // Bütün həkimləri saxlayırıq
 
@@ -231,30 +240,64 @@ document.addEventListener("DOMContentLoaded", function () {
     doctors.forEach(doctor => {
       const avans = parseFloat(doctor.avans) || 0;
       const investisiya = parseFloat(doctor.investisiya) || 0;
-      
+
       totalAvans += avans;
       totalInvestisiya += investisiya;
-      
-      // Əgər avans və ya investisiya varsa, maliyyə verilib sayılır
+
       if (avans > 0 || investisiya > 0) {
         financeGivenCount++;
       }
     });
 
-    // Statistik məlumatları yenilə
     totalDoctorsElement.textContent = doctors.length;
     totalAvansElement.textContent = totalAvans.toFixed(2);
     totalInvestElement.textContent = totalInvestisiya.toFixed(2);
     financeGivenCountElement.textContent = financeGivenCount;
-    
-    // Aşağıdaki cəmləri də yenilə
+
     totalGivenElement.textContent = totalAvans.toFixed(2);
     totalReceivedElement.textContent = totalInvestisiya.toFixed(2);
   }
 
+  function renderDoctors(doctors) {
+    if (doctors.length === 0) {
+      doctorsContainer.innerHTML = '<div class="text-center text-muted">Həkim tapılmadı</div>';
+      calculateStatistics([]);
+      return;
+    }
+
+    let html = '';
+    doctors.forEach(doctor => {
+      const debtColor = doctor.previous_debt < 0 ? '#00af0fff' : '#e9042eff';
+      const avansValue = doctor.avans > 0 ? doctor.avans.toFixed(2) : '';
+      const investValue = doctor.investisiya > 0 ? doctor.investisiya.toFixed(2) : '';
+
+      html += `
+        <div class="row align-items-center mb-2 p-2 rounded" style="background-color: #1f2937;">
+          <div class="col-md-3">
+            <button type="button" class="btn btn w-100 text-start" style="color: #ebebebff;">${doctor.ad}</button>
+          </div>
+          <div class="col-md-2 fw-bold text-center" style="color: ${debtColor};">
+            ${doctor.previous_debt.toFixed(2)}
+          </div>
+          <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
+            <span class="fw-bold" style="color: #ebebebff;">Avans:</span>
+            <input type="number" class="form-control avans-input" style="max-width: 120px;" value="${avansValue}" readonly />
+          </div>
+          <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
+            <span class="fw-bold" style="color: #ebebebff;">İnvestisiya:</span>
+            <input type="number" class="form-control investisiya-input" style="max-width: 120px;" value="${investValue}" readonly />
+          </div>
+        </div>
+      `;
+    });
+
+    doctorsContainer.innerHTML = html;
+    calculateStatistics(doctors);
+  }
+
   function filterDoctors() {
-    const searchTerm = doctorSearch.value.toLowerCase().trim();
     const regionId = regionSelect.value;
+    const searchTerm = doctorSearch.value.toLowerCase().trim();
 
     if (!regionId) {
       alert('Zəhmət olmasa bölgə seçin!');
@@ -263,110 +306,49 @@ document.addEventListener("DOMContentLoaded", function () {
 
     doctorsContainer.innerHTML = 'Yüklənir...';
 
-    fetch(ajaxUrl + '?region_id=' + regionId)
+    fetch(`${ajaxUrl}?region_id=${regionId}`)
       .then(response => response.json())
       .then(data => {
-        allDoctors = data.doctors; // Bütün həkimləri saxla
-        
+        allDoctors = data.doctors || [];
+
         let filteredDoctors = allDoctors;
-        
-        // Həkim adına görə filter
         if (searchTerm) {
-          filteredDoctors = allDoctors.filter(doctor => 
-            doctor.ad.toLowerCase().includes(searchTerm)
-          );
+          filteredDoctors = allDoctors.filter(d => d.ad.toLowerCase().includes(searchTerm));
         }
 
-        if (filteredDoctors.length > 0) {
-          let html = '';
-          filteredDoctors.forEach(doctor => {
-            const debtColor = doctor.previous_debt < 0 ? '#00af0fff' : '#e9042eff';
-            
-            html += `
-              <div class="row align-items-center mb-2 p-2 rounded" style="background-color:  #1f2937;">
-                <div class="col-md-3">
-                  <button type="button" class="btn btn w-100 text-start"style="color:  #ebebebff;">${doctor.ad}</button>
-                </div>
-                <div class="col-md-2 fw-bold text-center" style="color: ${debtColor};">
-                  ${doctor.previous_debt.toFixed(2)}
-                </div>
-                <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
-                  <span class="fw-bold" style="color:  #ebebebff;">Avans:</span>
-                  <input type="number" class="form-control avans-input" style="max-width: 120px;" value="${doctor.avans.toFixed(2)}" readonly />
-                </div>
-                <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
-                  <span class="fw-bold" style="color:  #ebebebff;">İnvestisiya:</span>
-                  <input type="number" class="form-control investisiya-input" style="max-width: 120px;" value="${doctor.investisiya.toFixed(2)}" readonly />
-                </div>
-              </div>
-            `;
-          });
-          doctorsContainer.innerHTML = html;
-          
-          // Statistikaları hesabla
-          calculateStatistics(filteredDoctors);
-        } else {
-          doctorsContainer.innerHTML = '<div class="text-center text-muted">Həkim tapılmadı</div>';
-          calculateStatistics([]);
-        }
+        renderDoctors(filteredDoctors);
       })
-      .catch((error) => {
+      .catch(error => {
         console.error('Error:', error);
         doctorsContainer.innerHTML = '<div class="text-center text-danger">Xəta baş verdi</div>';
         calculateStatistics([]);
       });
   }
 
+  // Export Excel funksiyasını qlobal səviyyəyə əlavə et
+  window.exportExcel = function() {
+    if (!regionSelect.value) {
+      alert('Zəhmət olmasa bölgə seçin!');
+      return;
+    }
+
+    const doctorsToExport = allDoctors.filter(d => d.avans > 0 || d.investisiya > 0);
+
+    if (doctorsToExport.length === 0) {
+      alert("Maliyyəsi olan həkim yoxdur!");
+      return;
+    }
+
+    const region = regionSelect.value;
+    window.location.href = `{% url 'finance_export_excel' %}?region=${region}`;
+  };
+
   // Event listeners
   regionSelect.addEventListener("change", filterDoctors);
-  filterBtn.addEventListener("click", filterDoctors);
-  
-  // Enter düyməsi ilə də filter et
-  doctorSearch.addEventListener("keypress", function(e) {
-    if (e.key === 'Enter') {
-      filterDoctors();
-    }
-  });
-
-  // Real-time axtarış (istəsəniz bu hissəni silə bilərsiniz)
   doctorSearch.addEventListener("input", function() {
-    if (allDoctors.length > 0) {
-      const searchTerm = this.value.toLowerCase().trim();
-      const filteredDoctors = allDoctors.filter(doctor => 
-        doctor.ad.toLowerCase().includes(searchTerm)
-      );
-      
-      if (filteredDoctors.length > 0) {
-        let html = '';
-        filteredDoctors.forEach(doctor => {
-          const debtColor = doctor.previous_debt < 0 ? '#00af0fff' : '#e9042eff';
-          
-          html += `
-            <div class="row align-items-center mb-2 p-2 rounded" style="background-color: #ebebebff;">
-              <div class="col-md-3">
-                <button type="button" class="btn btn w-100 text-start">${doctor.ad}</button>
-              </div>
-              <div class="col-md-2 fw-bold text-center" style="color: ${debtColor};">
-                ${doctor.previous_debt.toFixed(2)}
-              </div>
-              <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
-                <span class="text-dark fw-bold">Avans:</span>
-                <input type="number" class="form-control avans-input" style="max-width: 120px;" value="${doctor.avans.toFixed(2)}" readonly />
-              </div>
-              <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
-                <span class="text-dark fw-bold">İnvestisiya:</span>
-                <input type="number" class="form-control investisiya-input" style="max-width: 120px;" value="${doctor.investisiya.toFixed(2)}" readonly />
-              </div>
-            </div>
-          `;
-        });
-        doctorsContainer.innerHTML = html;
-        calculateStatistics(filteredDoctors);
-      } else {
-        doctorsContainer.innerHTML = '<div class="text-center text-muted">Həkim tapılmadı</div>';
-        calculateStatistics([]);
-      }
-    }
+    const searchTerm = this.value.toLowerCase().trim();
+    const filteredDoctors = allDoctors.filter(d => d.ad.toLowerCase().includes(searchTerm));
+    renderDoctors(filteredDoctors);
   });
 });
 </script>

@@ -25,6 +25,7 @@ from django.db.models import Max
 import urllib.parse
 from datetime import date, timedelta
 from django.core.paginator import Paginator
+import json
 
 
 def doctors_list(request):
@@ -704,8 +705,6 @@ def finance_view(request):
                 elif p["payment_type"] == "İnvest":
                     doctor.investisiya = p["total"] or Decimal("0.00")
             
-            # BURADA BORC HESABLANMASINI ƏLAVƏ EDİN
-            # Məsələn:
             doctor.previous_debt = Decimal("0.00")  # Öz borc hesablama məntiqinizə uyğun
 
     return render(request, "finance.html", {
@@ -713,6 +712,81 @@ def finance_view(request):
         "doctors": doctors,
         "selected_region": selected_region,
     })
+
+
+# views.py
+def finance_export_excel(request):
+    selected_region = request.GET.get("region")
+    
+    if not selected_region or selected_region == "None":
+        return HttpResponse("Bölgə seçilməyib", status=400)
+    
+    try:
+        selected_region = int(selected_region)
+    except ValueError:
+        return HttpResponse("Yanlış bölgə ID-si", status=400)
+    
+    today = date.today()
+    current_month = today.month
+    current_year = today.year
+
+    doctors = Doctors.objects.filter(bolge_id=selected_region).order_by("id")
+    export_data = []
+
+    for doctor in doctors:
+        payments = Payment_doctor.objects.filter(
+            doctor=doctor,
+            area_id=selected_region,
+            date__month=current_month,
+            date__year=current_year
+        ).values("payment_type").annotate(total=Sum("pay"))
+
+        avans = Decimal("0.00")
+        investisiya = Decimal("0.00")
+
+        for p in payments:
+            if p["payment_type"] == "Avans":
+                avans = p["total"] or Decimal("0.00")
+            elif p["payment_type"] == "İnvest":
+                investisiya = p["total"] or Decimal("0.00")
+
+        if avans > 0 or investisiya > 0:
+            export_data.append({
+                "doctor_name": doctor.ad,
+                "previous_debt": Decimal("0.00"),
+                "avans": avans,
+                "investisiya": investisiya,
+                "bolge": doctor.bolge.region_name if doctor.bolge else ""
+            })
+
+    # Excel yaradılır
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Finance Report"
+
+    headers = ["Bölgə", "Həkim", "Borc vəziyyəti", "Avans", "İnvestisiya"]
+    ws.append(headers)
+
+    for item in export_data:
+        ws.append([
+            item["bolge"],
+            item["doctor_name"],
+            float(item["previous_debt"]),
+            float(item["avans"]),
+            float(item["investisiya"])
+        ])
+
+    # Sütun genişliklərini tənzimləyirik
+    for col_num, col_title in enumerate(headers, 1):
+        ws.column_dimensions[get_column_letter(col_num)].width = max(len(col_title)+2, 15)
+
+    # Excel faylı üçün response
+    region_name = export_data[0]["bolge"] if export_data else "Report"
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    filename = f"{region_name} maliyəsi.xlsx"
+    response['Content-Disposition'] = f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
+    wb.save(response)
+    return response
 
 
 def create_razilasma(request):
@@ -1100,6 +1174,11 @@ def export_region_excel(request):
         row.append(total)
 
         ws.append(row)
+        total_value = row[-1]  # son sütun - Total
+        if total_value > 0:
+            total_cell = ws.cell(row=ws.max_row, column=len(headers))
+            total_cell.font = Font(bold=True)
+
         idx += 1
 
     # 📈 Cəmlər
@@ -1110,7 +1189,6 @@ def export_region_excel(request):
     overall_total = 0
 
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=start_drug_col, max_col=total_col_idx):
-        
         for i, cell in enumerate(row[:-1]):
             try:
                 drug_totals[i] += int(cell.value or 0)
@@ -1122,16 +1200,24 @@ def export_region_excel(request):
             pass
 
     total_row_idx = ws.max_row + 1
-    ws.cell(row=total_row_idx, column=1, value="Cəmi")
-    for i, total in enumerate(drug_totals):
-      
-        ws.cell(row=total_row_idx, column=start_drug_col + i, value=total)
-    ws.cell(row=total_row_idx, column=total_col_idx, value=overall_total)
+    ws.cell(row=total_row_idx, column=5, value="Cəmi")
 
-    for cell in ws[total_row_idx]:
+    for i, total in enumerate(drug_totals):
+        cell = ws.cell(row=total_row_idx, column=start_drug_col + i, value=total)
         cell.border = thin_border
-        cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal="center")
+
+       
+        if total > 0:
+            cell.font = Font(bold=True)
+        else:
+            cell.font = Font(bold=False)
+
+    # Ümumi total xanasi
+    overall_cell = ws.cell(row=total_row_idx, column=total_col_idx, value=overall_total)
+    overall_cell.border = thin_border
+    overall_cell.alignment = Alignment(horizontal="center")
+    overall_cell.font = Font(bold=True if overall_total > 0 else False)
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     filename = f"{region.region_name} Qeydiyyatı.xlsx"

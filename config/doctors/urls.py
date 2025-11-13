@@ -25,6 +25,8 @@ urlpatterns = [
     path('razilasma/', views.create_razilasma, name='razilasma'),
     path('datasiya/', views.create_datasiya, name='datasiya'),
     path('finance_view/', views.finance_view, name='finance_view'),
+    path('finance/export-excel/', views.finance_export_excel, name='finance_export_excel'),
+    
     path('ajax/doctors/', views.ajax_doctors_by_region, name='ajax_doctors_by_region'),
     path('ajax/add-data/', views.ajax_doctors_by_region, name='ajax_doctors_by_region'),
     path('ajax/region-data/', views.ajax_region_data, name='ajax_region_data'),
