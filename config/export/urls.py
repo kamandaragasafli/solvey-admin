@@ -14,6 +14,7 @@ urlpatterns = [
     path("import_debts/", views.import_debts_from_excel, name="import_debts"),
     path("import-recipes/",views.import_recipes_from_excel, name="import_recipes"),
     path("import-finans/",views.import_avn_inv_from_excel, name="import_finance"),
+    path("import-sales/",views.import_sales_from_excel, name="excel_sale_file"),
     path('create-backup/', views.create_backup, name='create_backup'),
     path('restore-backup/<int:backup_id>/', views.restore_backup, name='restore_backup'),
     path('admin-recipe-del/<int:id>/', views.admin_recipes_delete, name='admin_recipe_del'),

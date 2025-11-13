@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
-from payment.models import Payment_doctor
+from payment.models import Payment_doctor, Sale
 from medicine.models import Medical
 from regions.models import Region, Hospital
 from doctors.models import Doctors, RecipeDrug, Recipe
@@ -642,6 +642,98 @@ def import_recipes_from_excel(request):
 
     return render(request, "admin.html")
 
+
+def import_sales_from_excel(request):
+    if request.method == "POST":
+        excel_file = request.FILES.get("excel_sale_file")
+        selected_date = request.POST.get("selected_date")
+        
+        if not excel_file:
+            messages.error(request, "Fayl seçilməyib.")
+            return redirect("admin")
+            
+        if not selected_date:
+            messages.error(request, "Tarix seçilməyib.")
+            return redirect("admin")
+
+        try:
+            # Tarixi düzgün formatda al
+            import_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+            
+            df = pd.read_excel(excel_file)
+            added_count = 0
+            not_found_regions = set()
+            not_found_drugs = set()
+
+            # Bölgələri və dərmanları əvvəlcədən bazadan çək
+            region_map = {}
+            for region in Region.objects.all():
+                region_name = region.region_name.strip().lower().replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c")
+                region_map[region_name] = region
+
+            drug_map = {}
+            for drug in Medical.objects.all():
+                drug_name = drug.med_name.strip().lower().replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c")
+                drug_map[drug_name] = drug
+
+            # Excel sütunlarını emal et (birinci sütun O/T/NAIR 2025, son sütun TOTAL)
+            for _, row in df.iterrows():
+                # İlk sütun - dərman adı
+                drug_name = str(row.iloc[0]).strip()
+                
+                if not drug_name or drug_name == "nan" or drug_name == "TOTAL":
+                    continue
+
+                # Dərmanı tap
+                drug_key = drug_name.strip().lower().replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c")
+                
+                if drug_key not in drug_map:
+                    not_found_drugs.add(drug_name)
+                    continue
+
+                drug = drug_map[drug_key]
+
+                # Bölgələr üzrə satış məlumatlarını emal et
+                for i in range(1, len(df.columns) - 1):  # Birinci sütun dərman adı, son sütun TOTAL
+                    region_name = df.columns[i]
+                    region_name_clean = region_name.strip().lower().replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c")
+                    
+                    # Bölgəni tap
+                    if region_name_clean not in region_map:
+                        not_found_regions.add(region_name)
+                        continue
+
+                    region = region_map[region_name_clean]
+
+                    # Satış miqdarını al
+                    try:
+                        quantity_str = str(row.iloc[i]).replace(",", ".").strip()
+                        quantity = int(float(quantity_str)) if quantity_str and quantity_str != "nan" else 0
+                    except (ValueError, TypeError):
+                        quantity = 0
+
+                    # Satış məlumatını yadda saxla
+                    if quantity > 0:
+                        Sale.objects.create(
+                            region=region,
+                            drug=drug,
+                            quantity=quantity,
+                            sale_date=import_date
+                        )
+                        added_count += 1
+
+            messages.success(request, f"{added_count} satış məlumatı {import_date} tarixinə uğurla əlavə olundu.")
+            if not_found_regions:
+                messages.warning(request, f"Tapılmayan bölgələr: {', '.join(sorted(not_found_regions))}")
+            if not_found_drugs:
+                messages.warning(request, f"Tapılmayan dərmanlar: {', '.join(sorted(not_found_drugs))}")
+
+        except Exception as e:
+            messages.error(request, f"Xəta baş verdi: {str(e)}")
+
+        return redirect("admin")
+
+    return render(request, "admin.html")
 
 def admin_recipes_delete(request, id):
     recipe = get_object_or_404(RecipeDrug, id=id)
