@@ -58,10 +58,10 @@ class MonthlyDoctorReport(models.Model):
     borc = models.FloatField(default=0)
     avans = models.FloatField(default=0)
     investisiya = models.FloatField(default=0)
+    geriqaytarma = models.FloatField(default=0)
     hesablanan_miqdar = models.FloatField(default=0)
     hekimden_silinen = models.FloatField(default=0)
     yekun_borc = models.FloatField(default=0)
-
     recipe_total_drugs = models.IntegerField(default=0)
     recipe_drugs_list = models.TextField(blank=True)  
 
