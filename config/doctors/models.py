@@ -34,8 +34,19 @@ class Doctors(models.Model):
         ('NE', 'NE'), ('PE', 'PE'), ('EN', 'EN'), ('GN', 'GN'),
         ('DE', 'DE'), ('OR', 'OR'), ('PS', 'PS'), ('UR', 'UR'),
         ('ON', 'ON'), ('RE', 'RE'), ('AL', 'AL'), ('END', 'END'),
-        ('GA', 'GA'), ('LOR', 'LOR'), ('DV', 'DV'), ('NP', 'NP')
+        ('GA', 'GA'), ('LOR', 'LOR'), ('DV', 'DV'), ('NP', 'NP'),
+        # əlavə ixtisaslar
+        ('AN', 'AN'), ('AN/UR', 'AN/UR'), ('BE', 'BE'), ('CU', 'CU'),
+        ('DZ', 'DZ'), ('EN-DİA', 'EN-DİA'), ('EN-RN', 'EN-RN'), ('EN-Z', 'EN-Z'),
+        ('FL', 'FL'), ('FT', 'FT'), ('FZ', 'FZ'), ('GAS', 'GAS'),
+        ('GE', 'GE'), ('HE', 'HE'), ('IN', 'IN'), ('KA', 'KA'),
+        ('NEF', 'NEF'), ('NP-C', 'NP-C'), ('OF', 'OF'), ('PE-TE', 'PE-TE'),
+        ('PED', 'PED'), ('PU', 'PU'), ('PUL', 'PUL'), ('RA', 'RA'),
+        ('RE-PE', 'RE-PE'), ('REV', 'REV'), ('RV', 'RV'), ('SU-TP', 'SU-TP'),
+        ('TP', 'TP'), ('UR-AN', 'UR-AN'), ('URO', 'URO'), ('URO-AND', 'URO-AND'),
+        ('İN', 'İN')
     ]
+
 
     ixtisas = models.CharField(max_length=100, choices=İXTİSAS_SECIMI)
     kategoriya = models.CharField(max_length=10, choices=KATEQORIYA_SECIMI)

@@ -902,6 +902,7 @@ def ajax_region_data(request):
     date_range = request.GET.get("date_range")
     name_filter = request.GET.get("name_filter")
     month = request.GET.get("month")
+    search = request.GET.get("search")  # ƏLAVƏ EDİLDİ
     page = request.GET.get("page", 1)
     per_page = 30
 
@@ -912,6 +913,15 @@ def ajax_region_data(request):
 
     # Əsas queryset
     doctors = Doctors.objects.filter(bolge=region_id).order_by("id")
+
+    # AXTARIŞ FUNKSİONALLIĞI - ƏLAVƏ EDİLDİ
+    if search:
+        doctors = doctors.filter(
+            Q(ad__icontains=search) |
+            Q(barkod__icontains=search) |
+            Q(bolge__region_name__icontains=search)
+        )
+
 
     # Name filter
     if name_filter == 'with_dannisi':
@@ -989,33 +999,31 @@ def ajax_region_data(request):
         last_payment = doctor.odenisler.order_by('-date').first()
 
         if last_payment:
-            odeme_type = last_payment.payment_type.lower()  # kiçik hərflərə çevir
+            odeme_type = last_payment.payment_type.lower()
             if odeme_type == "avans":
-                odeme_class = "text-primary"  # göy
+                odeme_class = "text-primary"
             elif odeme_type == "investisiya":
-                odeme_class = "text-warning"  # sarı
+                odeme_class = "text-warning"
             elif odeme_type == "geriqaytarma":
-                odeme_class = "text-danger"   # qırmızı
+                odeme_class = "text-danger"
             else:
-                odeme_class = "text-success"  # yaşıl
+                odeme_class = "text-success"
 
             odeme_amount = float(last_payment.pay)
             odeme_date = last_payment.date.strftime('%Y-%m-%d')
             odeme_type_json = last_payment.payment_type.lower()
         else:
-            odeme_class = "text-success"  # heçnə yoxdursa yaşıl
+            odeme_class = "text-success"
             odeme_amount = 0
             odeme_date = None
             odeme_type_json = ""
 
-        # JSON olaraq göndər
         odeme = {
             "amount": odeme_amount,
             "type": odeme_type_json,
             "class": odeme_class,
             "date": odeme_date
         }
-
 
         result.append({
             "bolge": doctor.bolge.region_name,
@@ -1043,7 +1051,8 @@ def ajax_region_data(request):
         "current_page": current_page.number,
         "has_previous": current_page.has_previous(),
         "has_next": current_page.has_next(),
-        "total_results": len(result)
+        "total_results": len(result),
+        "debug_search": search  # Debug üçün
     })
 
 def export_region_excel(request):
@@ -1061,20 +1070,12 @@ def export_region_excel(request):
     except Region.DoesNotExist:
         return HttpResponse("Bölgə tapılmadı.", status=404)
 
-    # Əsas queryset
-    doctors = (
-        Doctors.objects
-        .filter(bolge=region)
-        .select_related('bolge')
-        .prefetch_related('odenisler')
-    )
+    # 🔹 Əsas queryset
+    doctors = Doctors.objects.filter(bolge=region).select_related('bolge').prefetch_related('odenisler')
 
     # 🔹 Axtarış filteri
     if search_term:
-        doctors = doctors.filter(
-            Q(ad__icontains=search_term) |
-            Q(barkod__icontains=search_term)
-        )
+        doctors = doctors.filter(Q(ad__icontains=search_term) | Q(barkod__icontains=search_term))
 
     # 🔹 Dannisi filteri
     if name_filter == 'with_dannisi':
@@ -1088,39 +1089,57 @@ def export_region_excel(request):
         try:
             if "to" in date_range:
                 start_str, end_str = date_range.split("to")
-                start_date = datetime.strptime(start_str.strip(), '%Y-%m-%d').date()
-                end_date = datetime.strptime(end_str.strip(), '%Y-%m-%d').date()
             elif " - " in date_range:
                 start_str, end_str = date_range.split(" - ")
-                start_date = datetime.strptime(start_str.strip(), '%Y-%m-%d').date()
-                end_date = datetime.strptime(end_str.strip(), '%Y-%m-%d').date()
+            start_date = datetime.strptime(start_str.strip(), '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_str.strip(), '%Y-%m-%d').date()
         except ValueError:
             pass
 
-    drugs = list(Medical.objects.all().order_by('id'))
+    # 🔹 Ay filteri
+    if month:
+        try:
+            month_int = int(month)
+        except ValueError:
+            month_int = None
+    else:
+        month_int = None
 
-    recipe_filter = Q(recipe__region=region)
-    if start_date and end_date:
-        recipe_filter &= Q(recipe__date__range=(start_date, end_date))
-    elif month:
-        recipe_filter &= Q(recipe__date__month=month)
 
-    counts_qs = (
-        RecipeDrug.objects
-        .filter(recipe_filter)
-        .values('recipe__dr_id', 'drug_id')
-        .annotate(total=Sum('number'))
+    doctor_ids = doctors.values_list('id', flat=True)
+
+    # RecipeDrug aggregation + tarix filteri
+    counts_qs = RecipeDrug.objects.filter(
+        recipe__dr__in=doctor_ids,
+        recipe__region=region
     )
 
+    if start_date and end_date:
+        counts_qs = counts_qs.filter(recipe__date__range=(start_date, end_date))
+    elif month:
+        counts_qs = counts_qs.filter(recipe__date__month=month)
+
+    counts_qs = counts_qs.values('recipe__dr', 'drug_id').annotate(total=Sum('number'))
+
+    # total>0 olan həkimləri tap
+    valid_doctor_ids = set(row['recipe__dr'] for row in counts_qs if (row['total'] or 0) > 0)
+
+    # Həkim queryset-i yalnız valid olanlarla
+    doctors = doctors.filter(id__in=valid_doctor_ids)
+
+    # Həkim -> dərman -> sayı mapping
     doctor_drug_counts = defaultdict(dict)
     doctor_total_counts = defaultdict(int)
-
     for row in counts_qs:
-        dr_id = row['recipe__dr_id']
+        dr_id = row['recipe__dr']
         drug_id = row['drug_id']
         total = row['total'] or 0
-        doctor_drug_counts[dr_id][drug_id] = total
-        doctor_total_counts[dr_id] += total
+        if dr_id in valid_doctor_ids:
+            doctor_drug_counts[dr_id][drug_id] = total
+            doctor_total_counts[dr_id] += total
+
+
+    drugs = list(Medical.objects.all().order_by('id'))
 
     # 📊 Excel yaradılması
     wb = Workbook()

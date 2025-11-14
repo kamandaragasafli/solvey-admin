@@ -453,95 +453,97 @@ def export_excel_ayliq_region(request):
     ws = wb.active
     ws.title = "Aylıq Region Qeydiyyat"
 
-     # Stil tərifləri
+    # Stil tərifləri
     bold_font = Font(bold=True, name="Calibri", size=12)
     calibri_font = Font(name="Calibri", size=11)
-    bottom_alignment = Alignment(horizontal="center", vertical="bottom", text_rotation= 90 )
+    bottom_alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=90)
     center_alignment = Alignment(horizontal="center", vertical="center")
     thin_border = Border(
-        left=Side(style="thin"), 
-        right=Side(style="thin"), 
-        top=Side(style="thin"), 
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
         bottom=Side(style="thin")
-    )
-    medium_border = Border(
-        left=Side(style="medium"),
-        right=Side(style="medium"),
-        top=Side(style="medium"),
-        bottom=Side(style="medium")
     )
     header_fill = PatternFill(start_color="8ab1e3", end_color="8ab1e3", fill_type="solid")
 
-
     # Yuxarıda tarix
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(all_drug)+3)
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(all_drug) + 3)
     cell = ws.cell(row=1, column=1)
     cell.value = f"Tarix: {today}"
     cell.font = bold_font
     cell.alignment = center_alignment
 
-
     # Header
-    headers = ["Bölgə"] + [drug.med_name for drug in all_drug] + ["Gündəlik Qeydiyyat", "Aylıq Qeydiyyat"]
+    headers = ["№", "Bölgə"] + [drug.med_name for drug in all_drug] + ["Gündəlik Qeydiyyat", "Aylıq Qeydiyyat"]
     for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=3, column=col_num)  # Header 3-cü sətirdə
+        cell = ws.cell(row=3, column=col_num)
         cell.value = header
         cell.font = bold_font
-        cell.alignment = bottom_alignment 
+        cell.alignment = bottom_alignment
         cell.border = thin_border
         cell.fill = header_fill
-        if col_num == 1 or col_num > len(all_drug):
-            cell.fill = header_fill
 
     # Məzmun
-    for row_num, region in enumerate(diger_region, start=4):
-        # Region adı bold və çərçivəli
+    for index, region in enumerate(diger_region, start=1):
+        row_num = index + 3  # 3-cü sətirdən sonra yazmağa başlayırıq
+
+        # № sütunu
         cell = ws.cell(row=row_num, column=1)
+        cell.value = index
+        cell.font = bold_font
+        cell.alignment = center_alignment
+        cell.border = thin_border
+        cell.fill = header_fill
+
+        # Bölgə sütunu
+        cell = ws.cell(row=row_num, column=2)
         cell.value = region.region_name
         cell.font = bold_font
         cell.alignment = center_alignment
+        cell.border = thin_border
         cell.fill = header_fill
 
-        cell.border = thin_border
-
         # Dərmanlar
-        for col_num, drug in enumerate(all_drug, start=2):
+        for col_num, drug in enumerate(all_drug, start=3):
             cell = ws.cell(row=row_num, column=col_num)
             cell.value = region_drug_counts_daily[region.region_name][drug.med_name]
             cell.font = calibri_font
             cell.alignment = center_alignment
-
             cell.border = thin_border
 
-        # Günlük və aylıq cəmlər - fonlu, bold, böyük
-        for i, value in enumerate([region_daily_totals[region.region_name], region_monthly_totals[region.region_name]], start=len(all_drug)+2):
+        # Günlük və aylıq cəmlər
+        for i, value in enumerate([region_daily_totals[region.region_name],
+                                region_monthly_totals[region.region_name]],
+                                start=len(all_drug) + 3):
             cell = ws.cell(row=row_num, column=i)
             cell.value = value
             cell.font = bold_font
             cell.alignment = center_alignment
-
             cell.border = thin_border
             cell.fill = header_fill
 
     # Aşağıda cəm
-    total_row = len(diger_region) + 3
-    ws.cell(row=total_row, column=1).value = "Cəm"
-    ws.cell(row=total_row, column=1).font = bold_font
-    ws.cell(row=total_row, column=1).alignment = center_alignment
-    ws.cell(row=total_row, column=1).border = thin_border
-    ws.cell(row=total_row, column=1).fill = header_fill
+    total_row = len(diger_region) + 4
 
-    for col_num, drug in enumerate(all_drug, start=2):
+    cell = ws.cell(row=total_row, column=2)
+    cell.value = "Cəm"
+    cell.font = Font(bold=True, name="Calibri", color="FFFFFF", size=12)
+    cell.alignment = center_alignment
+    cell.border = thin_border
+    cell.fill = PatternFill(start_color="1f4e78", end_color="1f4e78", fill_type="solid")
+
+
+    for col_num, drug in enumerate(all_drug, start=3):
         cell = ws.cell(row=total_row, column=col_num)
         cell.value = sum(region_drug_counts_daily[reg.region_name][drug.med_name] for reg in diger_region)
-        cell.font = calibri_font
+        cell.font = bold_font
         cell.alignment = center_alignment
         cell.border = thin_border
         cell.fill = header_fill
-        cell.font = bold_font
 
-    # Günlük və aylıq toplamlar
-    for i, value in enumerate([sum(region_daily_totals.values()), sum(region_monthly_totals.values())], start=len(all_drug)+2):
+    # Günlük və aylıq cəmlərin ümumisi
+    for i, value in enumerate([sum(region_daily_totals.values()), sum(region_monthly_totals.values())],
+                            start=len(all_drug) + 3):
         cell = ws.cell(row=total_row, column=i)
         cell.value = value
         cell.font = bold_font
@@ -549,6 +551,7 @@ def export_excel_ayliq_region(request):
         cell.border = thin_border
         cell.fill = header_fill
 
+    # Excel faylını göndər
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
