@@ -350,6 +350,19 @@
 
 
 <script>
+// Debounce funksiyası
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 function getCookie(name) {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
@@ -358,8 +371,29 @@ function getCookie(name) {
 
 let currentPage = 1;
 let totalPages = 1;
+let abortController = null;
+
+function showLoading() {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="25" class="text-center py-4">
+        <div class="spinner-border text-primary spinner-border-sm" role="status">
+          <span class="visually-hidden">Yüklənir...</span>
+        </div>
+        <span class="ms-2 text-muted">Axtarılır...</span>
+      </td>
+    </tr>`;
+}
 
 function loadRegionData(regionId, page = 1) {
+  // Əvvəlki requesti ləğv et
+  if (abortController) {
+    abortController.abort();
+  }
+  
+  abortController = new AbortController();
+
   const dateRangeInput = document.getElementById('date-range');
   const dateRange = dateRangeInput ? dateRangeInput.value : "";
 
@@ -382,12 +416,22 @@ function loadRegionData(regionId, page = 1) {
   if (searchTerm) params.append('search', searchTerm);
   if (month) params.append('month', month);
 
-  fetch(`/doctors/ajax/region-data/?${params.toString()}`)
+  // Loading state
+  showLoading();
+
+  fetch(`/doctors/ajax/region-data/?${params.toString()}`, {
+    signal: abortController.signal,
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'Cache-Control': 'no-cache'
+    }
+  })
     .then(response => {
       if (!response.ok) throw new Error("Server cavabı düzgün deyil");
       return response.json();
     })
     .then(data => {
+      abortController = null;
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = "";
 
@@ -395,7 +439,11 @@ function loadRegionData(regionId, page = 1) {
       totalPages = data.total_pages || 1;
 
       if (!data.results || data.results.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="25" class="text-muted fst-italic">Seçilən bölgəyə uyğun məlumat tapılmadı.</td></tr>`;
+        const noResultsText = searchTerm 
+          ? `"${searchTerm}" üçün nəticə tapılmadı`
+          : 'Seçilən bölgəyə uyğun məlumat tapılmadı';
+        
+        tbody.innerHTML = `<tr><td colspan="30" class="fst-italic text-center py-4">${noResultsText}</td></tr>`;
         updatePagination();
         return;
       }
@@ -408,28 +456,26 @@ function loadRegionData(regionId, page = 1) {
         drugNames.forEach(drugName => {
           const drugObj = item.drugs.find(d => d.name === drugName);
           const count = drugObj ? drugObj.count : 0;
-          const cellClass = count > 0 ? 'style="background-color: #0f172a; font-weight: bold;"' : '';
+          const cellClass = count > 0 ? 'class="fw-bold" style="background-color: #111d35ff ;"' : '';
           drugCells += `<td ${cellClass}>${count}</td>`;
         });
 
-        let odemeClass = "text-success"; // default yaşıl
+        let odemeClass = "text-success";
         if (item.odeme.type === "avans") odemeClass = "text-primary";
         else if (item.odeme.type === "investisiya") odemeClass = "text-warning";
         else if (item.odeme.type === "geriqaytarma") odemeClass = "text-danger";
 
         const odemeCell = `
-          <td class="${odemeClass}">
+          <td class="${odemeClass} fw-semibold">
             ${parseFloat(item.odeme.amount).toFixed(2)}
-            ${item.odeme.date ? `<small class="d-block text-light">${item.odeme.date}</small>` : ""}
+            ${item.odeme.date ? `<small class="d-block text-secondary">${item.odeme.date}</small>` : ""}
           </td>`;
-
-
 
         const globalIndex = (currentPage - 1) * 10 + index + 1;
 
         const row = `
           <tr>
-            <td>${globalIndex}</td>
+            <td class="fw-medium">${globalIndex}</td>
             <td>${item.bolge}</td>
             <td>
               <a href="/doctors/details/${item.doctor_id}/" class="text-primary fw-semibold text-decoration-none">
@@ -437,9 +483,9 @@ function loadRegionData(regionId, page = 1) {
               </a>
             </td>
             ${odemeCell}
-            <td>${item.barcode}</td>
+            <td class="font-monospace">${item.barcode}</td>
             ${drugCells}
-            <td class="fw-bold">${parseFloat(item.total)}</td>
+            <td class="fw-bold text-success">${parseFloat(item.total)}</td>
           </tr>`;
 
         tbody.insertAdjacentHTML('beforeend', row);
@@ -448,14 +494,17 @@ function loadRegionData(regionId, page = 1) {
       updatePagination();
     })
     .catch(error => {
+      if (error.name === 'AbortError') {
+        console.log('Request cancelled');
+        return;
+      }
       console.error("Xəta baş verdi:", error);
       const tbody = document.getElementById('table-body');
-      tbody.innerHTML = `<tr><td colspan="25" class="text-danger">Xəta baş verdi.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="25" class="text-danger text-center py-4">Xəta baş verdi: ${error.message}</td></tr>`;
       updatePagination();
     });
 }
 
-// Pagination dizaynlı
 function updatePagination() {
   let paginationContainer = document.getElementById('pagination-container');
   
@@ -472,22 +521,51 @@ function updatePagination() {
   }
 
   let buttons = "";
-  for (let i = 1; i <= totalPages; i++) {
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  // Əvvəlki səhifə
+  if (startPage > 1) {
+    buttons += `<li class="page-item"><button class="page-link" onclick="changePage(1)">1</button></li>`;
+    if (startPage > 2) {
+      buttons += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+  }
+
+  // Səhifə nömrələri
+  for (let i = startPage; i <= endPage; i++) {
     buttons += `
       <li class="page-item ${currentPage === i ? 'active' : ''}">
         <button class="page-link" onclick="changePage(${i})">${i}</button>
       </li>`;
   }
 
+  // Sonrakı səhifə
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) {
+      buttons += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+    buttons += `<li class="page-item"><button class="page-link" onclick="changePage(${totalPages})">${totalPages}</button></li>`;
+  }
+
   paginationContainer.innerHTML = `
     <nav>
       <ul class="pagination pagination-sm mb-0">
         <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-          <button class="page-link" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&laquo;</button>
+          <button class="page-link" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+            <i class="bi bi-chevron-left"></i>
+          </button>
         </li>
         ${buttons}
         <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-          <button class="page-link" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>&raquo;</button>
+          <button class="page-link" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+            <i class="bi bi-chevron-right"></i>
+          </button>
         </li>
       </ul>
     </nav>`;
@@ -500,14 +578,6 @@ function changePage(page) {
   if (regionId) loadRegionData(regionId, page);
 }
 
-// Axtarış bütün region üzrə
-document.getElementById('searchInput').addEventListener('input', () => {
-  const regionSelect = document.getElementById('region-select');
-  const regionId = regionSelect.value;
-  if (regionId) loadRegionData(regionId, 1); // hər zaman səhifə 1-dən başlayır
-});
-
-// Cari ay, datepicker və digər event-lər əvvəlki kimi qalır
 function initializeDateRangePicker() {
   const dateRangeInput = document.getElementById('date-range');
   if (dateRangeInput && typeof $ !== 'undefined' && $.fn.daterangepicker) {
@@ -527,7 +597,8 @@ function initializeDateRangePicker() {
       },
       startDate: moment().startOf('month'),
       endDate: moment().endOf('month'),
-      opens: 'center'
+      opens: 'center',
+      drops: 'down'
     });
 
     $(dateRangeInput).on('apply.daterangepicker', function (ev, picker) {
@@ -542,31 +613,26 @@ function setCurrentMonth() {
   if (monthSelect) monthSelect.value = (new Date().getMonth() + 1).toString();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function updateDebugInfo(message) {
+  const debugDiv = document.getElementById('debug-info');
+  if (debugDiv) {
+    debugDiv.textContent = message;
+  }
+  console.log(message);
+}
+
+// Excel export funksiyası
+function exportToExcel() {
   const regionSelect = document.getElementById('region-select');
   const nameFilterSelect = document.getElementById('name-filter-select');
+  const dateRangeInput = document.getElementById('date-range');
+  const searchInput = document.getElementById('searchInput');
   const monthSelect = document.getElementById('month-select');
-  const form = document.querySelector('form');
-
-  setCurrentMonth();
-  initializeDateRangePicker();
-
-  regionSelect.addEventListener('change', () => loadRegionData(regionSelect.value, 1));
-  nameFilterSelect.addEventListener('change', () => loadRegionData(regionSelect.value, 1));
-  monthSelect.addEventListener('change', () => loadRegionData(regionSelect.value, 1));
-
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    if (regionSelect.value) loadRegionData(regionSelect.value, 1);
-    else alert("Zəhmət olmasa bölgə seçin");
-  });
-  document.getElementById('excel-btn').addEventListener('click', function (e) {
-  e.preventDefault();
 
   const regionId = regionSelect.value;
   const nameFilter = nameFilterSelect.value;
-  const dateRange = document.getElementById('date-range').value;
-  const searchTerm = searchInput.value.trim();
+  const dateRange = dateRangeInput ? dateRangeInput.value : "";
+  const searchTerm = searchInput ? searchInput.value.trim() : "";
   const month = monthSelect.value;
 
   if (!regionId) {
@@ -575,19 +641,110 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const params = new URLSearchParams({ region_id: regionId });
-
   if (dateRange) params.append('date_range', dateRange);
   if (nameFilter) params.append('name_filter', nameFilter);
   if (searchTerm) params.append('search', searchTerm);
   if (month) params.append('month', month);
 
-
   const url = `/doctors/export-region-excel/?${params.toString()}`;
   window.location.href = url;
-});
+}
 
+// PDF export funksiyası
+function exportToPDF() {
+  const regionSelect = document.getElementById('region-select');
+  const nameFilterSelect = document.getElementById('name-filter-select');
+  const dateRangeInput = document.getElementById('date-range');
+  const searchInput = document.getElementById('searchInput');
+  const monthSelect = document.getElementById('month-select');
 
-  
+  const regionId = regionSelect.value;
+  const nameFilter = nameFilterSelect.value;
+  const dateRange = dateRangeInput ? dateRangeInput.value : "";
+  const searchTerm = searchInput ? searchInput.value.trim() : "";
+  const month = monthSelect.value;
+
+  if (!regionId) {
+    alert("Zəhmət olmasa bölgə seçin");
+    return;
+  }
+
+  const params = new URLSearchParams({ region_id: regionId });
+  if (dateRange) params.append('date_range', dateRange);
+  if (nameFilter) params.append('name_filter', nameFilter);
+  if (searchTerm) params.append('search', searchTerm);
+  if (month) params.append('month', month);
+
+  const url = `/doctors/export-region-pdf/?${params.toString()}`;
+  window.open(url, '_blank');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const regionSelect = document.getElementById('region-select');
+  const nameFilterSelect = document.getElementById('name-filter-select');
+  const monthSelect = document.getElementById('month-select');
+  const searchInput = document.getElementById('searchInput');
+  const form = document.querySelector('form');
+
+  setCurrentMonth();
+  initializeDateRangePicker();
+
+  // Axtarış funksionallığı
+  searchInput.addEventListener('input', debounce(() => {
+    const regionId = regionSelect.value;
+    const searchTerm = searchInput.value.trim();
+    
+    updateDebugInfo(`Axtarış: "${searchTerm}", Region: ${regionId}`);
+    
+    if (regionId) {
+      loadRegionData(regionId, 1);
+    } else {
+      updateDebugInfo("Xəbərdarlıq: Əvvəlcə bölgə seçin");
+    }
+  }, 300));
+
+  regionSelect.addEventListener('change', () => {
+    if (regionSelect.value) {
+      loadRegionData(regionSelect.value, 1);
+    }
+  });
+
+  nameFilterSelect.addEventListener('change', () => {
+    if (regionSelect.value) {
+      loadRegionData(regionSelect.value, 1);
+    }
+  });
+
+  monthSelect.addEventListener('change', () => {
+    if (regionSelect.value) {
+      loadRegionData(regionSelect.value, 1);
+    }
+  });
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    if (regionSelect.value) {
+      loadRegionData(regionSelect.value, 1);
+    } else {
+      alert("Zəhmət olmasa bölgə seçin");
+    }
+  });
+
+  // Export düymələri
+  document.getElementById('excel-btn').addEventListener('click', function (e) {
+    e.preventDefault();
+    exportToExcel();
+  });
+
+  document.getElementById('pdf-btn').addEventListener('click', function (e) {
+    e.preventDefault();
+    exportToPDF();
+  });
+
+  // İlk yüklənmə
+  if (regionSelect.value) {
+    loadRegionData(regionSelect.value, 1);
+  }
 });
 
 </script>
