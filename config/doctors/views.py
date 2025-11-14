@@ -1077,11 +1077,15 @@ def export_region_excel(request):
     if search_term:
         doctors = doctors.filter(Q(ad__icontains=search_term) | Q(barkod__icontains=search_term))
 
-    # 🔹 Dannisi filteri
+    # 🔹 Dannisi filteri və filter aktivlik flag
     if name_filter == 'with_dannisi':
         doctors = doctors.filter(Q(ad__icontains='dannısı') | Q(ad__icontains='dannisi'))
+        filter_active = True
     elif name_filter == 'without_dannisi':
         doctors = doctors.exclude(Q(ad__icontains='dannısı') | Q(ad__icontains='dannisi'))
+        filter_active = True
+    else:
+        filter_active = False
 
     # 🔹 Tarix intervalı
     start_date = end_date = None
@@ -1097,14 +1101,12 @@ def export_region_excel(request):
             pass
 
     # 🔹 Ay filteri
+    month_int = None
     if month:
         try:
             month_int = int(month)
         except ValueError:
             month_int = None
-    else:
-        month_int = None
-
 
     doctor_ids = doctors.values_list('id', flat=True)
 
@@ -1116,16 +1118,17 @@ def export_region_excel(request):
 
     if start_date and end_date:
         counts_qs = counts_qs.filter(recipe__date__range=(start_date, end_date))
-    elif month:
-        counts_qs = counts_qs.filter(recipe__date__month=month)
+    elif month_int:
+        counts_qs = counts_qs.filter(recipe__date__month=month_int)
 
     counts_qs = counts_qs.values('recipe__dr', 'drug_id').annotate(total=Sum('number'))
 
-    # total>0 olan həkimləri tap
-    valid_doctor_ids = set(row['recipe__dr'] for row in counts_qs if (row['total'] or 0) > 0)
-
-    # Həkim queryset-i yalnız valid olanlarla
-    doctors = doctors.filter(id__in=valid_doctor_ids)
+    # 🔹 total>0 olan həkimləri tapmaq yalnız filter aktivdirsə
+    if filter_active:
+        valid_doctor_ids = set(row['recipe__dr'] for row in counts_qs if (row['total'] or 0) > 0)
+        doctors = doctors.filter(id__in=valid_doctor_ids)
+    else:
+        valid_doctor_ids = set(doctors.values_list('id', flat=True))
 
     # Həkim -> dərman -> sayı mapping
     doctor_drug_counts = defaultdict(dict)
@@ -1138,7 +1141,7 @@ def export_region_excel(request):
             doctor_drug_counts[dr_id][drug_id] = total
             doctor_total_counts[dr_id] += total
 
-
+    # 🔹 Dərmanlar siyahısı
     drugs = list(Medical.objects.all().order_by('id'))
 
     # 📊 Excel yaradılması
