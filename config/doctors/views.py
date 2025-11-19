@@ -147,9 +147,9 @@ def del_all(request):
 def doctor_detail(request, doctor_id):
     doctor = get_object_or_404(Doctors, id=doctor_id)
     
-    # Doğru model: Payment_doctor
+    
     payments = Payment_doctor.objects.filter(doctor=doctor).order_by("-date")[:10]
-    recipe = RecipeDrug.objects.filter(recipe__dr=doctor).select_related('recipe', 'drug', 'recipe__region')
+    recipe = RecipeDrug.objects.filter(recipe__dr=doctor).select_related('recipe', 'drug', 'recipe__region').order_by('recipe__date') 
 
 
     # Əgər resept modeli varsa

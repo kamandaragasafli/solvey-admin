@@ -16,6 +16,100 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+<style>
+/* Chat Panel - Dark Mode Modern Style */
+:root { --panel-width: 360px; }
+
+.chat-panel {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: var(--panel-width);
+    height: 100vh;
+    background: #050d1aff;;
+    color: #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 15px rgba(0,0,0,0.6);
+    transition: right 0.3s ease;
+    z-index: 1050;
+    border-left: 1px solid #333;
+}
+
+.chat-panel.open { right: 0; }
+
+.chat-header {
+    padding: 15px;
+    background: #252525;
+    border-bottom: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-header strong { font-size: 1rem; }
+.chat-header .text-muted { color: #888; font-size: .8rem; }
+
+.chat-body {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background: #121212;
+}
+
+.msg {
+    display: inline-block;
+    padding: 10px 14px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    max-width: 80%;
+    line-height: 1.4;
+}
+
+.msg.me { background: #006eff; color: #fff; border-bottom-right-radius: 2px; align-self: flex-end; }
+.msg.other { background: #222; color: #ddd; border-bottom-left-radius: 2px; }
+
+.chat-footer {
+    padding: 12px;
+    background: #252525;
+    border-top: 1px solid #333;
+    display: flex;
+    gap: 10px;
+}
+
+#msgInput {
+    flex: 1;
+    background: #1b1b1b;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 10px;
+    border-radius: 6px;
+}
+#msgInput:focus { outline: none; border-color: #006eff; }
+
+#sendBtn {
+    background: #006eff;
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+#sendBtn:hover { background: #006eff; }
+
+#overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(0,0,0,0.55);
+    z-index: 1040;
+    backdrop-filter: blur(2px);
+}
+#overlay.visible { display: block; }
+</style>
 
 
 
@@ -184,6 +278,9 @@
                         <div class="user-avatar">
                             <i class="bi bi-person-circle"></i>
                         </div>
+                         <div id="avatarBtn" class="user-avatar" aria-controls="sohbetPanel" aria-expanded="false" title="Sohbet">
+                            <i class="bi bi-chat" style="font-size:1.2rem"></i>
+                            </div>
                         {% if user.is_authenticated %}
                         <span class="user-name">{{ user.username }}</span>
                         {% else %}
@@ -195,6 +292,38 @@
  
  
   </div>
+
+
+
+  <div id="overlay" class="chat-overlay" tabindex="-1"></div>
+
+
+<!-- Sohbet paneli -->
+<aside id="sohbetPanel" class="chat-panel" role="dialog" aria-label="Sohbet Paneli">
+<div class="chat-header">
+<div>
+<strong>Canlı bağlantı</strong>
+<div class="text-muted" style="font-size:.8rem">Çevrimiçi destek</div>
+</div>
+<button id="closeBtn" class="btn btn-sm btn-light" aria-label="Kapat">
+<i class="bi bi-x"></i>
+</button>
+</div>
+
+
+<div class="chat-body" id="chatBody">
+<!-- Örnek mesajlar -->
+<div class="mb-2">
+<div class="msg other">Merhaba! Size nasıl yardımcı olabilirim?</div>
+</div>
+</div>
+
+
+<div class="chat-footer">
+<input id="msgInput" type="text" class="form-control form-control-sm" placeholder="Mesaj yazın..." aria-label="Mesaj" />
+<button id="sendBtn" class="btn btn-sm btn-primary">Gönder</button>
+</div>
+</aside>
  {% if messages %}
   <div class="alert-container">
     {% for message in messages %}
@@ -230,7 +359,91 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{% static 'js/main.js' %}"></script>
+<script>
+// Türkçe değişken isimleri (tercihinize göre)
+const avatarBtn = document.getElementById('avatarBtn');
+const sohbetPanel = document.getElementById('sohbetPanel');
+const overlay = document.getElementById('overlay');
+const closeBtn = document.getElementById('closeBtn');
+const sendBtn = document.getElementById('sendBtn');
+const msgInput = document.getElementById('msgInput');
+const chatBody = document.getElementById('chatBody');
 
+
+function acKapat(toggle) {
+    const ac = typeof toggle === 'boolean' ? toggle : !sohbetPanel.classList.contains('open');
+    sohbetPanel.classList.toggle('open', ac);
+    overlay.classList.toggle('visible', ac);
+    avatarBtn.setAttribute('aria-expanded', String(ac));
+
+    if(ac){
+        // panel açıldığında inputa odak
+        setTimeout(()=> msgInput.focus(), 200);
+    }
+}
+
+
+// Tetikleyiciler
+avatarBtn.addEventListener('click', ()=> acKapat());
+closeBtn.addEventListener('click', ()=> acKapat(false));
+overlay.addEventListener('click', ()=> acKapat(false));
+
+
+// Enter ile gönder
+msgInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') sendMesaj();
+});
+sendBtn.addEventListener('click', sendMesaj);
+
+
+async function sendMesaj() {
+    const text = msgInput.value.trim();
+    if (!text) return;
+
+    // İstifadəçi mesajını əlavə et
+    const satir = document.createElement('div');
+    satir.className = 'mb-2 text-end';
+    const balon = document.createElement('div');
+    balon.className = 'msg me';
+    balon.textContent = text;
+    satir.appendChild(balon);
+    chatBody.appendChild(satir);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    msgInput.value = '';
+    msgInput.focus();
+
+    try {
+        const res = await fetch('http://64.226.72.85:5678/webhook/chat-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+        });
+        const data = await res.json();
+
+        // Server cavabını əlavə et
+        const botSatir = document.createElement('div');
+        botSatir.className = 'mb-2 text-start';
+        const botBalon = document.createElement('div');
+        botBalon.className = 'msg other';
+        botBalon.textContent = data.reply;
+        botSatir.appendChild(botBalon);
+        chatBody.appendChild(botSatir);
+        chatBody.scrollTop = chatBody.scrollHeight;
+
+    } catch (err) {
+        console.error('Mesaj göndərmə xətası:', err);
+    }
+}
+
+
+// ESC ile kapatma
+document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape'){
+        acKapat(false);
+    }
+});
+
+</script>
 
 </body>
 </html>
