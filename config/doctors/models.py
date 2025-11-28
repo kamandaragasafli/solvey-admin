@@ -99,45 +99,45 @@ class Doctors(models.Model):
         result = self.odenisler.aggregate(total=Sum('pay'))
         return result['total'] or 0
     
-    @property
-    def cari_yekun_borc(self):
-        """
-        Cari ay üçün maliyyəni hesablayır.
-        Keçmiş ayların borcu previous_debt-də saxlanır.
-        """
-        today = date.today()
-        current_month = today.month
-        current_year = today.year
+    # @property
+    # def cari_yekun_borc(self):
+    #     """
+    #     Cari ay üçün maliyyəni hesablayır.
+    #     Keçmiş ayların borcu previous_debt-də saxlanır.
+    #     """
+    #     today = date.today()
+    #     current_month = today.month
+    #     current_year = today.year
 
-        # previous_debt artıq keçmiş aylardan gəlir
-        previous_debt = self.previous_debt or 0
+    #     # previous_debt artıq keçmiş aylardan gəlir
+    #     previous_debt = self.previous_debt or 0
 
-        # Cari ay üçün ödənişləri toplamaq
-        avans = self.odenisler.filter(
-            payment_type='Avans',
-            is_closed=False,
-            date__month=current_month,
-            date__year=current_year
-        ).aggregate(total=Sum('pay'))['total'] or 0
+    #     # Cari ay üçün ödənişləri toplamaq
+    #     avans = self.odenisler.filter(
+    #         payment_type='Avans',
+    #         is_closed=False,
+    #         date__month=current_month,
+    #         date__year=current_year
+    #     ).aggregate(total=Sum('pay'))['total'] or 0
 
-        investisiya = self.odenisler.filter(
-            payment_type='İnvest',
-            is_closed=False,
-            date__month=current_month,
-            date__year=current_year
-        ).aggregate(total=Sum('pay'))['total'] or 0
+    #     investisiya = self.odenisler.filter(
+    #         payment_type='İnvest',
+    #         is_closed=False,
+    #         date__month=current_month,
+    #         date__year=current_year
+    #     ).aggregate(total=Sum('pay'))['total'] or 0
 
-        geriqaytarma = self.odenisler.filter(
-            payment_type='Geri_qaytarma',
-            is_closed=False,
-            date__month=current_month,
-            date__year=current_year
-        ).aggregate(total=Sum('pay'))['total'] or 0
+    #     geriqaytarma = self.odenisler.filter(
+    #         payment_type='Geri_qaytarma',
+    #         is_closed=False,
+    #         date__month=current_month,
+    #         date__year=current_year
+    #     ).aggregate(total=Sum('pay'))['total'] or 0
 
-        datasiya = self.datasiya or 0  # əgər datasiya ayrı bir sahədirsə
+    #     datasiya = self.datasiya or 0  # əgər datasiya ayrı bir sahədirsə
 
-        yekun = previous_debt + avans + investisiya + datasiya - geriqaytarma
-        return round(yekun, 2)
+    #     yekun = previous_debt + avans + investisiya + datasiya - geriqaytarma
+    #     return round(yekun, 2)
 
 
     def get_last_recipe(self):
