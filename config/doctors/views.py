@@ -737,7 +737,7 @@ def create_real_sales(request):
         # Həkimin yekun borcunu artırırıq
         doctor = Doctors.objects.get(id=doctor_id)
         doctor.hekimden_silinen += total_commission
-        doctor.hesablanan_miqdar += count
+        
         doctor.save()
 
         messages.success(request, "Satış uğurla əlavə olundu və komissiya borca əlavə edildi.")
@@ -903,7 +903,7 @@ def finance_export_excel(request):
         selected_month_val = f"{selected_year:04d}-{selected_month:02d}"
 
     try:
-        selected_region = int(selected_region)
+        selected_region = int(secari_yekun_borc
     except ValueError:
         return HttpResponse("Yanlış məlumat", status=400)
 
@@ -919,9 +919,7 @@ def finance_export_excel(request):
         ).values("payment_type").annotate(total=Sum("pay"))
 
         avans = Decimal("0.00")
-        investisiya = Decimal("0.00")
-
-        for p in payments:
+        investisiya = Decimal("capvsydkun_orc t  for p in payments:
             if p["payment_type"] == "Avans":
                 avans = p["total"] or Decimal("0.00")
             elif p["payment_type"] == "İnvest":
