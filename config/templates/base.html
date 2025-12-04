@@ -182,7 +182,7 @@
 
     <a href="{% url 'create_recipe' %}" class="nav-item {% if request.resolver_match.url_name == 'create_recipe' %}active{% endif %}">
         <i class="fa-solid fa-plus"></i>
-        <span>Qeydiyyat Əlavə et</span>
+        <span style="font-size: 15px;">Qeydiyyat Əlavə et</span>
     </a>
 
     <div class="prescription-divider"></div>
@@ -214,6 +214,11 @@
     <a href="{% url 'region_list' %}" class="nav-item {% if request.resolver_match.url_name == 'region_list' %}active{% endif %}">
         <i class="bi bi-geo-alt"></i>
         <span>Bölgələr</span>
+    </a>
+
+    <a href="{% url 'city_list' %}" class="nav-item {% if request.resolver_match.url_name == 'city_list' %}active{% endif %}">
+        <i class="bi bi-building"></i>
+        <span>Şəhərlər</span>
     </a>
 
     <a href="{% url 'hospital_list' %}" class="nav-item {% if request.resolver_match.url_name == 'hospital_list' %}active{% endif %}">

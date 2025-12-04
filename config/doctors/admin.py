@@ -25,7 +25,7 @@ class DoctorsAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Əsas Məlumatlar', {
-            'fields': ('ad', 'barkod', 'bolge', 'kategoriya', 'ixtisas')
+            'fields': ('ad', 'barkod', 'bolge', 'city', 'kategoriya', 'ixtisas')
         }),
         ('Maliyyə Məlumatları', {
             'fields': (

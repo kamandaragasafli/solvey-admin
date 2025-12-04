@@ -422,11 +422,11 @@ def ajax_region_report(request):
             continue
 
         result.append({
-            "bolge": doctor.bolge.region_name,
+            "bolge": doctor.bolge.region_name if doctor.bolge else "",
             "doctor": doctor.ad,
             "doctor_id": doctor.id,
             "barcode": doctor.barkod,
-            "kategoriya": doctor.get_kategoriya_display(),
+            "city": doctor.city.city_name if doctor.city else "",
             "derece": doctor.get_derece_display(),
             "ixtisas": doctor.get_ixtisas_display(),
             "previous_debt": float(previous_debt),

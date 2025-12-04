@@ -30,6 +30,40 @@ def hospital_list(request):
     return render(request, "hospitals.html", context)
 
 
+def city_list(request):
+    """Şəhərlərin sadə siyahı səhifəsi"""
+    cities = City.objects.select_related("region").order_by("region__region_name", "city_name")
+    regions = Region.objects.all().order_by("region_name")
+    context = {
+        "cities": cities,
+        "regions": regions,
+    }
+    return render(request, "cities.html", context)
+
+
+def create_city(request):
+    """Şəhər əlavə et"""
+    if request.method == "POST":
+        region_id = request.POST.get("region_id")
+        city_name = request.POST.get("city_name")
+
+        if not region_id or not city_name:
+            messages.error(request, "Zəhmət olmasa bütün sahələri doldurun.")
+            return redirect("city_list")
+
+        selected_region = get_object_or_404(Region, id=region_id)
+
+        # Eyni bölgədə eyni şəhər adı olub-olmadığını yoxla
+        if City.objects.filter(region=selected_region, city_name=city_name).exists():
+            messages.warning(request, f"Bu bölgədə '{city_name}' adlı şəhər artıq mövcuddur.")
+            return redirect("city_list")
+
+        City.objects.create(region=selected_region, city_name=city_name)
+        messages.success(request, "Şəhər uğurla əlavə edildi.")
+        return redirect("city_list")
+
+    return redirect("city_list")
+
 
 
 

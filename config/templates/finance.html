@@ -108,6 +108,16 @@
           {% endfor %}
         </select>
       </div>
+      <div class="col-md-3 mb-2">
+        <label class="form-label small">Ay seçin</label>
+        <input
+          type="month"
+          id="month-select"
+          name="month"
+          class="form-control"
+          value="{{ selected_month }}"
+        />
+      </div>
       <div class="col-md-2 mb-2">
         <label for="doctor-search" class="form-label small">Həkim axtar</label>
         <input type="text" id="doctor-search" class="form-control" placeholder="Həkim adını daxil edin...">
@@ -215,10 +225,13 @@
 </div>
 
 <script>
+
 const ajaxUrl = "{% url 'ajax_doctors_by_region' %}";
 
 document.addEventListener("DOMContentLoaded", function () {
+
   const regionSelect = document.getElementById("region-select");
+  const monthSelect = document.getElementById("month-select");
   const doctorSearch = document.getElementById("doctor-search");
   const doctorsContainer = document.getElementById("doctors-container");
 
@@ -230,7 +243,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const totalGivenElement = document.getElementById("total-given");
   const totalReceivedElement = document.getElementById("total-received");
 
-  let allDoctors = []; // Bütün həkimləri saxlayırıq
+  let allDoctors = [];
 
   function calculateStatistics(doctors) {
     let totalAvans = 0;
@@ -244,9 +257,7 @@ document.addEventListener("DOMContentLoaded", function () {
       totalAvans += avans;
       totalInvestisiya += investisiya;
 
-      if (avans > 0 || investisiya > 0) {
-        financeGivenCount++;
-      }
+      if (avans > 0 || investisiya > 0) financeGivenCount++;
     });
 
     totalDoctorsElement.textContent = doctors.length;
@@ -265,27 +276,25 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    let html = '';
+    let html = "";
     doctors.forEach(doctor => {
       const debtColor = doctor.previous_debt < 0 ? '#00af0fff' : '#e9042eff';
-      const avansValue = doctor.avans > 0 ? doctor.avans.toFixed(2) : '';
-      const investValue = doctor.investisiya > 0 ? doctor.investisiya.toFixed(2) : '';
 
       html += `
         <div class="row align-items-center mb-2 p-2 rounded" style="background-color: #1f2937;">
           <div class="col-md-3">
             <button type="button" class="btn btn w-100 text-start" style="color: #ebebebff;">${doctor.ad}</button>
           </div>
-          <div class="col-md-2 fw-bold text-center" style="color: ${debtColor};">
+          <div class="col-md-2 fw-bold text-center" style="color:${debtColor}">
             ${doctor.previous_debt.toFixed(2)}
           </div>
-          <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
-            <span class="fw-bold" style="color: #ebebebff;">Avans:</span>
-            <input type="number" class="form-control avans-input" style="max-width: 120px;" value="${avansValue}" readonly />
+          <div class="col-md-3 d-flex align-items-center justify-content-center gap-2">
+            <span class="fw-bold" style="color:#ebebebff;">Avans:</span>
+            <input type="number" class="form-control" style="max-width:120px;" value="${doctor.avans || ''}" readonly />
           </div>
-          <div class="col-md-3 text-center d-flex align-items-center justify-content-center gap-2">
-            <span class="fw-bold" style="color: #ebebebff;">İnvestisiya:</span>
-            <input type="number" class="form-control investisiya-input" style="max-width: 120px;" value="${investValue}" readonly />
+          <div class="col-md-3 d-flex align-items-center justify-content-center gap-2">
+            <span class="fw-bold" style="color:#ebebebff;">İnvestisiya:</span>
+            <input type="number" class="form-control" style="max-width:120px;" value="${doctor.investisiya || ''}" readonly />
           </div>
         </div>
       `;
@@ -297,60 +306,49 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function filterDoctors() {
     const regionId = regionSelect.value;
-    const searchTerm = doctorSearch.value.toLowerCase().trim();
+    const selectedMonth = monthSelect.value;
 
     if (!regionId) {
-      alert('Zəhmət olmasa bölgə seçin!');
+      alert("Zəhmət olmasa bölgə seçin!");
       return;
     }
 
-    doctorsContainer.innerHTML = 'Yüklənir...';
+    doctorsContainer.innerHTML = "Yüklənir...";
 
-    fetch(`${ajaxUrl}?region_id=${regionId}`)
-      .then(response => response.json())
+    fetch(`${ajaxUrl}?region_id=${regionId}&month=${selectedMonth}`)
+      .then(res => res.json())
       .then(data => {
         allDoctors = data.doctors || [];
 
-        let filteredDoctors = allDoctors;
-        if (searchTerm) {
-          filteredDoctors = allDoctors.filter(d => d.ad.toLowerCase().includes(searchTerm));
-        }
+        const searchValue = doctorSearch.value.toLowerCase();
+        const filtered = allDoctors.filter(d => d.ad.toLowerCase().includes(searchValue));
 
-        renderDoctors(filteredDoctors);
+        renderDoctors(filtered);
       })
-      .catch(error => {
-        console.error('Error:', error);
-        doctorsContainer.innerHTML = '<div class="text-center text-danger">Xəta baş verdi</div>';
-        calculateStatistics([]);
+      .catch(() => {
+        doctorsContainer.innerHTML = '<div class="text-danger text-center">Xəta baş verdi</div>';
       });
   }
 
-  // Export Excel funksiyasını qlobal səviyyəyə əlavə et
-  window.exportExcel = function() {
+  window.exportExcel = function () {
     if (!regionSelect.value) {
-      alert('Zəhmət olmasa bölgə seçin!');
-      return;
-    }
-
-    const doctorsToExport = allDoctors.filter(d => d.avans > 0 || d.investisiya > 0);
-
-    if (doctorsToExport.length === 0) {
-      alert("Maliyyəsi olan həkim yoxdur!");
+      alert("Bölgə seçilməyib!");
       return;
     }
 
     const region = regionSelect.value;
-    window.location.href = `{% url 'finance_export_excel' %}?region=${region}`;
+    const month = monthSelect.value;
+
+    window.location.href = `{% url "finance_export_excel" %}?region=${region}&month=${month}`;
   };
 
-  // Event listeners
+  // Event Listeners
   regionSelect.addEventListener("change", filterDoctors);
-  doctorSearch.addEventListener("input", function() {
-    const searchTerm = this.value.toLowerCase().trim();
-    const filteredDoctors = allDoctors.filter(d => d.ad.toLowerCase().includes(searchTerm));
-    renderDoctors(filteredDoctors);
-  });
+  monthSelect.addEventListener("change", filterDoctors);
+  doctorSearch.addEventListener("input", filterDoctors);
 });
 </script>
+
+
 
 {% endblock %}

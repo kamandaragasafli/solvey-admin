@@ -8,4 +8,6 @@ urlpatterns = [
 
     path("hospital/",views.hospital_list, name="hospital_list"),
     path("hospital/add/",views.create_hospital, name="add-hospital"),
+    path("cities/", views.city_list, name="city_list"),
+    path("cities/add/", views.create_city, name="add-city"),
 ]

@@ -205,11 +205,12 @@
                                             <td>{{ r.recipe.region}}</td>
                                             <td>
                                                 <div class="action-buttons">
-                                                <button class="action-icon edit" onclick="openModal('updateRecipeModal')">
-                                                   <a href="">
-                                                            <i class="bi bi-pencil-square"></i>
-                                                    </a>
-                                                  </button>
+                                                    <button
+                                                      type="button"
+                                                      class="action-icon edit"
+                                                      data-modal-target="updateRecipeModal">
+                                                        <i class="bi bi-pencil-square"></i>
+                                                    </button>
                                                     <button class="action-icon delete" onclick="deleteRecipe()">
                                                          <a href="{% url 'del_recipe' r.id %}"><i class="bi bi-trash"></i></a>
                                                     </button>
@@ -267,25 +268,39 @@
     </div>
 
     <!-- Modal for Edit Doctor -->
-<div id="editDoctorModal" class="modal" style="display: none;">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>Həkim Məlumatlarını Redaktə et</h3>
-      <button class="close-btn" onclick="closeModal('editDoctorModal')">
-        <i class="bi bi-x"></i>
+<div id="editDoctorModal" class="modal" style="display: none; background-color: rgba(15,23,42,0.85);">
+  <div class="modal-content" style="background-color: #111827; color: #f9fafb; border-radius: 16px; border: 1px solid #4b5563;">
+    <div class="modal-header" style="border-bottom: 1px solid #374151; background-color: #020617;">
+      <h3 class="mb-0" style="color: #e5e7eb;">Həkim Məlumatlarını Redaktə et</h3>
+      <button class="close-btn" onclick="closeModal('editDoctorModal')" style="background: transparent; border: none; color: #9ca3af;">
+        <i class="bi bi-x-lg"></i>
       </button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" style="background-color: #111827;">
       <form method="POST" action="{% url 'update-doctor' doctor.id %}">
         {% csrf_token %}
         <div class="row">
           <div class="mb-3 col-md-6">
-            <label for="ad" class="form-label">Həkim Adı</label>
-            <input type="text" class="form-control" id="ad" name="ad" value="{{ doctor.ad|default:'' }}" required>
+            <label for="ad" class="form-label" style="color: #e5e7eb;">Həkim Adı</label>
+            <input
+              type="text"
+              class="form-control"
+              id="ad"
+              name="ad"
+              value="{{ doctor.ad|default:'' }}"
+              required
+              style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+            >
           </div>
           <div class="mb-3 col-md-6">
-            <label for="ixtisas" class="form-label">İxtisas</label>
-            <select id="ixtisas" name="ixtisas" class="form-select" required>
+            <label for="ixtisas" class="form-label" style="color: #e5e7eb;">İxtisas</label>
+            <select
+              id="ixtisas"
+              name="ixtisas"
+              class="form-select"
+              required
+              style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+            >
               <option value="">Seçin...</option>
               {% for code, name in doctor.İXTİSAS_SECIMI %}
                 <option value="{{ code }}" {% if doctor.ixtisas == code %}selected{% endif %}>{{ name }}</option>
@@ -293,37 +308,121 @@
             </select>
           </div>
           <div class="mb-3 col-md-6">
-            <label for="kategoriya" class="form-label">Kateqoriya</label>
-            <select id="kategoriya" name="kategoriya" class="form-select" required>
+            <label for="kategoriya" class="form-label" style="color: #e5e7eb;">Kateqoriya</label>
+            <select
+              id="kategoriya"
+              name="kategoriya"
+              class="form-select"
+              required
+              style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+            >
               {% for code, name in doctor.KATEQORIYA_SECIMI %}
                 <option value="{{ code }}" {% if doctor.kategoriya == code %}selected{% endif %}>{{ name }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="mb-3 col-md-6">
-            <label for="cinsiyyet" class="form-label">Cinsiyyət</label>
-            <select id="cinsiyyet" name="cinsiyyet" class="form-select" required>
+            <label for="cinsiyyet" class="form-label" style="color: #e5e7eb;">Cinsiyyət</label>
+            <select
+              id="cinsiyyet"
+              name="cinsiyyet"
+              class="form-select"
+              required
+              style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+            >
               {% for code, name in doctor.GENDER_SECIMI %}
                 <option value="{{ code }}" {% if doctor.cinsiyyet == code %}selected{% endif %}>{{ name }}</option>
               {% endfor %}
             </select>
           </div>
+
+          <!-- Bölgə -->
           <div class="mb-3 col-md-6">
-            <label for="derece" class="form-label">Dərəcə</label>
-            <select id="derece" name="derece" class="form-select" required>
+            <label for="region_id" class="form-label" style="color: #e5e7eb;">Bölgə</label>
+            <select
+              id="region_id"
+              name="region_id"
+              class="form-select"
+              required
+              style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+            >
+              <option value="">Seçin...</option>
+              {% for r in regions %}
+                <option value="{{ r.id }}" {% if doctor.bolge_id == r.id %}selected{% endif %}>
+                  {{ r.region_name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Şəhər -->
+          <div class="mb-3 col-md-6">
+            <label for="city_id" class="form-label" style="color: #e5e7eb;">Şəhər</label>
+            <select
+              id="city_id"
+              name="city_id"
+              class="form-select"
+              style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+            >
+              <option value="">Əvvəl bölgə seçin...</option>
+            </select>
+          </div>
+
+          <!-- Klinika / Xəstəxana -->
+          <div class="mb-3 col-md-6">
+            <label for="hospital_id" class="form-label" style="color: #e5e7eb;">Klinika / Xəstəxana</label>
+            <select
+              id="hospital_id"
+              name="hospital_id"
+              class="form-select"
+              style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+            >
+              <option value="">Əvvəl bölgə seçin...</option>
+            </select>
+          </div>
+
+          <div class="mb-3 col-md-6">
+            <label for="derece" class="form-label" style="color: #e5e7eb;">Dərəcə</label>
+            <select
+              id="derece"
+              name="derece"
+              class="form-select"
+              required
+              style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+            >
               {% for code, name in doctor.DERECE_SECIMI %}
                 <option value="{{ code }}" {% if doctor.derece == code %}selected{% endif %}>{{ name }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="mb-3 col-md-6">
-            <label for="number" class="form-label">Əlaqə nömrəsi</label>
-            <input type="text" class="form-control" id="number" name="number" value="{{ doctor.number|default:'' }}">
+            <label for="number" class="form-label" style="color: #e5e7eb;">Əlaqə nömrəsi</label>
+            <input
+              type="text"
+              class="form-control"
+              id="number"
+              name="number"
+              value="{{ doctor.number|default:'' }}"
+              style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+            >
           </div>
         </div>
-        <div class="modal-actions mt-3">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('editDoctorModal')">Ləğv et</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check"></i> Yadda saxla</button>
+        <div class="modal-actions mt-3 d-flex justify-content-end gap-2">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="closeModal('editDoctorModal')"
+            style="background-color: #374151; border-color: #4b5563;"
+          >
+            Ləğv et
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            style="background-color: #2563eb; border-color: #2563eb;"
+          >
+            <i class="bi bi-check"></i> Yadda saxla
+          </button>
         </div>
       </form>
     </div>
@@ -385,9 +484,11 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCitiesHospitals(this.value);
   });
 
-  // Modal open/close functions
+  // Modal open/close functions (global)
   function openModal(modalId) {
-    document.getElementById(modalId).style.display = 'block';
+    const modalEl = document.getElementById(modalId);
+    if (!modalEl) return;
+    modalEl.style.display = 'block';
     // Reinitialize dropdowns when modal opens
     if (regionSelect.value) {
       loadCitiesHospitals(regionSelect.value);
@@ -395,8 +496,20 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+    const modalEl = document.getElementById(modalId);
+    if (!modalEl) return;
+    modalEl.style.display = 'none';
   }
+
+  // Attach click handlers to buttons with data-modal-target
+  document.querySelectorAll('[data-modal-target]').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const targetId = this.getAttribute('data-modal-target');
+      if (targetId) {
+        openModal(targetId);
+      }
+    });
+  });
 });
 
 // Pəncərə xaricinə klikləyəndə də bağlamaq istəyirsənsə
