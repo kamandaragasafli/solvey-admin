@@ -76,7 +76,7 @@
             <th>Bölgə</th>
             <th>Həkim</th>
             <th>Kod</th>
-            <th>Kategoriya</th>
+            <th>Şəhər</th>
             <th>Dərəcə</th>
             <th>İxtisas</th>
             <th>Əvvəlki Borc</th>
@@ -272,7 +272,7 @@
 /* Firefox üçün */
 * {
   scrollbar-width: thin;           /* incə scrollbar */
-  scrollbar-color: #1a2533 !important; #1a2533; /* thumb / track */
+  scrollbar-color: #1a2533 !important;  /* thumb / track */
 }
 
 
@@ -354,7 +354,7 @@ function loadRegionData(regionId, month, page = 1) {
               </a>
             </td>
             <td>${item.barcode || ''}</td>
-            <td>${item.kategoriya || '–'}</td>
+            <td>${item.city || '–'}</td>
             <td>${item.derece || '–'}</td>
             <td>${item.ixtisas || '–'}</td>
             <td class="${formatPreviousDebt(item.previous_debt, 'fw-bold')}">

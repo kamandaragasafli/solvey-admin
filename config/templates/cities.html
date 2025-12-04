@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  body {
+    background-color: #030b1a;
+    color: #f9fafb;
+    font-family: "Inter", sans-serif;
+  }
+   .custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  color: #f9fafb;
+  background-color: #1f2937;
+}
+
+.custom-table thead {
+  background-color: #273549;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  color: #b5bcc7;
+}
+
+.custom-table th, .custom-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #374151;
+}
+
+.custom-table tbody tr:nth-child(even) {
+  background-color: #273549;
+}
+
+.custom-table tbody tr:nth-child(odd) {
+  background-color: #1f2937;
+}
+
+.custom-table tbody tr:hover {
+  background-color: #006effff !important;
+  color: #f9fafb;
+  transition: 0.3s;
+}
+
+.table-responsive::-webkit-scrollbar {
+  width: 8px;
+}
+.table-responsive::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+.table-responsive::-webkit-scrollbar-thumb {
+  background-color: #006effff;
+  border-radius: 10px;
+}
+  </style>
+<div class="card shadow-sm" style="background-color: #273549; width: 80%; margin: auto;">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h5 class="card-title mb-0">Şəhərlər</h5>
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCityModal">
+        <i class="bi bi-plus-circle"></i> Şəhər Əlavə et
+      </button>
+    </div>
+
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th style="width:60px;">№</th>
+            <th>Bölgə</th>
+            <th>Şəhər</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in cities %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ c.region.region_name }}</td>
+            <td>{{ c.city_name }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" class="text-center text-muted">Şəhər tapılmadı</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Şəhər Əlavə et -->
+<div class="modal fade" id="addCityModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" action="{% url 'add-city' %}" class="modal-content" style="background-color: #1f2937; color: #f9fafb;">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title">➕ Yeni Şəhər Əlavə et</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="region_id" class="form-label">Bölgə Seçin</label>
+          <select class="form-select" id="region_id" name="region_id" required style="background-color: #273549; color: #f9fafb; border: 1px solid #4b5563;">
+            <option selected disabled value="">Seçin...</option>
+            {% for r in regions %}
+              <option value="{{ r.id }}">{{ r.region_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="city_name" class="form-label">Şəhər Adı</label>
+          <select class="form-select" id="city_name" name="city_name" required style="background-color: #273549; color: #f9fafb; border: 1px solid #4b5563;">
+            <option selected disabled value="">Seçin...</option>
+            <option value="Bakı">Bakı</option>
+            <option value="Gəncə">Gəncə</option>
+            <option value="Sumqayıt">Sumqayıt</option>
+            <option value="Mingəçevir">Mingəçevir</option>
+            <option value="Şirvan">Şirvan</option>
+            <option value="Naftalan">Naftalan</option>
+            <option value="Şamaxı">Şamaxı</option>
+            <option value="Şuşa">Şuşa</option>
+            <option value="Yevlax">Yevlax</option>
+            <option value="Xankəndi">Xankəndi</option>
+            <option value="Xırdalan">Xırdalan</option>
+            <option value="Lənkəran">Lənkəran</option>
+            <option value="Qazax">Qazax</option>
+            <option value="Daşkəsən">Daşkəsən</option>
+            <option value="Göygöl">Göygöl</option>
+            <option value="Goranboy">Goranboy</option>
+            <option value="Tərtər">Tərtər</option>
+            <option value="Zaqatala">Zaqatala</option>
+            <option value="Qax">Qax</option>
+            <option value="Oğuz">Oğuz</option>
+            <option value="Quba">Quba</option>
+            <option value="Xaçmaz">Xaçmaz</option>
+            <option value="Kürdəmir">Kürdəmir</option>
+            <option value="Hacıqabul">Hacıqabul</option>
+            <option value="Sabirabad">Sabirabad</option>
+            <option value="Saatlı">Saatlı</option>
+            <option value="İmişli">İmişli</option>
+            <option value="Şabran">Şabran</option>
+            <option value="Astara">Astara</option>
+            <option value="Lerik">Lerik</option>
+            <option value="Yardımlı">Yardımlı</option>
+            <option value="Masallı">Masallı</option>
+            <option value="Cəlilabad">Cəlilabad</option>
+            <option value="Biləsuvar">Biləsuvar</option>
+            <option value="Neftçala">Neftçala</option>
+            <option value="Salyan">Salyan</option>
+            <option value="Şəki">Şəki</option>
+            <option value="Zərdab">Zərdab</option>
+            <option value="Ağcabədi">Ağcabədi</option>
+            <option value="Beyləqan">Beyləqan</option>
+            <option value="Füzuli">Füzuli</option>
+            <option value="Cəbrayıl">Cəbrayıl</option>
+            <option value="Ağdam">Ağdam</option>
+            <option value="Ağdaş">Ağdaş</option>
+            <option value="Qobustan">Qobustan</option>
+            <option value="Şəmkir">Şəmkir</option>
+            <option value="Qusar">Qusar</option>
+            <option value="Siyəzən">Siyəzən</option>
+            <option value="Balakən">Balakən</option>
+            <option value="Samux">Samux</option>
+            <option value="Kəlbəcər">Kəlbəcər</option>
+            <option value="Laçın">Laçın</option>
+            <option value="Zəngilan">Zəngilan</option>
+            <option value="Qubadlı">Qubadlı</option>
+            <option value="Ağstafa">Ağstafa</option>
+            <option value="Tovuz">Tovuz</option>
+            <option value="İsmayıllı">İsmayıllı</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İmtina</button>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i> Əlavə Et</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+

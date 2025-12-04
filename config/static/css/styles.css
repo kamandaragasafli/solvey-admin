@@ -40,7 +40,7 @@ body {
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #1f2937;
+  background-color: #030b1a;
   color: var(--text-primary);
   line-height: 1.6;
   transition: all 0.3s ease;
@@ -229,8 +229,8 @@ body {
     position: fixed;
     left: 0;
     top: 0;
-    width: 260px;
-    height: 100vh;
+    width: 220px;
+    height: 100%;
     background: #111827; /* dark gradient silindi, daha tünd rəng */
     color: #f9fafb;
     display: flex;
@@ -318,10 +318,57 @@ body {
 }
 
 .content {
-  margin-left: 250px;
+  margin-left: 220px;
   padding: 30px;
   background-color: #030b1a;
 
+}
+
+/* ======= Responsive Layout for Base Template ======= */
+@media (max-width: 992px) {
+  .sidebar {
+    position: fixed;
+    width: 200px;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .content {
+    margin-left: 0;
+    padding: 20px 16px;
+  }
+
+  .top-bar {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+  }
+
+  .top-bar a {
+    flex: 1 1 48%;
+    text-align: center;
+    margin: 4px 0;
+  }
+
+  .user-profile {
+    margin-top: 8px;
+    margin-right: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .top-bar a {
+    flex: 1 1 100%;
+  }
+
+  .card.shadow-sm {
+    width: 100% !important;
+    margin: 0 !important;
+  }
 }
 
 .top-bar {

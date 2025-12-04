@@ -65,6 +65,114 @@ def doctors_list(request):
     return render(request, "doctors.html", {"doctors": doctor_data, "regions": regions})
 
 
+def doctors_export_excel(request):
+    """Export doctors list to Excel with filters applied"""
+    queryset = Doctors.objects.all().prefetch_related('odenisler')
+
+    # Apply same filters as doctors_list
+    region_id = request.GET.get('region_filter')
+    if region_id:
+        queryset = queryset.filter(bolge_id=region_id)
+
+    debt_filter = request.GET.get('debt_filter')
+    if debt_filter == 'greater':
+        queryset = queryset.filter(previous_debt__gt=0)
+    elif debt_filter == 'zero':
+        queryset = queryset.filter(previous_debt=0)
+    elif debt_filter == 'less':
+        queryset = queryset.filter(previous_debt__lt=100)
+
+    search_query = request.GET.get('search')
+    if search_query:
+        queryset = queryset.filter(ad__icontains=search_query)
+
+    # Create Excel workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Həkimlər Siyahısı"
+
+    # Headers
+    headers = [
+        "№", "Barkod", "Bölgə", "Şəhər", "Ad", "Sonuncu Ödəniş Tarixi",
+        "Sonuncu Ödəniş Məbləği", "İxtisas", "Dərəcə", "Kateqoriya",
+        "Klinika", "Əlaqə", "Yekun Borc"
+    ]
+    ws.append(headers)
+
+    # Style headers
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.border = border
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Add data rows
+    for idx, doctor in enumerate(queryset, start=1):
+        last_payment = doctor.odenisler.order_by('-date').first()
+        last_payment_date = last_payment.date.strftime("%d.%m.%Y") if last_payment else "-"
+        last_payment_amount = float(last_payment.pay) if last_payment else 0.0
+
+        row = [
+            idx,
+            doctor.barkod or "",
+            doctor.bolge.region_name if doctor.bolge else "",
+            doctor.city.city_name if doctor.city else "",
+            doctor.ad or "",
+            last_payment_date,
+            last_payment_amount,
+            doctor.get_ixtisas_display() if hasattr(doctor, 'get_ixtisas_display') else (doctor.ixtisas or ""),
+            doctor.get_derece_display() if hasattr(doctor, 'get_derece_display') else (doctor.derece or ""),
+            f"{doctor.kategoriya} kategoriya" if doctor.kategoriya else "",
+            doctor.klinika.hospital_name if doctor.klinika else "",
+            doctor.number or "",
+            float(doctor.previous_debt) if doctor.previous_debt else 0.0
+        ]
+        ws.append(row)
+
+        # Apply border to data cells
+        for cell in ws[ws.max_row]:
+            cell.border = border
+
+    # Auto-adjust column widths
+    column_widths = {
+        'A': 6,   # №
+        'B': 12,  # Barkod
+        'C': 15,  # Bölgə
+        'D': 15,  # Şəhər
+        'E': 25,  # Ad
+        'F': 18,  # Sonuncu Ödəniş Tarixi
+        'G': 20,  # Sonuncu Ödəniş Məbləği
+        'H': 12,  # İxtisas
+        'I': 15,  # Dərəcə
+        'J': 12,  # Kateqoriya
+        'K': 20,  # Klinika
+        'L': 15,  # Əlaqə
+        'M': 12,  # Yekun Borc
+    }
+    for col, width in column_widths.items():
+        ws.column_dimensions[col].width = width
+
+    # Create filename
+    filename = f"Həkimlər_siyahısı_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+    # Prepare response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
+    wb.save(response)
+    return response
+
+
 def create_doctor(request):
     regions = Region.objects.all()
     hospitals = Hospital.objects.all()
@@ -166,12 +274,15 @@ def doctor_detail(request, doctor_id):
 
 
 
+    regions = Region.objects.all().order_by("region_name")
+
     context = {
         "doctor": doctor,
         "payments": payments,
         "recibe_total": recibe_total,
         "recipe": recipe,
         "silinme_list": silinme_list,
+        "regions": regions,
     }
     return render(request, "doctor-details.html", context)
 
@@ -466,25 +577,24 @@ def del_payments(request, id):
 
 
 
-def update_recipe(request, id):
-    # RecipeDrug obyektini götür
-    recipe_drug = get_object_or_404(RecipeDrug, id=id)
-
+def update_recipe(request):
+    regions = Region.objects.all().order_by("region_name")
+    doctors = Doctors.objects.all().order_by("id")
+    drugs = Medical.objects.all().order_by("id")
     if request.method == "POST":
-        number = request.POST.get("number")
-        if number:
-            recipe_drug.number = number
-            recipe_drug.save()
-            messages.success(request, "Resept uğurla yeniləndi.")
-            # Update sonra həkimin detal səhifəsinə yönləndir
-            return redirect("doctor_detail", doctor_id=recipe_drug.recipe.dr.id)
-        else:
-            messages.error(request, "Zəhmət olmasa bütün sahələri doldurun.")
-
-    context = {
-        "recipe_drug": recipe_drug
-    }
-    return render(request, "doctor_details.html", context)
+        recipe_id = request.POST.get("recipe_id")
+        recipe = get_object_or_404(Recipe, id=recipe_id)
+        recipe.region_id = request.POST.get("region_id")
+        recipe.dr_id = request.POST.get("doctor_id")
+        recipe.date = request.POST.get("date")
+        recipe.save()
+        return redirect('recipe_detail', recipe_id=recipe.id)
+    return render(request, "crud/update-recipe.html", {
+        "recipe": recipe,
+        "regions": regions,
+        "doctors": doctors,
+        "drugs": drugs,
+    })
 
 
 
@@ -509,8 +619,34 @@ def update_doctor(request, pk):
         doctor.cinsiyyet = request.POST.get('cinsiyyet', doctor.cinsiyyet)
         doctor.derece = request.POST.get('derece', doctor.derece)
         doctor.number = request.POST.get('number', doctor.number)
+
+        # Region, city və klinika yenilənməsi
+        bolge_id = request.POST.get('region_id')
+        city_id = request.POST.get('city_id')
+        klinika_id = request.POST.get('hospital_id')
+
+        if bolge_id:
+            try:
+                doctor.bolge = Region.objects.get(id=bolge_id)
+            except Region.DoesNotExist:
+                pass
+
+        if city_id:
+            try:
+                doctor.city = City.objects.get(id=city_id)
+            except City.DoesNotExist:
+                doctor.city = None
+        else:
+            doctor.city = None
+
+        if klinika_id:
+            try:
+                doctor.klinika = Hospital.objects.get(id=klinika_id)
+            except Hospital.DoesNotExist:
+                pass
+
         doctor.save()
-        return redirect('doctor_detail', doctor_id=doctor.pk)  # Changed 'pk' to 'doctor_id'
+        return redirect('doctor_detail', doctor_id=doctor.pk)
     return render(request, 'doctor-details.html', {'doctor': doctor})
 
 
@@ -619,7 +755,7 @@ def create_datasiya(request):
     regions = Region.objects.all().order_by("region_name")
     selected_region = request.GET.get("region") or None
 
-    doctors = Doctors.objects.filter(region_id=selected_region).order_by("id") if selected_region else []
+    doctors = Doctors.objects.filter(region_id=selected_region).order_by("ad") if selected_region else []
 
     if request.method == "POST":
         region_id = request.POST.get("region")
@@ -676,26 +812,45 @@ def finance_view(request):
     regions = Region.objects.all().order_by("region_name")
     selected_region = request.GET.get("region")
 
-    doctors = []
+    # HTML input type="month" → "2024-11" formatında gəlir
+    selected_month_val = request.GET.get("month")
 
-    # Cari ay və il
     today = date.today()
     current_month = today.month
     current_year = today.year
+
+    # Ay və ili düzgün parse edirik
+    if selected_month_val:
+        try:
+            year, month = selected_month_val.split("-")
+            selected_year = int(year)
+            selected_month = int(month)
+        except Exception:
+            selected_year = current_year
+            selected_month = current_month
+    else:
+        # Heç bir ay seçilməyibsə, default olaraq keçən ayı göstər
+        if current_month == 1:
+            selected_month = 12
+            selected_year = current_year - 1
+        else:
+            selected_month = current_month - 1
+            selected_year = current_year
+        selected_month_val = f"{selected_year:04d}-{selected_month:02d}"
+
+    doctors = []
 
     if selected_region:
         doctors = Doctors.objects.filter(region_id=selected_region).order_by("id")
 
         for doctor in doctors:
-            # Bu ay üçün Avans və İnvestisiya cəmlərini tapırıq
             payments = Payment_doctor.objects.filter(
                 doctor=doctor,
                 area_id=selected_region,
-                date__month=current_month,
-                date__year=current_year
+                date__month=selected_month,
+                date__year=selected_year
             ).values("payment_type").annotate(total=Sum("pay"))
 
-            # Varsayılan 0 dəyərlər
             doctor.avans = Decimal("0.00")
             doctor.investisiya = Decimal("0.00")
 
@@ -704,31 +859,52 @@ def finance_view(request):
                     doctor.avans = p["total"] or Decimal("0.00")
                 elif p["payment_type"] == "İnvest":
                     doctor.investisiya = p["total"] or Decimal("0.00")
-            
-            doctor.previous_debt = Decimal("0.00")  # Öz borc hesablama məntiqinizə uyğun
+
+            # Excel və template üçün əvvəlki borc dəyəri (əgər None-dursa 0.00 olsun)
+            doctor.previous_debt = doctor.previous_debt or Decimal("0.00")
 
     return render(request, "finance.html", {
         "regions": regions,
         "doctors": doctors,
         "selected_region": selected_region,
+        "selected_month": selected_month_val,  # seçilmiş (və ya default) ayı template-ə göndəririk
     })
-
 
 # views.py
 def finance_export_excel(request):
     selected_region = request.GET.get("region")
-    
-    if not selected_region or selected_region == "None":
+    selected_month_val = request.GET.get("month")
+
+    if not selected_region:
         return HttpResponse("Bölgə seçilməyib", status=400)
-    
+
+    today = date.today()
+    current_year = today.year
+    current_month = today.month
+
+    # "2024-11" formatını parçalayırıq
+    if selected_month_val:
+        try:
+            year, month = selected_month_val.split("-")
+            selected_year = int(year)
+            selected_month = int(month)
+        except Exception:
+            selected_year = current_year
+            selected_month = current_month
+    else:
+        # Heç bir ay seçilməyibsə, default olaraq keçən ayı göstər
+        if current_month == 1:
+            selected_month = 12
+            selected_year = current_year - 1
+        else:
+            selected_month = current_month - 1
+            selected_year = current_year
+        selected_month_val = f"{selected_year:04d}-{selected_month:02d}"
+
     try:
         selected_region = int(selected_region)
     except ValueError:
-        return HttpResponse("Yanlış bölgə ID-si", status=400)
-    
-    today = date.today()
-    current_month = today.month
-    current_year = today.year
+        return HttpResponse("Yanlış məlumat", status=400)
 
     doctors = Doctors.objects.filter(bolge_id=selected_region).order_by("id")
     export_data = []
@@ -737,8 +913,8 @@ def finance_export_excel(request):
         payments = Payment_doctor.objects.filter(
             doctor=doctor,
             area_id=selected_region,
-            date__month=current_month,
-            date__year=current_year
+            date__month=selected_month,
+            date__year=selected_year
         ).values("payment_type").annotate(total=Sum("pay"))
 
         avans = Decimal("0.00")
@@ -750,21 +926,24 @@ def finance_export_excel(request):
             elif p["payment_type"] == "İnvest":
                 investisiya = p["total"] or Decimal("0.00")
 
-        if avans > 0 or investisiya > 0:
+        # Əvvəlki borc sahəsi (None olarsa 0.00)
+        previous_debt = doctor.previous_debt or Decimal("0.00")
+
+        if avans > 0 or investisiya > 0 or previous_debt != 0:
             export_data.append({
                 "doctor_name": doctor.ad,
-                "previous_debt": Decimal("0.00"),
+                "previous_debt": previous_debt,
                 "avans": avans,
                 "investisiya": investisiya,
                 "bolge": doctor.bolge.region_name if doctor.bolge else ""
             })
 
-    # Excel yaradılır
+    # Excel yaradılması
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Finance Report"
 
-    headers = ["Bölgə", "Həkim", "Borc vəziyyəti", "Avans", "İnvestisiya"]
+    headers = ["Bölgə", "Həkim", "Əvvəlki borc", "Avans", "İnvestisiya"]
     ws.append(headers)
 
     for item in export_data:
@@ -776,17 +955,16 @@ def finance_export_excel(request):
             float(item["investisiya"])
         ])
 
-    # Sütun genişliklərini tənzimləyirik
-    for col_num, col_title in enumerate(headers, 1):
-        ws.column_dimensions[get_column_letter(col_num)].width = max(len(col_title)+2, 15)
-
-    # Excel faylı üçün response
     region_name = export_data[0]["bolge"] if export_data else "Report"
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    filename = f"{region_name} maliyəsi.xlsx"
+    filename = f"{region_name} maliyəsi {selected_month}.xlsx"
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
     response['Content-Disposition'] = f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
     wb.save(response)
     return response
+
 
 
 def create_razilasma(request):
@@ -842,50 +1020,66 @@ def create_razilasma(request):
 
 
 def ajax_doctors_by_region(request):
-    region_id = request.GET.get('region_id')
-    
+    region_id = request.GET.get("region_id")
+    month_str = request.GET.get("month")  # "2024-11" kimi gəlir
+
     if not region_id:
-        return JsonResponse({'doctors': []})
-    
-    # Cari ay və il
+        return JsonResponse({"doctors": []})
+
+    # Ay və ili müəyyən et
     today = date.today()
     current_month = today.month
     current_year = today.year
-    
+
+    if month_str:
+        try:
+            year, month = month_str.split("-")
+            selected_year = int(year)
+            selected_month = int(month)
+        except (ValueError, AttributeError):
+            selected_year = current_year
+            selected_month = current_month
+    else:
+        # fallback: cari ay və il
+        selected_year = current_year
+        selected_month = current_month
+
     # Həkimləri və onların ödəniş məlumatlarını al
     doctors = Doctors.objects.filter(bolge=region_id).order_by("id")
-    
+
     doctor_list = []
-    
+
     for doctor in doctors:
-        # Bu həkim üçün cari ayın Avans və İnvestisiya məlumatlarını hesabla
+        # Bu həkim üçün seçilmiş ayın Avans və İnvestisiya məlumatlarını hesabla
         payments = Payment_doctor.objects.filter(
             doctor=doctor,
             area_id=region_id,
-            date__month=current_month,
-            date__year=current_year
-        ).values('payment_type').annotate(total=Sum('pay'))
-        
+            date__month=selected_month,
+            date__year=selected_year,
+        ).values("payment_type").annotate(total=Sum("pay"))
+
         # Default dəyərlər
-        avans = Decimal('0.00')
-        investisiya = Decimal('0.00')
-        
+        avans = Decimal("0.00")
+        investisiya = Decimal("0.00")
+
         # Ödəniş növlərinə görə cəmlə
         for payment in payments:
-            if payment['payment_type'] == 'Avans':
-                avans = payment['total'] or Decimal('0.00')
-            elif payment['payment_type'] == 'İnvest':
-                investisiya = payment['total'] or Decimal('0.00')
-        
-        doctor_list.append({
-            'id': doctor.id,
-            'ad': doctor.ad,
-            'previous_debt': float(doctor.previous_debt) if doctor.previous_debt else 0.0,
-            'avans': float(avans),
-            'investisiya': float(investisiya)
-        })
-    
-    return JsonResponse({'doctors': doctor_list})
+            if payment["payment_type"] == "Avans":
+                avans = payment["total"] or Decimal("0.00")
+            elif payment["payment_type"] == "İnvest":
+                investisiya = payment["total"] or Decimal("0.00")
+
+        doctor_list.append(
+            {
+                "id": doctor.id,
+                "ad": doctor.ad,
+                "previous_debt": float(doctor.previous_debt) if doctor.previous_debt else 0.0,
+                "avans": float(avans),
+                "investisiya": float(investisiya),
+            }
+        )
+
+    return JsonResponse({"doctors": doctor_list})
 
 def data_list(request):
     region = Region.objects.all()
