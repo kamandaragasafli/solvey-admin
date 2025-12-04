@@ -737,6 +737,7 @@ def create_real_sales(request):
         # Həkimin yekun borcunu artırırıq
         doctor = Doctors.objects.get(id=doctor_id)
         doctor.hekimden_silinen += total_commission
+        doctor.hesablanan_miqdar += count
         doctor.save()
 
         messages.success(request, "Satış uğurla əlavə olundu və komissiya borca əlavə edildi.")
