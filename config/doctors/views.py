@@ -1344,7 +1344,7 @@ def export_region_excel(request):
     ws = wb.active
     ws.title = f"{region.region_name} - Filterli"
 
-    headers = ["№", "Bölgə", "Həkim adı", "Kod", "Son Ödəniş"] + [d.med_name for d in drugs] + ["Total"]
+    headers = ["№", "Bölgə", "Həkim adı", "Son Ödəniş"] + [d.med_name for d in drugs] + ["Total"]
     ws.append(headers)
 
     bold_font = Font(bold=True, color="060411")
@@ -1381,7 +1381,6 @@ def export_region_excel(request):
             idx,
             doctor.bolge.region_name,
             doctor.ad,
-            doctor.barkod,
             odeme,
         ]
 
