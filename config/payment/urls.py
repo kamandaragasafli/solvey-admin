@@ -15,6 +15,7 @@ urlpatterns = [
     path('export-region-report-excel/', views.export_region_report_excel, name='export_region_report_excel'),
     path("addsells/",views.create_sale, name ="add-sell"),
     path("sales/",views.sales, name ="sales"),
+    path("update-sell/",views.update_sale, name ="update-sell"),
     path('hesabat-bagla/', views.hesabat_bagla, name='hesabat_bagla'),
 
 

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load custom_tags %}
+{% load custom_filters %}
 
 
 
@@ -80,13 +80,14 @@
               <th  style="font-size:0.65rem">{{ d.med_name }}</th>
             {% endfor %}
             <th>Total</th>
+            <th>Yenilə</th>
           </tr>
         </thead>
-        <tbody style="font-size: 0.75rem;">
+        <tbody id="table-body" style="font-size: 0.75rem;">
           {% for region in all_region %}
-            <tr style="background-color: {% cycle '#273549' '#1f2937' %}; transition: background 0.3s;">
+            <tr class="{% cycle 'row-even' 'row-odd' %}" style="transition: background 0.3s;">
               <td>{{ forloop.counter }}</td>
-              <td style="font-size:0.65rem">{{ region.region_name }}</td>
+              <td style="font-size:0.65rem" data-region-id="{{ region.id }}">{{ region.region_name }}</td>
               {% for drug in all_drug %}
                 {% with sales_dict|get_item:region.id|get_item:drug.id as qty %}
                   {% if qty %}
@@ -97,6 +98,16 @@
                 {% endwith %}
               {% endfor %}
               <td style="font-weight: bold;">{{ totals_per_region|get_item:region.id }}</td>
+              <td>
+                <a
+                  class="btn btn-sm btn-outline-primary"
+                  href="{% url 'update-sell' %}?region={{ region.id }}&date={{ request.GET.date|default:today }}"
+                  title="Satışı redaktə et"
+                  style="padding: 4px 8px;"
+                >
+                  <i class="bi bi-pencil-square"></i>
+                </a>
+              </td>
             </tr>
           {% endfor %}
         </tbody>
@@ -121,6 +132,9 @@
     border: none;
     padding: 8px 10px;
   }
+
+  .row-even { background-color: #273549; }
+  .row-odd  { background-color: #1f2937; }
 
 
 </style>

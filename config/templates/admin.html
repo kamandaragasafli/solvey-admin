@@ -2,9 +2,19 @@
 
 {% load static %}
 {% block content %}
+<style>
+  body {
+    background-color: #1f2937;
+  }
+  .admin-container {
+    background-color: #1f2937;
+    border-radius: 16px;
+    padding: 20px;
+  }
+</style>
  <link rel="stylesheet" href="{% static 'css/admin.css' %}">
 {% if messages %}
-  <div class="messages" style="color; white">
+  <div class="messages" style="color: white;">
     {% for message in messages %}
       <div class="alert alert-{{ message.tags }}">{{ message }}</div>
     {% endfor %}
@@ -16,9 +26,9 @@
     
         <!-- Main Content -->
         <main class="main-content">
-            <div class="container">
+            <div class="container admin-container">
                 <!-- Tab Navigation -->
-                <div class="tab-navigation">
+                <div class="tab-navigation" >
                 <button class="tab-btn active" data-tab="data">
                        <i class="fa-solid fa-notes-medical"></i>
                         <span>Qeydiyyatlar</span>

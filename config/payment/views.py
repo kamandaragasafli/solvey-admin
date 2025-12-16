@@ -251,54 +251,187 @@ def create_sale(request):
     }
     return render(request, 'crud/add-sales.html', context)
 
+
+def update_sale(request):
+    """
+    Region üzrə aylıq satışları redaktə et (mövcud miqdarları yüklə, upsert et).
+    """
+    drug_all = Medical.objects.all().order_by("id")
+    region_all = Region.objects.all().order_by("id")
+
+    selected_region_id = request.GET.get("region") or request.POST.get("region") or ""
+    date_str = request.GET.get("date") or request.POST.get("date") or date.today().strftime("%Y-%m-%d")
+    default_date = date.today().strftime("%Y-%m-%d")
+    existing_qty = {}
+
+    # Handle POST (save/upsert)
+    if request.method == "POST":
+        if not selected_region_id or not date_str:
+            messages.error(request, "Bölgə və tarixi seçməlisiniz!")
+            return redirect("update-sell")
+
+        try:
+            sale_date = parse_date(date_str)
+            if sale_date is None:
+                raise ValueError
+        except ValueError:
+            messages.error(request, "Tarix düzgün deyil!")
+            return redirect("update-sell")
+
+        try:
+            region = Region.objects.get(id=selected_region_id)
+        except Region.DoesNotExist:
+            messages.error(request, "Seçilmiş bölgə tapılmadı.")
+            return redirect("update-sell")
+
+        month_start = sale_date.replace(day=1)
+
+        for drug in drug_all:
+            key = f"quantity_{drug.id}"
+            val = request.POST.get(key)
+            if val is None:
+                continue
+            try:
+                qty = int(val) if val != "" else 0
+            except ValueError:
+                qty = 0
+
+            qs = Sale.objects.filter(
+                region=region,
+                drug=drug,
+                sale_date__year=month_start.year,
+                sale_date__month=month_start.month,
+            )
+            if qty > 0:
+                if qs.exists():
+                    sale_obj = qs.first()
+                    sale_obj.quantity = qty
+                    sale_obj.sale_date = sale_date
+                    sale_obj.save()
+                else:
+                    Sale.objects.create(
+                        region=region,
+                        drug=drug,
+                        quantity=qty,
+                        sale_date=sale_date,
+                    )
+            else:
+                qs.delete()  # qty == 0 → sil
+
+        messages.success(request, "Satış məlumatları yeniləndi.")
+        return redirect("sales")
+
+    # Handle GET (load existing)
+    try:
+        sel_date = parse_date(date_str)
+    except Exception:
+        sel_date = date.today()
+
+    if selected_region_id and sel_date:
+        existing = Sale.objects.filter(
+            region_id=selected_region_id,
+            sale_date__year=sel_date.year,
+            sale_date__month=sel_date.month,
+        )
+        existing_qty = {s.drug_id: s.quantity for s in existing}
+
+    context = {
+        "drug_all": drug_all,
+        "region_all": region_all,
+        "selected_region_id": int(selected_region_id) if selected_region_id else "",
+        "selected_date": sel_date.strftime("%Y-%m-%d") if sel_date else default_date,
+        "default_date": default_date,
+        "existing_qty": existing_qty,
+    }
+    return render(request, "crud/update-sales.html", context)
+
 def sales(request):
-    # Get all regions and drugs
-    all_region = Region.objects.all().order_by('id')
-    all_drug = Medical.objects.all().order_by('id')
+    """
+    Region × Drug sales matrix with filters.
+    Filters: region_search (name contains), region (id), month, year.
+    """
+    all_region = Region.objects.all().order_by("id")
+    all_drug = Medical.objects.all().order_by("id")
 
-    # Get available years for the year dropdown
-    years = Sale.objects.dates('sale_date', 'year').distinct()
-    years = [year.year for year in years]
+    # Years for dropdown (sorted desc)
+    years = list(Sale.objects.dates("sale_date", "year").distinct())
+    years = sorted([y.year for y in years], reverse=True)
 
-    # Initialize sales dictionary and totals
-    sales_dict = {}
-    totals_per_region = {}
+    # Filters
+    region_search = request.GET.get("region_search", "").strip()
+    region_id = request.GET.get("region", "").strip()
+    month = request.GET.get("month", "").strip()
+    year = request.GET.get("year", "").strip()
 
-    # Get filter parameters
-    region_search = request.GET.get('region_search', '')
-    region_id = request.GET.get('region', '')
-    month = request.GET.get('month', '')
-    year = request.GET.get('year', '')
-
-    # Base queryset for sales
     sales_queryset = Sale.objects.all()
 
-    # Apply filters
     if region_search:
         all_region = all_region.filter(region_name__icontains=region_search)
-    if region_id:
-        all_region = all_region.filter(id=region_id)
-    if month:
-        sales_queryset = sales_queryset.filter(sale_date__month=month)
-    if year:
-        sales_queryset = sales_queryset.filter(sale_date__year=year)
 
-    # Build sales dictionary
+    if region_id:
+        try:
+            region_id_int = int(region_id)
+            all_region = all_region.filter(id=region_id_int)
+            sales_queryset = sales_queryset.filter(region_id=region_id_int)
+        except ValueError:
+            region_id_int = None
+    else:
+        region_id_int = None
+
+    if month:
+        try:
+            month_int = int(month)
+            sales_queryset = sales_queryset.filter(sale_date__month=month_int)
+        except ValueError:
+            month_int = None
+    else:
+        month_int = None
+
+    if year:
+        try:
+            year_int = int(year)
+            sales_queryset = sales_queryset.filter(sale_date__year=year_int)
+        except ValueError:
+            year_int = None
+    else:
+        year_int = None
+
+    # Build region × drug quantities
+    sales_dict = {}
+    totals_per_region = {}
+    totals_per_drug = {drug.id: 0 for drug in all_drug}
+    grand_total = 0
+
     for region in all_region:
         sales_dict[region.id] = {}
         region_total = 0
         for drug in all_drug:
-            qty = sales_queryset.filter(region=region, drug=drug).aggregate(Sum('quantity'))['quantity__sum'] or 0
+            qty = (
+                sales_queryset.filter(region_id=region.id, drug_id=drug.id)
+                .aggregate(Sum("quantity"))["quantity__sum"]
+                or 0
+            )
             sales_dict[region.id][drug.id] = qty
             region_total += qty
+            totals_per_drug[drug.id] += qty
+            grand_total += qty
         totals_per_region[region.id] = region_total
 
+    today_str = date.today().strftime("%Y-%m-%d")
+
     context = {
-        'all_region': all_region,
-        'all_drug': all_drug,
-        'sales_dict': sales_dict,
-        'totals_per_region': totals_per_region,
-        'years': years,
+        "all_region": all_region,
+        "all_drug": all_drug,
+        "sales_dict": sales_dict,
+        "totals_per_region": totals_per_region,
+        "totals_per_drug": totals_per_drug,
+        "grand_total": grand_total,
+        "years": years,
+        "selected_region": region_id_int,
+        "selected_month": month_int,
+        "selected_year": year_int,
+        "region_search": region_search,
+        "today": today_str,
     }
     return render(request, "reports/sales.html", context)
 
@@ -577,7 +710,7 @@ def export_region_report_excel(request):
 
     # Başlıqlar
     headers = [
-        "№", "Bölgə", "Həkim", "Kod", "Kateqoriya", "Dərəcə", "İxtisas", "Əvvəlki Borc"
+        "№", "Bölgə", "Həkim", "Kod", "Şəhər", "Dərəcə", "İxtisas", "Əvvəlki Borc"
     ] + [d.med_name for d in drugs] + [
         "Total", "Hesablanan Miqdar", "Həkimdən Silinən", "Avans", "İnvestisiya", "Geri qaytarma", "Datasiya", "Yekun Borc"
     ]
@@ -686,7 +819,7 @@ def export_region_report_excel(request):
             doctor.bolge.region_name,
             doctor.ad,
             doctor.barkod,
-            doctor.get_kategoriya_display(),
+            doctor.city.city_name if doctor.city else "",
             doctor.get_derece_display(),
             doctor.get_ixtisas_display(),
             float(previous_debt)

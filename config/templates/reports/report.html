@@ -66,6 +66,10 @@
       </button></a>
     </div>
     <hr>
+    <div class="total-container">
+    <p>Əvvəlki Borclar <span id="previous-debt">0</span></p>
+    <p>Yekun Borc <span id="total-debt">0</span></p>
+    </div>
 
     <!-- Cədvəl -->
     <div class="table-responsive">
@@ -210,6 +214,39 @@
     .fst-italic {
       font-style: italic;
     }
+    .total-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 12px;
+      padding: 0.25rem 0.75rem;
+      background: #1e293b;
+      color: white;
+    }
+    .total-container p {
+      margin: 0;
+      padding: 0;
+    }
+    .total-container p:first-child {
+      margin-right: 1rem;
+    }
+    .total-container p:last-child {
+      margin-left: 1rem;
+    }
+    .total-container p:first-child span {
+      color: #b91010;
+      font-weight: 500;
+      font-size: 0.85rem;
+    }
+    .total-container p:last-child span {
+      color: #10b981;
+      font-weight: 500;
+      font-size: 0.85rem;
+    }
 
     .table-badge {
       display: inline-block;
@@ -295,7 +332,58 @@ let currentPage = 1;
 let totalPages = 1;
 let allResults = []; // Bütün nəticələri saxlayır
 
-function loadRegionData(regionId, month, page = 1) {
+function calculateTotals(allResults) {
+  let totalPreviousDebt = 0;
+  let totalDebt = 0;
+  
+  allResults.forEach(item => {
+    totalPreviousDebt += Number(item.previous_debt || 0);
+    totalDebt += Number(item.yekun_borc || 0);
+  });
+  
+  document.getElementById('previous-debt').textContent = totalPreviousDebt.toFixed(2);
+  document.getElementById('total-debt').textContent = totalDebt.toFixed(2);
+}
+
+function loadAllRegionData(regionId, month) {
+  const borcFilter = document.getElementById('borc-status').value;
+  
+  // Fetch all pages to calculate totals
+  fetch(`/reports/ajax/region-report/?region_id=${regionId}&month=${month}&borc=${borcFilter}&page=1`)
+    .then(response => {
+      if (!response.ok) throw new Error("Server cavabı düzgün deyil");
+      return response.json();
+    })
+    .then(data => {
+      let allResults = [...(data.results || [])];
+      const totalPages = data.total_pages || 1;
+      
+      // Fetch remaining pages
+      const promises = [];
+      for (let page = 2; page <= totalPages; page++) {
+        promises.push(
+          fetch(`/reports/ajax/region-report/?region_id=${regionId}&month=${month}&borc=${borcFilter}&page=${page}`)
+            .then(res => res.json())
+            .then(pageData => pageData.results || [])
+        );
+      }
+      
+      return Promise.all(promises).then(pageResults => {
+        pageResults.forEach(results => {
+          allResults = allResults.concat(results);
+        });
+        return allResults;
+      });
+    })
+    .then(allResults => {
+      calculateTotals(allResults);
+    })
+    .catch(error => {
+      console.error('Error calculating totals:', error);
+    });
+}
+
+function loadRegionData(regionId, month, page = 1, calculateTotalsFlag = true) {
   const borcFilter = document.getElementById('borc-status').value;
 
   fetch(`/reports/ajax/region-report/?region_id=${regionId}&month=${month}&borc=${borcFilter}&page=${page}`)
@@ -314,7 +402,15 @@ function loadRegionData(regionId, month, page = 1) {
       if (!data.results || data.results.length === 0) {
         tbody.innerHTML = `<tr><td colspan="37" class="text-muted fst-italic" id="noResultRow">Seçilən bölgəyə və aya uyğun məlumat tapılmadı.</td></tr>`;
         updatePagination(); // Paginationı yenilə
+        // Reset totals when no data
+        document.getElementById('previous-debt').textContent = '0.00';
+        document.getElementById('total-debt').textContent = '0.00';
         return;
+      }
+      
+      // Calculate totals from all pages only when filters change, not on page navigation
+      if (calculateTotalsFlag) {
+        loadAllRegionData(regionId, month);
       }
       function formatPreviousDebt(num) {
         if (num === null || num === undefined || Number(num) === 0) return 'text-warning'; // 0 sarı
@@ -451,7 +547,8 @@ function changePage(page) {
   const month = monthSelect.value;
   
   if (regionId) {
-    loadRegionData(regionId, month, page);
+    // Don't recalculate totals when just changing pages
+    loadRegionData(regionId, month, page, false);
   }
 }
 

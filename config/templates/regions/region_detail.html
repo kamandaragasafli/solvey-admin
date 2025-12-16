@@ -1,0 +1,637 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  body {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #f9fafb;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh;
+  }
+
+  .page-header {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 12px;
+    color: #60a5fa;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s;
+    margin-bottom: 1.5rem;
+  }
+
+  .back-button:hover {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #93c5fd;
+    transform: translateX(-4px);
+  }
+
+  .region-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .region-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: white;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+  }
+
+  .region-info h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0;
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .region-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+  }
+
+  .badge-success-modern {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .badge-primary-modern {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--card-color), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .stat-card:hover::before {
+    opacity: 1;
+  }
+
+  .stat-card.card-primary { --card-color: #3b82f6; }
+  .stat-card.card-success { --card-color: #10b981; }
+  .stat-card.card-warning { --card-color: #f59e0b; }
+  .stat-card.card-purple { --card-color: #8b5cf6; }
+
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+    color: #f9fafb;
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .section-container {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 2rem;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #f9fafb;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .modern-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .modern-table thead {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(10px);
+  }
+
+  .modern-table thead th {
+    padding: 1rem 1.25rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .modern-table thead th:first-child {
+    border-top-left-radius: 12px;
+  }
+
+  .modern-table thead th:last-child {
+    border-top-right-radius: 12px;
+  }
+
+  .modern-table tbody tr {
+    background: rgba(30, 41, 59, 0.5);
+    transition: all 0.2s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .modern-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.15);
+    transform: scale(1.01);
+  }
+
+  .modern-table tbody td {
+    padding: 1.25rem;
+    color: #e2e8f0;
+    font-size: 0.9375rem;
+  }
+
+  .modern-table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 12px;
+  }
+
+  .modern-table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 12px;
+  }
+
+  .table-responsive {
+    max-height: 500px;
+    overflow-y: auto;
+    border-radius: 12px;
+  }
+
+  .table-responsive::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .table-responsive::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 10px;
+  }
+
+  .table-responsive::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 10px;
+  }
+
+  .badge-modern {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .badge-info-modern {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+  }
+
+  .badge-success-modern-table {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .badge-primary-modern-table {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .link-modern {
+    color: #60a5fa;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+  .link-modern:hover {
+    color: #93c5fd;
+    text-decoration: underline;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #94a3b8;
+  }
+
+  .empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  .chart-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .chart-card {
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .chart-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin-bottom: 1rem;
+  }
+
+  .chart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .chart-item:last-child {
+    border-bottom: none;
+  }
+
+  .chart-label {
+    color: #e2e8f0;
+    font-size: 0.9375rem;
+  }
+
+  .chart-value {
+    color: #60a5fa;
+    font-weight: 600;
+  }
+</style>
+
+<div class="container py-4">
+  <!-- Back Button -->
+  <a href="{% url 'region_list' %}" class="back-button">
+    <i class="bi bi-arrow-left"></i>
+    <span>Bölgələrə qayıt</span>
+  </a>
+
+  <!-- Region Header -->
+  <div class="page-header">
+    <div class="region-header">
+      <div class="region-icon">
+        <i class="bi bi-geo-alt-fill"></i>
+      </div>
+      <div class="region-info">
+        <h1>{{ region.region_name }}</h1>
+        {% if region.get_region_type_display == "Bakı" %}
+          <span class="region-badge badge-success-modern">
+            <i class="bi bi-check-circle"></i>
+            Bakı Bölgəsi
+          </span>
+        {% else %}
+          <span class="region-badge badge-primary-modern">
+            <i class="bi bi-geo-alt"></i>
+            Digər Bölgə
+          </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid">
+    <div class="stat-card card-primary">
+      <div class="stat-icon" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">
+        <i class="bi bi-person-badge"></i>
+      </div>
+      <div class="stat-value">{{ doctor_count }}</div>
+      <div class="stat-label">Həkim Sayı</div>
+    </div>
+    <div class="stat-card card-success">
+      <div class="stat-icon" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">
+        <i class="bi bi-geo"></i>
+      </div>
+      <div class="stat-value">{{ city_count }}</div>
+      <div class="stat-label">Şəhər Sayı</div>
+    </div>
+    <div class="stat-card card-warning">
+      <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">
+        <i class="bi bi-hospital"></i>
+      </div>
+      <div class="stat-value">{{ hospital_count }}</div>
+      <div class="stat-label">Xəstəxana/Klinika Sayı</div>
+    </div>
+    <div class="stat-card card-purple">
+      <div class="stat-icon" style="background: rgba(139, 92, 246, 0.2); color: #a78bfa;">
+        <i class="bi bi-person-plus"></i>
+      </div>
+      <div class="stat-value">{{ new_doctors_count }}</div>
+      <div class="stat-label">Yeni Həkim (Bu Ay)</div>
+      {% if new_doctors_count > 0 %}
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+          <div style="font-size: 0.875rem; color: #cbd5e1; font-weight: 600; margin-bottom: 0.5rem;">Həkimlər:</div>
+          <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+            {% for doctor in new_doctors %}
+            <div style="font-size: 0.8125rem; color: #e2e8f0; padding: 0.25rem 0.5rem; background: rgba(139, 92, 246, 0.1); border-radius: 6px;">
+              <i class="bi bi-person-check" style="margin-right: 0.5rem;"></i>{{ doctor.ad }}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% else %}
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+          <div style="font-size: 0.875rem; color: #94a3b8; font-style: italic;">
+            <i class="bi bi-info-circle" style="margin-right: 0.5rem;"></i>Yeni həkim yoxdur
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Statistics Charts -->
+  {% if doctors_by_specialty or doctors_by_degree %}
+  <div class="section-container">
+    <h2 class="section-title">
+      <i class="bi bi-bar-chart"></i>
+      Statistika
+    </h2>
+    <div class="chart-container">
+      {% if doctors_by_specialty %}
+      <div class="chart-card">
+        <h3 class="chart-title">İxtisas üzrə</h3>
+        {% for specialty, count in doctors_by_specialty.items %}
+        <div class="chart-item">
+          <span class="chart-label">{{ specialty }}</span>
+          <span class="chart-value">{{ count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if doctors_by_degree %}
+      <div class="chart-card">
+        <h3 class="chart-title">Dərəcə üzrə</h3>
+        {% for degree, count in doctors_by_degree.items %}
+        <div class="chart-item">
+          <span class="chart-label">{{ degree }}</span>
+          <span class="chart-value">{{ count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Doctors Section -->
+  <div class="section-container">
+    <div class="section-header">
+      <h2 class="section-title">
+        <i class="bi bi-person-badge"></i>
+        Həkimlər ({{ doctor_count }})
+      </h2>
+    </div>
+    <div class="table-responsive">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ad</th>
+            <th>Kod</th>
+            <th>İxtisas</th>
+            <th>Dərəcə</th>
+            <th>Şəhər</th>
+            <th>Klinika</th>
+            <th>Əməliyyat</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doctor in doctors %}
+          <tr>
+            <td>
+              <span class="badge-modern badge-info-modern">{{ forloop.counter }}</span>
+            </td>
+            <td>
+              <strong>{{ doctor.ad }}</strong>
+            </td>
+            <td>
+              <span class="badge-modern badge-primary-modern-table">{{ doctor.barkod|default:"—" }}</span>
+            </td>
+            <td>{{ doctor.get_ixtisas_display }}</td>
+            <td>
+              <span class="badge-modern badge-success-modern-table">{{ doctor.get_derece_display }}</span>
+            </td>
+            <td>{{ doctor.city.city_name|default:"—" }}</td>
+            <td>{{ doctor.klinika.hospital_name|default:"—" }}</td>
+            <td>
+              <a href="{% url 'doctor_detail' doctor.id %}" class="link-modern">
+                <i class="bi bi-eye"></i> Bax
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <i class="bi bi-person-x"></i>
+                </div>
+                <h4 style="color: #94a3b8; margin-bottom: 0.5rem;">Həkim tapılmadı</h4>
+                <p style="color: #64748b; margin: 0;">Bu bölgədə həkim qeydiyyatda deyil</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Cities Section -->
+  <div class="section-container">
+    <div class="section-header">
+      <h2 class="section-title">
+        <i class="bi bi-geo"></i>
+        Şəhərlər ({{ city_count }})
+      </h2>
+    </div>
+    <div class="table-responsive">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Şəhər Adı</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for city in cities %}
+          <tr>
+            <td>
+              <span class="badge-modern badge-info-modern">{{ forloop.counter }}</span>
+            </td>
+            <td>
+              <strong>{{ city.city_name }}</strong>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="2">
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <i class="bi bi-geo-x"></i>
+                </div>
+                <h4 style="color: #94a3b8; margin-bottom: 0.5rem;">Şəhər tapılmadı</h4>
+                <p style="color: #64748b; margin: 0;">Bu bölgədə şəhər qeydiyyatda deyil</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Hospitals Section -->
+  <div class="section-container">
+    <div class="section-header">
+      <h2 class="section-title">
+        <i class="bi bi-hospital"></i>
+        Xəstəxanalar/Klinikalar ({{ hospital_count }})
+      </h2>
+    </div>
+    <div class="table-responsive">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Xəstəxana/Klinika Adı</th>
+            <th>Şəhər</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for hospital in hospitals %}
+          <tr>
+            <td>
+              <span class="badge-modern badge-info-modern">{{ forloop.counter }}</span>
+            </td>
+            <td>
+              <strong>{{ hospital.hospital_name }}</strong>
+            </td>
+            <td>{{ hospital.city.city_name|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3">
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <i class="bi bi-hospital"></i>
+                </div>
+                <h4 style="color: #94a3b8; margin-bottom: 0.5rem;">Xəstəxana/Klinika tapılmadı</h4>
+                <p style="color: #64748b; margin: 0;">Bu bölgədə xəstəxana/klinika qeydiyyatda deyil</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
+
