@@ -4,6 +4,7 @@ from regions import views
 
 urlpatterns = [
     path("area/",views.region_list, name="region_list"),
+    path("area/<int:region_id>/", views.region_detail, name="region_detail"),
     path("add/",views.create_region, name="add-region"),
 
     path("hospital/",views.hospital_list, name="hospital_list"),

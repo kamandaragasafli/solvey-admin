@@ -2,6 +2,8 @@ from django.shortcuts import render, redirect,get_object_or_404
 from .models import Region, Hospital, City
 from django.contrib import messages
 from doctors.models import Doctors
+from datetime import date, datetime
+from django.utils import timezone
 
 # Create your views here.
 def region_list(request):
@@ -95,3 +97,66 @@ def create_hospital(request):
         "region": region,
     }
     return render(request, "crud/add-hospital.html", context)
+
+
+def region_detail(request, region_id):
+    """Region detallı məlumat səhifəsi"""
+    region = get_object_or_404(Region, id=region_id)
+    
+    # Region ilə əlaqəli məlumatlar
+    doctors = Doctors.objects.filter(bolge=region).select_related('city', 'klinika').order_by('ad')
+    cities = City.objects.filter(region=region).order_by('city_name')
+    hospitals = Hospital.objects.filter(region_net=region).select_related('city').order_by('hospital_name')
+    
+    # Statistika
+    doctor_count = doctors.count()
+    city_count = cities.count()
+    hospital_count = hospitals.count()
+    
+    # Həkimlər üzrə statistika
+    doctors_by_specialty = {}
+    doctors_by_degree = {}
+    for doctor in doctors:
+        specialty = doctor.get_ixtisas_display()
+        degree = doctor.get_derece_display()
+        doctors_by_specialty[specialty] = doctors_by_specialty.get(specialty, 0) + 1
+        doctors_by_degree[degree] = doctors_by_degree.get(degree, 0) + 1
+    
+    # Bu ay əlavə olunan yeni həkimlər (son 5-i)
+    today = date.today()
+    current_month = today.month
+    current_year = today.year
+    
+    # Yeni həkimləri tapmaq - created_at field yoxdursa, boş qaytar
+    new_doctors = doctors.none()
+    try:
+        # Django model field-lərini yoxla
+        model_fields = [f.name for f in Doctors._meta.get_fields()]
+        if 'created_at' in model_fields:
+            new_doctors = doctors.filter(created_at__year=current_year, created_at__month=current_month).order_by('-created_at')[:5]
+        elif 'date_created' in model_fields:
+            new_doctors = doctors.filter(date_created__year=current_year, date_created__month=current_month).order_by('-date_created')[:5]
+        elif 'created' in model_fields:
+            new_doctors = doctors.filter(created__year=current_year, created__month=current_month).order_by('-created')[:5]
+    except Exception as e:
+        # Field yoxdursa, boş qaytar
+        new_doctors = doctors.none()
+    
+    new_doctors_list = list(new_doctors)
+    new_doctors_count = len(new_doctors_list)
+    
+    context = {
+        'region': region,
+        'doctors': doctors,
+        'cities': cities,
+        'hospitals': hospitals,
+        'doctor_count': doctor_count,
+        'city_count': city_count,
+        'hospital_count': hospital_count,
+        'doctors_by_specialty': doctors_by_specialty,
+        'doctors_by_degree': doctors_by_degree,
+        'new_doctors_count': new_doctors_count,
+        'new_doctors': new_doctors_list,
+    }
+    
+    return render(request, 'regions/region_detail.html', context)

@@ -903,7 +903,7 @@ def finance_export_excel(request):
         selected_month_val = f"{selected_year:04d}-{selected_month:02d}"
 
     try:
-        selected_region = int(secari_yekun_borc
+        selected_region = int(selected_region)
     except ValueError:
         return HttpResponse("Yanlış məlumat", status=400)
 
@@ -919,7 +919,9 @@ def finance_export_excel(request):
         ).values("payment_type").annotate(total=Sum("pay"))
 
         avans = Decimal("0.00")
-        investisiya = Decimal("capvsydkun_orc t  for p in payments:
+        investisiya = Decimal("0.00")
+
+        for p in payments:
             if p["payment_type"] == "Avans":
                 avans = p["total"] or Decimal("0.00")
             elif p["payment_type"] == "İnvest":

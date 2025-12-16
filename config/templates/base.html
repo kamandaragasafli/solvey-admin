@@ -109,6 +109,12 @@
     backdrop-filter: blur(2px);
 }
 #overlay.visible { display: block; }
+
+.github-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    transform: translateX(4px);
+}
 </style>
 
 
@@ -240,6 +246,10 @@
 
 
         <div class="sidebar-footer">
+            <a href="https://github.com/kamandaragasafli/solvey-admin" target="_blank" rel="noopener noreferrer" class="github-link" style="margin-bottom: 0.5rem; text-decoration: none; color: #b5bcc7; padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.3s; border-radius: 8px;">
+                <i class="bi bi-github"></i>
+                <span>GitHub</span>
+            </a>
             <a href="{% url 'user_logout' %}" class="logout-btn">
                 <i class='bx bx-log-out'></i>
                 <span>Çıxış</span>

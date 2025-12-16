@@ -2,224 +2,667 @@
 {% block content %}
 <style>
   body {
-    background-color: #030b1a;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     color: #f9fafb;
-    font-family: "Inter", sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh;
   }
-   .custom-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-  color: #f9fafb;
-  background-color: #1f2937;
-}
 
-.custom-table thead {
-  background-color: #273549;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  color: #b5bcc7;
-}
+  .page-header {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 
-.custom-table th, .custom-table td {
-  padding: 12px 10px;
-  border-bottom: 1px solid #374151;
-}
+  .page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+  }
 
-.custom-table tbody tr:nth-child(even) {
-  background-color: #273549;
-}
+  .stat-card {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 16px;
+    padding: 1.5rem;
+    height: 100%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
 
-.custom-table tbody tr:nth-child(odd) {
-  background-color: #1f2937;
-}
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--card-color), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
 
-.custom-table tbody tr:hover {
-  background-color: #006effff !important;
-  color: #f9fafb;
-  transition: 0.3s;
-}
+  .stat-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
 
-.table-responsive::-webkit-scrollbar {
-  width: 8px;
-}
-.table-responsive::-webkit-scrollbar-track {
-  background: #1f2937;
-}
-.table-responsive::-webkit-scrollbar-thumb {
-  background-color: #006effff;
-  border-radius: 10px;
-}
-  </style>
-<div class="container py-4" style="color: #f9fafb;">
+  .stat-card:hover::before {
+    opacity: 1;
+  }
 
-  <!-- Başlıq və Əlavə Düymələr -->
-  <div class="d-flex align-items-center mb-3 justify-content-between">
-    <div class="d-flex align-items-center gap-2">
-      <i class="fa-solid fa-map-location-dot fa-2x text-primary"></i>
-      <h4 class="mb-0">Bölgələr</h4>
-    </div>
-    <div class="d-flex gap-2">
-      <button type="button" class="btn btn-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#addRegionModal">
-        <i class="bi bi-plus-circle"></i> Bölgə Əlavə et
-      </button>
-      <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#addHospitalModal">
-        <i class="bi bi-plus-circle"></i> Klinika/Xəstəxana Əlavə et
-      </button>
-    </div>
-  </div>
+  .stat-card.card-primary { --card-color: #3b82f6; }
+  .stat-card.card-success { --card-color: #10b981; }
+  .stat-card.card-warning { --card-color: #f59e0b; }
+  .stat-card.card-danger { --card-color: #ef4444; }
+  .stat-card.card-info { --card-color: #06b6d4; }
+  .stat-card.card-purple { --card-color: #8b5cf6; }
 
-  <!-- Dashboard Kartları -->
-  <div class="row g-4 mt-4">
-    {% comment %} Kart stili: shadow, rounded, hover efekti, dark color {% endcomment %}
-    <div class="col-md-2">
-      <div class="card shadow-sm text-center p-3" style="background-color: #273549; border-radius: 12px;">
-        <h4 class="fw-bold">{{ region_count }}</h4>
-        <h6 class="text-muted">Ümumi sayı</h6>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card shadow-sm text-center p-3" style="background-color: #5b70f3; border-radius: 12px;">
-        <h4 class="fw-bold">{{ diger_sayi }}</h4>
-        <h6 class="text-muted">Region Bölgəsi sayı</h6>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card shadow-sm text-center p-3" style="background-color: #55e0a3; border-radius: 12px;">
-        <h4 class="fw-bold">{{ baki_sayi }}</h4>
-        <h6 class="text-muted">Bakı bölgəsi sayı</h6>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card shadow-sm text-center p-3" style="background-color: #4850b9; border-radius: 12px;">
-        <h4 class="fw-bold">{{ doctor_count }}</h4>
-        <h6 class="text-muted">Həkim sayı</h6>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card shadow-sm text-center p-3" style="background-color: #e9042e; border-radius: 12px;">
-        <h4 class="fw-bold">{{ city_count }}</h4>
-        <h6 class="text-muted">Şəhər sayı</h6>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card shadow-sm text-center p-3" style="background-color: #fbbf24; color: #1f2937; border-radius: 12px;">
-        <h4 class="fw-bold">{{ hospital_count }}</h4>
-        <h6 class="text-muted">Xəstəxana sayı</h6>
-      </div>
-    </div>
-  </div>
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+  }
 
-  <!-- Table -->
-<div class="table-responsive mt-4" style="max-height: 500px; overflow-y: auto;">
-  <table class="custom-table align-middle text-center">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Region Adı</th>
-        <th>Region Növü</th>
-        <th>Həkim Sayı</th>
-        <th>Şəhər Sayı</th>
-        <th>Klinika Sayı</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for region in regions %}
-      <tr>
-        <th>{{ forloop.counter }}</th>
-        <td><strong>{{ region.region_name }}</strong></td>
-        <td>
-          {% if region.get_region_type_display == "Bakı" %}
-            <span class="badge bg-success">Bakı</span>
-          {% else %}
-            <span class="badge bg-primary">Digər</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if region.doctors.count == 0 %}
-            <span class="badge bg-danger fs-6">0</span>
-          {% else %}
-            <span class="badge bg-info fs-6">{{ region.doctors.count }}</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if region.city_count == 0 %}
-            <span class="badge bg-danger fs-6">0</span>
-          {% else %}
-            <span class="badge bg-info fs-6">{{ region.city_count }}</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if region.hospital_count == 0 %}
-            <span class="badge bg-danger fs-6">0</span>
-          {% else %}
-            <span class="badge bg-warning text-dark fs-6">{{ region.hospital_count }}</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="6" class="text-center">Region tapılmadı.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-  </div>
-</div>
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+    color: #f9fafb;
+  }
 
-<!-- Modallar: Bölgə & Xəstəxana -->
-<div class="modal fade" id="addRegionModal" tabindex="-1">
-  <div class="modal-dialog">
-    <form method="POST" action="{% url 'add-region' %}" class="modal-content" style="background-color: #1f2937; color: #f9fafb;">
-      {% csrf_token %}
-      <div class="modal-header">
-        <h5 class="modal-title">➕ Yeni Bölgə Əlavə et</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label for="region_name" class="form-label">Bölgənin Adı</label>
-          <input type="text" class="form-control" id="region_name" name="region_name" required style="background-color: #273549; color: #f9fafb; border: none;">
+  .stat-label {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .table-container {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 2rem;
+  }
+
+  .table-header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .table-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #f9fafb;
+    margin: 0;
+  }
+
+  .modern-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .modern-table thead {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(10px);
+  }
+
+  .modern-table thead th {
+    padding: 1rem 1.25rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .modern-table thead th:first-child {
+    border-top-left-radius: 12px;
+  }
+
+  .modern-table thead th:last-child {
+    border-top-right-radius: 12px;
+  }
+
+  .modern-table tbody tr {
+    background: rgba(30, 41, 59, 0.5);
+    transition: all 0.2s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .modern-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.15);
+    transform: scale(1.01);
+  }
+
+  .modern-table tbody td {
+    padding: 1.25rem;
+    color: #e2e8f0;
+    font-size: 0.9375rem;
+  }
+
+  .modern-table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 12px;
+  }
+
+  .modern-table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 12px;
+  }
+
+  .region-name {
+    font-weight: 600;
+    color: #60a5fa;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .region-name:hover {
+    color: #93c5fd;
+    text-decoration: underline;
+  }
+
+  .badge-modern {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .badge-success-modern {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .badge-primary-modern {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .badge-info-modern {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+  }
+
+  .badge-danger-modern {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  }
+
+  .badge-warning-modern {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  }
+
+  .btn-modern {
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .btn-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .btn-primary-modern {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+  }
+
+  .btn-primary-modern:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: white;
+  }
+
+  .btn-success-modern {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+  }
+
+  .btn-success-modern:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: white;
+  }
+
+  .table-responsive {
+    max-height: 600px;
+    overflow-y: auto;
+    border-radius: 12px;
+  }
+
+  .table-responsive::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .table-responsive::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 10px;
+  }
+
+  .table-responsive::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 10px;
+  }
+
+  .table-responsive::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  }
+
+  /* Modal Styles */
+  .modal-content-modern {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .modal-header-modern {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .modal-title-modern {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f9fafb;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .modal-body-modern {
+    padding: 1.5rem;
+  }
+
+  .modal-footer-modern {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    border-radius: 0 0 20px 20px;
+  }
+
+  .form-control-modern,
+  .form-select-modern {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    color: #f9fafb;
+    transition: all 0.3s;
+  }
+
+  .form-control-modern:focus,
+  .form-select-modern:focus {
+    background: rgba(15, 23, 42, 0.8);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    color: #f9fafb;
+    outline: none;
+  }
+
+  .form-label-modern {
+    color: #cbd5e1;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.9375rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #94a3b8;
+  }
+
+  .empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .stat-card,
+  .table-container {
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  .stat-card:nth-child(1) { animation-delay: 0.1s; }
+  .stat-card:nth-child(2) { animation-delay: 0.2s; }
+  .stat-card:nth-child(3) { animation-delay: 0.3s; }
+  .stat-card:nth-child(4) { animation-delay: 0.4s; }
+  .stat-card:nth-child(5) { animation-delay: 0.5s; }
+  .stat-card:nth-child(6) { animation-delay: 0.6s; }
+</style>
+
+<div class="container py-4">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);">
+          <i class="fa-solid fa-map-location-dot fa-xl text-white"></i>
+        </div>
+        <div>
+          <h1 class="page-title mb-0">Bölgələr</h1>
+          <p class="text-muted mb-0" style="color: #94a3b8; font-size: 0.875rem;">Bölgə və klinika idarəetməsi</p>
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İmtina</button>
-        <button type="submit" class="btn btn-primary">Əlavə et</button>
+      <div class="d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-modern btn-primary-modern" data-bs-toggle="modal" data-bs-target="#addRegionModal">
+          <i class="bi bi-plus-circle"></i>
+          <span>Bölgə Əlavə et</span>
+        </button>
+        <button type="button" class="btn btn-modern btn-success-modern" data-bs-toggle="modal" data-bs-target="#addHospitalModal">
+          <i class="bi bi-hospital"></i>
+          <span>Klinika Əlavə et</span>
+        </button>
       </div>
-    </form>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="row g-4">
+    <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="stat-card card-primary">
+        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">
+          <i class="bi bi-globe"></i>
+        </div>
+        <div class="stat-value">{{ region_count }}</div>
+        <div class="stat-label">Ümumi sayı</div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="stat-card card-info">
+        <div class="stat-icon" style="background: rgba(6, 182, 212, 0.2); color: #22d3ee;">
+          <i class="bi bi-geo-alt"></i>
+        </div>
+        <div class="stat-value">{{ diger_sayi }}</div>
+        <div class="stat-label">Region Bölgəsi</div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="stat-card card-success">
+        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">
+          <i class="bi bi-building"></i>
+        </div>
+        <div class="stat-value">{{ baki_sayi }}</div>
+        <div class="stat-label">Bakı bölgəsi</div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="stat-card card-purple">
+        <div class="stat-icon" style="background: rgba(139, 92, 246, 0.2); color: #a78bfa;">
+          <i class="bi bi-person-badge"></i>
+        </div>
+        <div class="stat-value">{{ doctor_count }}</div>
+        <div class="stat-label">Həkim sayı</div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="stat-card card-danger">
+        <div class="stat-icon" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">
+          <i class="bi bi-geo"></i>
+        </div>
+        <div class="stat-value">{{ city_count }}</div>
+        <div class="stat-label">Şəhər sayı</div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="stat-card card-warning">
+        <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">
+          <i class="bi bi-hospital"></i>
+        </div>
+        <div class="stat-value">{{ hospital_count }}</div>
+        <div class="stat-label">Xəstəxana sayı</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Container -->
+  <div class="table-container">
+    <div class="table-header-section">
+      <h2 class="table-title">
+        <i class="bi bi-table me-2"></i>
+        Bölgələr Siyahısı
+      </h2>
+    </div>
+    <div class="table-responsive">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Region Adı</th>
+            <th>Region Növü</th>
+            <th>Həkim Sayı</th>
+            <th>Şəhər Sayı</th>
+            <th>Klinika Sayı</th>
+            <th>Əməliyyat</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for region in regions %}
+          <tr>
+            <td>
+              <span class="badge badge-info-modern">{{ forloop.counter }}</span>
+            </td>
+            <td>
+              <a href="{% url 'region_detail' region.id %}" class="region-name" style="color: #60a5fa; text-decoration: none; font-weight: 600; transition: all 0.2s;">
+                {{ region.region_name }}
+              </a>
+            </td>
+            <td>
+              {% if region.get_region_type_display == "Bakı" %}
+                <span class="badge-modern badge-success-modern">
+                  <i class="bi bi-check-circle"></i>
+                  Bakı
+                </span>
+              {% else %}
+                <span class="badge-modern badge-primary-modern">
+                  <i class="bi bi-geo-alt"></i>
+                  Digər
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              {% if region.doctors.count == 0 %}
+                <span class="badge-modern badge-danger-modern">
+                  <i class="bi bi-x-circle"></i>
+                  0
+                </span>
+              {% else %}
+                <span class="badge-modern badge-info-modern">
+                  <i class="bi bi-person-badge"></i>
+                  {{ region.doctors.count }}
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              {% if region.city_count == 0 %}
+                <span class="badge-modern badge-danger-modern">
+                  <i class="bi bi-x-circle"></i>
+                  0
+                </span>
+              {% else %}
+                <span class="badge-modern badge-info-modern">
+                  <i class="bi bi-geo"></i>
+                  {{ region.city_count }}
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              {% if region.hospital_count == 0 %}
+                <span class="badge-modern badge-danger-modern">
+                  <i class="bi bi-x-circle"></i>
+                  0
+                </span>
+              {% else %}
+                <span class="badge-modern badge-warning-modern">
+                  <i class="bi bi-hospital"></i>
+                  {{ region.hospital_count }}
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{% url 'region_detail' region.id %}" class="btn btn-modern btn-primary-modern" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                <i class="bi bi-eye"></i>
+                <span>Detallı</span>
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <i class="bi bi-inbox"></i>
+                </div>
+                <h4 style="color: #94a3b8; margin-bottom: 0.5rem;">Region tapılmadı</h4>
+                <p style="color: #64748b; margin: 0;">Yeni bölgə əlavə etmək üçün yuxarıdakı düyməni istifadə edin</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
-<div class="modal fade" id="addHospitalModal" tabindex="-1">
-  <div class="modal-dialog">
-    <form method="POST" action="{% url 'add-hospital' %}" class="modal-content" style="background-color: #1f2937; color: #f9fafb;">
-      {% csrf_token %}
-      <div class="modal-header">
-        <h5 class="modal-title">➕ Yeni Klinikaya Əlavə Et</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label for="hospital_name" class="form-label">Klinika Adı</label>
-          <input type="text" class="form-control" id="hospital_name" name="hospital_name" required style="background-color: #273549; color: #f9fafb; border: none;">
+<!-- Add Region Modal -->
+<div class="modal fade" id="addRegionModal" tabindex="-1" aria-labelledby="addRegionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-content-modern">
+      <form method="POST" action="{% url 'add-region' %}">
+        {% csrf_token %}
+        <div class="modal-header modal-header-modern">
+          <h5 class="modal-title modal-title-modern" id="addRegionModalLabel">
+            <i class="bi bi-plus-circle-fill" style="color: #3b82f6;"></i>
+            Yeni Bölgə Əlavə et
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="mb-3">
-          <label for="region_net" class="form-label">Bölgə Seçin</label>
-          <select class="form-select" id="region_net" name="region_net" required style="background-color: #273549; color: #f9fafb; border: none;">
-            <option selected disabled>Seçin...</option>
-            {% for r in regions %}
-              <option value="{{ r.id }}">{{ r.region_name }}</option>
-            {% endfor %}
-          </select>
+        <div class="modal-body modal-body-modern">
+          <div class="mb-4">
+            <label for="region_name" class="form-label form-label-modern">
+              <i class="bi bi-tag me-2"></i>
+              Bölgənin Adı
+            </label>
+            <input type="text" class="form-control form-control-modern" id="region_name" name="region_name" required placeholder="Bölgə adını daxil edin">
+          </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İmtina</button>
-        <button type="submit" class="btn btn-success"><i class="bi bi-plus-circle me-1"></i> Əlavə Et</button>
-      </div>
-    </form>
+        <div class="modal-footer modal-footer-modern">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 12px; padding: 0.75rem 1.5rem;">
+            <i class="bi bi-x-circle me-2"></i>
+            İmtina
+          </button>
+          <button type="submit" class="btn btn-modern btn-primary-modern">
+            <i class="bi bi-check-circle me-2"></i>
+            Əlavə et
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add Hospital Modal -->
+<div class="modal fade" id="addHospitalModal" tabindex="-1" aria-labelledby="addHospitalModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-content-modern">
+      <form method="POST" action="{% url 'add-hospital' %}">
+        {% csrf_token %}
+        <div class="modal-header modal-header-modern">
+          <h5 class="modal-title modal-title-modern" id="addHospitalModalLabel">
+            <i class="bi bi-hospital-fill" style="color: #10b981;"></i>
+            Yeni Klinika/Xəstəxana Əlavə et
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body modal-body-modern">
+          <div class="mb-4">
+            <label for="hospital_name" class="form-label form-label-modern">
+              <i class="bi bi-building me-2"></i>
+              Klinika/Xəstəxana Adı
+            </label>
+            <input type="text" class="form-control form-control-modern" id="hospital_name" name="hospital_name" required placeholder="Klinika adını daxil edin">
+          </div>
+          <div class="mb-4">
+            <label for="region_net" class="form-label form-label-modern">
+              <i class="bi bi-geo-alt me-2"></i>
+              Bölgə Seçin
+            </label>
+            <select class="form-select form-select-modern" id="region_net" name="region_net" required>
+              <option selected disabled value="">Bölgə seçin...</option>
+              {% for r in regions %}
+                <option value="{{ r.id }}">{{ r.region_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer modal-footer-modern">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 12px; padding: 0.75rem 1.5rem;">
+            <i class="bi bi-x-circle me-2"></i>
+            İmtina
+          </button>
+          <button type="submit" class="btn btn-modern btn-success-modern">
+            <i class="bi bi-check-circle me-2"></i>
+            Əlavə et
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
