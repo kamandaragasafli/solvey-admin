@@ -30,6 +30,11 @@ from django.db.models import Sum, DecimalField, Q
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from datetime import datetime
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
+import requests
+import os
 
 
 
@@ -731,4 +736,259 @@ def export_excel_ayliq_baki(request):
     return response
 
  
-# Aylıq və günlük Excel Faylı Çıxarışı son
+  # Aylıq və günlük Excel Faylı Çıxarışı son
+
+# OpenAI Chat API Endpoint with Database Query Support
+@csrf_exempt
+@require_http_methods(["POST"])
+def openai_chat(request):
+    """OpenAI API integration for chat assistant with database query capabilities"""
+    try:
+        from core.ai_queries import FUNCTIONS, FUNCTION_MAP
+        
+        data = json.loads(request.body)
+        message = data.get('message', '').strip()
+        model = data.get('model', 'gpt-3.5-turbo')
+        conversation_history = data.get('history', [])  # For maintaining context
+        
+        if not message:
+            return JsonResponse({'error': 'Message is required'}, status=400)
+        
+        # Get OpenAI API key from settings
+        from django.conf import settings
+        api_key = getattr(settings, 'OPENAI_API_KEY', '')
+        
+        if not api_key:
+            return JsonResponse({
+                'reply': 'Üzr istəyirəm, AI xidməti hazırda mövcud deyil. Zəhmət olmasa sistem administratoru ilə əlaqə saxlayın.'
+            }, status=503)
+        
+        # Prepare messages with conversation history
+        messages = [
+            {
+                'role': 'system',
+                'content': '''Sən Solvey tibbi şirkətinin admin paneli üçün köməkçi AI-sən. 
+Azərbaycan dilində cavab ver. Qısa, dəqiq və faydalı cavablar ver.
+İstifadəçilər səndən verilənlər bazasından məlumat istəyə bilərlər. 
+Məsələn: "Ən son əlavə olunan həkimləri göstər", "Həkim statistikalarını göstər", 
+"Bakı bölgəsinin həkimlərini göstər" və s.
+Funksiyaları istifadə edərək verilənlər bazasından məlumat al və istifadəçiyə aydın şəkildə təqdim et.'''
+            }
+        ]
+        
+        # Add conversation history
+        messages.extend(conversation_history[-10:])  # Keep last 10 messages for context
+        
+        # Add current message
+        messages.append({
+            'role': 'user',
+            'content': message
+        })
+        
+        # Prepare the request to OpenAI API with function calling
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'model': model,
+            'messages': messages,
+            'functions': FUNCTIONS,
+            'function_call': 'auto',  # Let the model decide when to call functions
+            'max_tokens': 1000,
+            'temperature': 0.7
+        }
+        
+        # Make request to OpenAI API
+        response = requests.post(
+            'https://api.openai.com/v1/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            message_obj = result['choices'][0]['message']
+            
+            # Check if the model wants to call a function
+            if message_obj.get('function_call'):
+                function_name = message_obj['function_call']['name']
+                function_args = json.loads(message_obj['function_call']['arguments'])
+                
+                # Execute the function
+                if function_name in FUNCTION_MAP:
+                    function_result = FUNCTION_MAP[function_name](**function_args)
+                    
+                    # Add function result to conversation and get final response
+                    messages.append(message_obj)  # Add assistant's function call request
+                    messages.append({
+                        'role': 'function',
+                        'name': function_name,
+                        'content': json.dumps(function_result, ensure_ascii=False)
+                    })
+                    
+                    # Make second request to get the final answer
+                    payload['messages'] = messages
+                    response2 = requests.post(
+                        'https://api.openai.com/v1/chat/completions',
+                        headers=headers,
+                        json=payload,
+                        timeout=30
+                    )
+                    
+                    if response2.status_code == 200:
+                        result2 = response2.json()
+                        reply = result2['choices'][0]['message']['content']
+                    else:
+                        # If second request fails, format the function result directly
+                        reply = format_function_result(function_name, function_result)
+                else:
+                    reply = 'Üzr istəyirəm, bu funksiya mövcud deyil.'
+            else:
+                # Direct response without function calling
+                reply = message_obj['content']
+            
+            return JsonResponse({'reply': reply})
+        else:
+            error_data = response.json() if response.text else {}
+            error_msg = error_data.get('error', {}).get('message', 'Xəta baş verdi')
+            return JsonResponse({
+                'reply': f'Üzr istəyirəm, xəta baş verdi: {error_msg}'
+            }, status=response.status_code)
+            
+    except requests.exceptions.Timeout:
+        return JsonResponse({
+            'reply': 'Üzr istəyirəm, sorğu zaman aşımına uğradı. Zəhmət olmasa yenidən cəhd edin.'
+        }, status=504)
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({
+            'reply': 'Üzr istəyirəm, bağlantı xətası baş verdi. Zəhmət olmasa yenidən cəhd edin.'
+        }, status=500)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'reply': f'Gözlənilməz xəta: {str(e)}'
+        }, status=500)
+
+
+def format_function_result(function_name, result):
+    """Format function results for display"""
+    if function_name == 'get_recent_doctors':
+        if not result:
+            return 'Ən son əlavə olunan həkim tapılmadı.'
+        text = 'Ən son əlavə olunan həkimlər:\n\n'
+        for i, doctor in enumerate(result, 1):
+            text += f"{i}. {doctor['ad']} ({doctor['barkod']})\n"
+            text += f"   Bölgə: {doctor['bolge']}, Şəhər: {doctor['city']}\n"
+            text += f"   Klinika: {doctor['klinika']}, İxtisas: {doctor['ixtisas']}\n"
+            text += f"   Dərəcə: {doctor['derece']}, Tarix: {doctor['created_at']}\n\n"
+        return text
+    
+    elif function_name == 'get_doctor_statistics':
+        stats = result
+        text = f"📊 Həkim Statistikaları:\n\n"
+        text += f"Ümumi həkim sayı: {stats['total_doctors']}\n"
+        text += f"Bu ay əlavə olunan: {stats['new_this_month']}\n\n"
+        
+        if stats['by_degree']:
+            text += "Dərəcə üzrə:\n"
+            for degree, count in stats['by_degree'].items():
+                text += f"  - {degree}: {count}\n"
+        
+        if stats['by_region']:
+            text += "\nBölgə üzrə (top 5):\n"
+            sorted_regions = sorted(stats['by_region'].items(), key=lambda x: x[1], reverse=True)[:5]
+            for region, count in sorted_regions:
+                text += f"  - {region}: {count}\n"
+        
+        return text
+    
+    elif function_name == 'get_region_statistics':
+        if not result:
+            return 'Bölgə tapılmadı.'
+        text = '📍 Bölgə Statistikaları:\n\n'
+        for region in result:
+            text += f"{region['region_name']} ({region['region_type']}):\n"
+            text += f"  Həkim: {region['doctor_count']}, "
+            text += f"Şəhər: {region['city_count']}, "
+            text += f"Xəstəxana: {region['hospital_count']}\n\n"
+        return text
+    
+    elif function_name == 'search_doctors':
+        if not result:
+            return 'Axtarışa uyğun həkim tapılmadı.'
+        text = f'Axtarış nəticələri ({len(result)} həkim):\n\n'
+        for i, doctor in enumerate(result, 1):
+            text += f"{i}. {doctor['ad']} ({doctor['barkod']})\n"
+            text += f"   Bölgə: {doctor['bolge']}, İxtisas: {doctor['ixtisas']}\n\n"
+        return text
+    
+    elif function_name == 'get_financial_summary':
+        stats = result
+        text = '💰 Maliyyə Ümumi Məlumatları:\n\n'
+        text += f"Ümumi borc: {stats['total_debt']:.2f} ₼\n"
+        text += f"Əvvəlki borc: {stats['total_previous_debt']:.2f} ₼\n"
+        text += f"Borclu həkim sayı: {stats['doctors_with_debt']} / {stats['total_doctors']}\n"
+        return text
+    
+    elif function_name == 'get_doctors_by_region':
+        if not result:
+            return 'Bu bölgədə həkim tapılmadı.'
+        text = f'Bölgə həkimləri ({len(result)} həkim):\n\n'
+        for i, doctor in enumerate(result, 1):
+            text += f"{i}. {doctor['ad']} ({doctor['barkod']})\n"
+            text += f"   Şəhər: {doctor['city']}, Klinika: {doctor['klinika']}\n"
+            text += f"   İxtisas: {doctor['ixtisas']}, Yekun borc: {doctor['yekun_borc']:.2f} ₼\n\n"
+        return text
+
+    elif function_name == 'get_doctor_financial_details':
+        if not result:
+            return 'Bu ada uyğun həkim tapılmadı.'
+
+        # Bir neçə həkim uyğun gələrsə, hamısını siyahı kimi göstər
+        if len(result) > 1:
+            text = f'Axtarış nəticələri ({len(result)} həkim):\n\n'
+            for i, doctor in enumerate(result, 1):
+                text += f"{i}. {doctor['ad']} ({doctor['barkod']})\n"
+                text += f"   Bölgə: {doctor['bolge']}, Şəhər: {doctor['city']}\n"
+                text += f"   Klinika: {doctor['klinika']}\n"
+                text += f"   Cari yekun borc: {doctor['yekun_borc']:.2f} ₼\n\n"
+            text += "Zəhmət olmasa daha dəqiq ad və ya barkod qeyd edin ki, konkret həkim üçün detallar göstərim."
+            return text
+
+        # Yalnız bir həkim varsa, detallı maliyyə məlumatları
+        doctor = result[0]
+        text = f"💳 Həkim üzrə maliyyə məlumatları: {doctor['ad']} ({doctor['barkod']})\n\n"
+        text += "Cari vəziyyət:\n"
+        text += f"  - Əvvəlki borc: {doctor['previous_debt']:.2f} ₼\n"
+        text += f"  - Cari borc: {doctor['borc']:.2f} ₼\n"
+        text += f"  - Hesablanan miqdar: {doctor['hesablanan_miqdar']:.2f} ₼\n"
+        text += f"  - Həkimdən silinən: {doctor['hekimden_silinen']:.2f} ₼\n"
+        text += f"  - Datasiya: {doctor['datasiya']:.2f} ₼\n"
+        text += f"  - Avans: {doctor['avans']:.2f} ₼\n"
+        text += f"  - İnvestisiya: {doctor['investisiya']:.2f} ₼\n"
+        text += f"  - Geri qaytarma: {doctor['geriqaytarma']:.2f} ₼\n"
+        text += f"  - Yekun borc: {doctor['yekun_borc']:.2f} ₼\n\n"
+
+        # Ödənişlər
+        payments = doctor.get('payments', [])
+        if payments:
+            text += "Son ödənişlər:\n"
+            for p in payments:
+                text += f"  - {p['date']}: {p['payment_type']} - {p['pay']:.2f} ₼ ({p['region']})\n"
+        else:
+            text += "Son açıq ödəniş tapılmadı.\n"
+
+        # Aylıq hesabatlar
+        reports = doctor.get('monthly_reports', [])
+        if reports:
+            text += "\nSon aylıq hesabatlar:\n"
+            for r in reports:
+                text += f"  - {r['month']}: yekun borc {r['yekun_borc']:.2f} ₼, borc {r['borc']:.2f} ₼, avans {r['avans']:.2f} ₼, investisiya {r['investisiya']:.2f} ₼, geri qaytarma {r['geriqaytarma']:.2f} ₼\n"
+
+        return text
+
+    return str(result)
