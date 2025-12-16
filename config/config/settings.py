@@ -14,6 +14,9 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG') == 'True'
 ALLOWED_HOSTS = ['*']
 
+# OpenAI API Key
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+
 INSTALLED_APPS = [
     'jazzmin',
     'django_crontab',

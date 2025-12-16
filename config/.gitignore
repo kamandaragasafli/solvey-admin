@@ -8,3 +8,7 @@ __pycache__/
 # Django static files
 config/staticfiles/
 config/static/
+# Environment variables
+.env
+.env.local
+.env.*.local
