@@ -13,6 +13,9 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG') == 'True'
 ALLOWED_HOSTS = ['*']
+
+# OpenAI API Key
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 # ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') + ['64.226.72.85']
 INSTALLED_APPS = [
     'jazzmin',
