@@ -12,3 +12,5 @@ config/static/
 .env
 .env.local
 .env.*.local
+config/.env
+*.env
