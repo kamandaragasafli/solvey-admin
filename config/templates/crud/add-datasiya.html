@@ -100,7 +100,7 @@
       <!-- Bölgə seçimi -->
       <div class="row mb-3">
         <div class="col-md-5 mb-2">
-          <label for="region" class="form-label small text-muted">Bölgə seçin</label>
+          <label for="region" class="form-label small ">Bölgə seçin</label>
           <select id="region-select" name="region" class="form-select">
             <option disabled selected>Bölgə Seçin</option>
             {% for r in regions %}
@@ -110,13 +110,22 @@
         </div>
 
         <div class="col-md-2 mb-2">
-          <label for="tarix" class="form-label small text-muted">Tarix</label>
+          <label for="tarix" class="form-label small ">Tarix</label>
           <input type="date" name="date" value="{% now 'Y-m-d' %}" class="form-control" />
         </div>
       </div>
 
       <hr>
-         <div class="row mb-1" style="font-weight: 600; font-size: 0.9rem;">
+      
+      <!-- Axtarış/Filtr bölməsi -->
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="doctor-search" class="form-label small ">Həkim adı ilə axtarış</label>
+          <input type="text" id="doctor-search" class="form-control" placeholder="Həkim adını yazın..." autocomplete="off">
+        </div>
+      </div>
+
+      <div class="row mb-1" style="font-weight: 600; font-size: 0.9rem;">
         <div class="col-md-3">Həkim *</div>
         <div class="col-md-2 text-center">Borc vəziyyəti</div>
         <div class="col-md-3 text-center">Alınan Məbləğ</div>
@@ -134,7 +143,7 @@
       <div id="doctors-container">
         {% if doctors %}
           {% for d in doctors %}
-            <div class="row align-items-center mb-2 p-2 rounded" style="background-color: #ebebebff;">
+            <div class="doctor-row row align-items-center mb-2 p-2 rounded" style="background-color: #ebebebff;" data-doctor-name="{{ d.ad|lower }}">
               <div class="col-md-3">
                 <button type="button" class="btn btn w-100 text-start">{{ d.ad }}</button>
               </div>
@@ -163,13 +172,60 @@
 
 <script>
   const ajaxUrl = "{% url 'ajax_doctors_by_region' %}";
+  let allDoctors = []; // Bütün həkimləri saxlayırıq
+
+  // Axtarış funksiyası
+  function filterDoctors(searchQuery) {
+    const doctorRows = document.querySelectorAll('.doctor-row');
+    const query = searchQuery.toLowerCase().trim();
+    let visibleCount = 0;
+
+    doctorRows.forEach(row => {
+      const doctorName = row.getAttribute('data-doctor-name') || '';
+      if (doctorName.includes(query)) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    // Əgər heç bir nəticə tapılmasa, mesaj göstər
+    const noResultsMsg = document.getElementById('no-results-message');
+    if (visibleCount === 0 && query !== '') {
+      if (!noResultsMsg) {
+        const msg = document.createElement('div');
+        msg.id = 'no-results-message';
+        msg.className = 'text-center text-muted mt-3';
+        msg.textContent = 'Axtarışa uyğun həkim tapılmadı';
+        document.getElementById('doctors-container').appendChild(msg);
+      }
+    } else {
+      if (noResultsMsg) {
+        noResultsMsg.remove();
+      }
+    }
+  }
 
   document.addEventListener("DOMContentLoaded", function () {
     const regionSelect = document.getElementById("region-select");
     const doctorsContainer = document.getElementById("doctors-container");
+    const searchInput = document.getElementById("doctor-search");
+
+    // Axtarış inputuna event listener
+    if (searchInput) {
+      searchInput.addEventListener("input", function() {
+        filterDoctors(this.value);
+      });
+    }
 
     regionSelect.addEventListener("change", function () {
       const selectedRegionId = this.value;
+
+      // Axtarış inputunu təmizlə
+      if (searchInput) {
+        searchInput.value = '';
+      }
 
       doctorsContainer.innerHTML = 'Yüklənir...';
 
@@ -178,12 +234,13 @@
         .then(data => {
           if (data.doctors.length > 0) {
             let html = '';
-                data.doctors.forEach(doctor => {
+            allDoctors = data.doctors; // Həkimləri saxla
+            data.doctors.forEach(doctor => {
                 // Borcun rəngini təyin et
                 const debtColor = (doctor.previous_debt < 0) ? 'green' : '#e9042eff';
 
                 html += `
-                    <div class="row align-items-center mb-2 p-2 rounded" style="background-color:  #1f2937;">
+                    <div class="doctor-row row align-items-center mb-2 p-2 rounded" style="background-color:  #1f2937;" data-doctor-name="${doctor.ad.toLowerCase()}">
                     <div class="col-md-3">
                         <button type="button" class="btn btn w-100 text-start" style="color:  #dadadaff;">${doctor.ad}</button>
                     </div>

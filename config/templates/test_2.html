@@ -158,6 +158,13 @@
 <p style="color: #f4e7fb; margin-bottom: 20px;">Ümumi həkimlərin resept sayı: {{ toplam_hekim_say }}</p>
 
 <form method="get">
+    <label for="year">İl seçin:</label>
+    <select name="year" id="year">
+        {% for yil in iller %}
+            <option value="{{ yil }}" {% if il == yil %}selected{% elif not il and yil == current_year %}selected{% endif %}>{{ yil }}</option>
+        {% endfor %}
+    </select>
+    
     <label for="month">Ay seçin:</label>
     <select name="month" id="month">
         {% for i in aylar %}

@@ -707,6 +707,7 @@ def create_real_sales(request):
         )
         
         total_commission = Decimal('0')
+        total_quantity = 0  # Real satış miqdarını burada topluyuruq
 
         for drug_id, count in selected_drugs:
             RealSalesDrug.objects.create(
@@ -716,31 +717,46 @@ def create_real_sales(request):
             )
 
 
-
-            # Bölgə satışını azaldırıq
-            sale_qs = Sale.objects.filter(region_id=region_id, drug_id=drug_id).first()
-            if sale_qs:
-                sale_qs.quantity = max(0, sale_qs.quantity - count)
-                sale_qs.save()
-
-            # Həkimin reseptini azaldırıq
-            recipe_drugs = RecipeDrug.objects.filter(recipe__region_id=region_id, recipe__dr_id=doctor_id, drug_id=drug_id)
+            # Həkimin reseptindən də azaldırıq (tarixi köhnədən yeniyə)
+            recipe_drugs = RecipeDrug.objects.filter(
+                recipe__region_id=region_id,
+                recipe__dr_id=doctor_id,
+                drug_id=drug_id
+            ).order_by('recipe__date')
+            
+            remaining_to_subtract = count
             for rd in recipe_drugs:
-                rd.number = max(0, rd.number - count)
+                if remaining_to_subtract <= 0:
+                    break
+                
+                if rd.number >= remaining_to_subtract:
+                    rd.number -= remaining_to_subtract
+                    remaining_to_subtract = 0
+                else:
+                    remaining_to_subtract -= rd.number
+                    rd.number = 0
+                
                 rd.save()
 
             # Komissiyanı hesabla
             drug = Medical.objects.get(id=drug_id)
             komissiya = drug.komissiya * count
             total_commission += komissiya
+            
+            # Real satış miqdarını topluyuruq
+            total_quantity += count
 
-        # Həkimin yekun borcunu artırırıq
+        # Həkimin miqdarını və pulunu artırırıq
         doctor = Doctors.objects.get(id=doctor_id)
-        doctor.hekimden_silinen += total_commission
+        
+
+        
+        # Komissiyanı (məbləği) həkimdən silinənə əlavə edirik
+        doctor.hekimden_silinen += total_commission  # MƏBLƏĞ (manat)
         
         doctor.save()
 
-        messages.success(request, "Satış uğurla əlavə olundu və komissiya borca əlavə edildi.")
+        messages.success(request, "Satış uğurla əlavə olundu. Həkimin miqdarı və komissiyası yeniləndi.")
         return redirect("create_real_sales")
 
     return render(request, "crud/add-real-sales.html", {
@@ -751,6 +767,127 @@ def create_real_sales(request):
         "selected_doctor": selected_doctor,
         "selected_date": selected_date
     })
+
+# def create_real_sales(request):
+#     regions = Region.objects.all().order_by("region_name")
+#     doctors = Doctors.objects.all().order_by("id")
+#     drugs = Medical.objects.all().order_by('id')
+
+#     selected_region = None
+#     selected_doctor = None
+#     selected_date = None
+
+#     if request.method == "POST":
+#         region_id = request.POST.get("region")
+#         doctor_id = request.POST.get("doctor")
+#         date = request.POST.get("date")
+
+#         selected_region = region_id
+#         selected_doctor = doctor_id
+#         selected_date = date
+
+#         if not (region_id and doctor_id and date):
+#             messages.error(request, "Zəhmət olmasa bütün sahələri doldurun.")
+#             return render(request, "crud/add-real-sales.html", {
+#                 "regions": regions,
+#                 "doctors": doctors,
+#                 "drugs": drugs,
+#                 "selected_region": selected_region,
+#                 "selected_doctor": selected_doctor,
+#                 "selected_date": selected_date
+#             })
+
+#         # Dərmanların olub-olmadığını yoxlayaq
+#         selected_drugs = []
+#         for key in request.POST:
+#             if key.startswith("quantity_"):
+#                 drug_id = key.split("_")[1]
+#                 count = request.POST.get(key)
+#                 if count and int(count) > 0:
+#                     selected_drugs.append((int(drug_id), int(count)))
+
+#         if not selected_drugs:
+#             messages.error(request, "Zəhmət olmasa ən az bir dərman miqdarı daxil edin.")
+#             return render(request, "crud/add-real-sales.html", {
+#                 "regions": regions,
+#                 "doctors": doctors,
+#                 "drugs": drugs,
+#                 "selected_region": selected_region,
+#                 "selected_doctor": selected_doctor,
+#                 "selected_date": selected_date
+#             })
+
+#         # Real satış yaradılır
+#         real_sale = RealSales.objects.create(
+#             region_n_id=region_id,
+#             dr_name_id=doctor_id,
+#             date_sale=date
+#         )
+        
+#         total_commission = Decimal('0')
+
+#         for drug_id, count in selected_drugs:
+#             RealSalesDrug.objects.create(
+#                 real_sale=real_sale,
+#                 drug_name_id=drug_id,
+#                 numbers=count
+#             )
+
+#             # Bölgə satışını azaldırıq
+#             sale_qs = Sale.objects.filter(region_id=region_id, drug_id=drug_id).first()
+#             if sale_qs:
+#                 sale_qs.quantity = max(0, sale_qs.quantity - count)
+#                 sale_qs.save()
+
+#             # Həkimin reseptindən də azaldırıq (tarixi köhnədən yeniyə)
+#             recipe_drugs = RecipeDrug.objects.filter(
+#                 recipe__region_id=region_id,
+#                 recipe__dr_id=doctor_id,
+#                 drug_id=drug_id
+#             ).order_by('recipe__date')
+            
+#             remaining_to_subtract = count
+#             for rd in recipe_drugs:
+#                 if remaining_to_subtract <= 0:
+#                     break
+                
+#                 if rd.number >= remaining_to_subtract:
+#                     rd.number -= remaining_to_subtract
+#                     remaining_to_subtract = 0
+#                 else:
+#                     remaining_to_subtract -= rd.number
+#                     rd.number = 0
+                
+#                 rd.save()
+
+#             # Komissiyanı hesabla
+#             drug = Medical.objects.get(id=drug_id)
+#             komissiya = drug.komissiya * count
+#             total_commission += komissiya
+
+#         # Həkimin miqdarını və pulunu artırırıq
+#         doctor = Doctors.objects.get(id=doctor_id)
+        
+#         # Real satış QUTU sayını hesablanan miqdarına əlavə edirik
+#         total_quantity = sum(count for _, count in selected_drugs)
+#         doctor.hesablanan_miqdar += total_quantity # QUTU sayı
+        
+#         # Komissiyanı (məbləği) həkimdən silinənə əlavə edirik
+#         doctor.hekimden_silinen += total_commission  # MƏBLƏĞ (manat)
+        
+#         doctor.save()
+
+#         messages.success(request, "Satış uğurla əlavə olundu. Həkimin miqdarı və komissiyası yeniləndi.")
+#         return redirect("create_real_sales")
+
+#     return render(request, "crud/add-real-sales.html", {
+#         "regions": regions,
+#         "doctors": doctors,
+#         "drugs": drugs,
+#         "selected_region": selected_region,
+#         "selected_doctor": selected_doctor,
+#         "selected_date": selected_date
+#     })
 
 def create_datasiya(request):
     regions = Region.objects.all().order_by("region_name")
@@ -1131,11 +1268,24 @@ def ajax_region_data(request):
     # Tarix aralığı və ay filteri
     month_start = month_end = None
     dr_start = dr_end = None
+    
+    # Əvvəlcə date_range-dən ili əldə et
+    year_from_range = None
+    if date_range and " - " in date_range:
+        try:
+            start_str, end_str = date_range.split(" - ")
+            dr_start = datetime.strptime(start_str.strip(), '%Y-%m-%d').date()
+            dr_end = datetime.strptime(end_str.strip(), '%Y-%m-%d').date()
+            year_from_range = dr_start.year  # Tarix aralığından ili götür
+        except ValueError:
+            pass
 
+    # Ay filtri üçün ili təyin et
     if month:
         try:
             month_int = int(month)
-            current_year = datetime.now().year
+            # Əgər tarix aralığı varsa ondan ili istifadə et, yoxsa cari ili
+            current_year = year_from_range if year_from_range else datetime.now().year
             month_start = datetime(current_year, month_int, 1).date()
             if month_int == 12:
                 month_end = datetime(current_year + 1, 1, 1).date()
@@ -1144,18 +1294,15 @@ def ajax_region_data(request):
         except ValueError:
             pass
 
-    if date_range and " - " in date_range:
-        try:
-            start_str, end_str = date_range.split(" - ")
-            dr_start = datetime.strptime(start_str.strip(), '%Y-%m-%d').date()
-            dr_end = datetime.strptime(end_str.strip(), '%Y-%m-%d').date()
-        except ValueError:
-            pass
-
     # Final start_date və end_date
     if month_start and month_end and dr_start and dr_end:
+        # Hər ikisi varsa, kəsişən hissəni tap
         start_date = max(month_start, dr_start)
         end_date = min(month_end, dr_end)
+        # Əgər tarix aralığı səhvdirsə, yalnız date_range istifadə et
+        if start_date > end_date:
+            start_date = dr_start
+            end_date = dr_end
     elif month_start and month_end:
         start_date = month_start
         end_date = month_end
@@ -1360,6 +1507,21 @@ def export_region_excel(request):
         cell.alignment = Alignment(horizontal="center", vertical="center", textRotation=90)
 
     ws.freeze_panes = "A2"
+    
+    # Sütun enliklərini sıxlaşdır
+    ws.column_dimensions['A'].width = 5   # №
+    ws.column_dimensions['B'].width = 12  # Bölgə
+    ws.column_dimensions['C'].width = 20  # Həkim adı
+    ws.column_dimensions['D'].width = 18  # Son Ödəniş
+    
+    # Dərman sütunları - dar et (E sütunundan başlayır)
+    for i in range(len(drugs)):
+        col_letter = get_column_letter(5 + i)  # 5 = E sütunu
+        ws.column_dimensions[col_letter].width = 4
+    
+    # Total sütunu
+    total_col_letter = get_column_letter(5 + len(drugs))
+    ws.column_dimensions[total_col_letter].width = 6
 
     idx = 1
     for doctor in doctors:
@@ -1390,49 +1552,74 @@ def export_region_excel(request):
         row.append(total)
 
         ws.append(row)
-        total_value = row[-1]  # son sütun - Total
-        if total_value > 0:
-            total_cell = ws.cell(row=ws.max_row, column=len(headers))
-            total_cell.font = Font(bold=True)
+        
+        # Hər xanaya border və mərkəzləşdirmə əlavə et
+        current_row = ws.max_row
+        for col in range(1, len(headers) + 1):
+            cell = ws.cell(row=current_row, column=col)
+            cell.border = thin_border
+            cell.alignment = center_align
+            
+            # Total sütunu bold olsun əgər 0-dan böyükdürsə
+            if col == len(headers) and cell.value and cell.value > 0:
+                cell.font = Font(bold=True)
 
         idx += 1
 
     # 📈 Cəmlər
-    start_drug_col = 6
-    total_col_idx = len(headers)
-
-    drug_totals = [0] * (total_col_idx - start_drug_col)
+    # Sütun strukturu: A=№, B=Bölgə, C=Həkim adı, D=Son Ödəniş, E-... =Dərmanlar, Son=Total
+    start_drug_col = 5  # E sütunu (dərmanlar buradan başlayır)
+    num_drugs = len(drugs)
+    total_col_idx = start_drug_col + num_drugs  # Total sütunu
+    
+    # Hər dərman üçün cəm
+    drug_totals = [0] * num_drugs
     overall_total = 0
 
-    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=start_drug_col, max_col=total_col_idx):
-        for i, cell in enumerate(row[:-1]):
+    # Data sətirlərini oxuyub cəmləri hesabla
+    for row_idx in range(2, ws.max_row + 1):
+        # Dərman sütunları (E-dən başlayır)
+        for i, drug in enumerate(drugs):
+            col_idx = start_drug_col + i
+            cell_value = ws.cell(row=row_idx, column=col_idx).value
             try:
-                drug_totals[i] += int(cell.value or 0)
+                drug_totals[i] += int(cell_value or 0)
             except:
                 pass
+        
+        # Total sütunu
         try:
-            overall_total += int(row[-1].value or 0)
+            total_cell_value = ws.cell(row=row_idx, column=total_col_idx).value
+            overall_total += int(total_cell_value or 0)
         except:
             pass
 
+    # Cəmi sətirini yaz
     total_row_idx = ws.max_row + 1
-    ws.cell(row=total_row_idx, column=5, value="Cəmi")
+    
+    # Boş xanaları doldur və "Cəmi" yaz
+    for col in range(1, 4):
+        cell = ws.cell(row=total_row_idx, column=col, value="")
+        cell.border = thin_border
+        cell.alignment = center_align
+    
+    cemi_cell = ws.cell(row=total_row_idx, column=4, value="Cəmi")
+    cemi_cell.font = Font(bold=True)
+    cemi_cell.border = thin_border
+    cemi_cell.alignment = center_align
 
+    # Hər dərman üçün cəmi (E sütunundan başlayır)
     for i, total in enumerate(drug_totals):
         cell = ws.cell(row=total_row_idx, column=start_drug_col + i, value=total)
         cell.border = thin_border
-        cell.alignment = Alignment(horizontal="center")
-
-       
+        cell.alignment = center_align
         if total > 0:
             cell.font = Font(bold=True)
-        else:
-            cell.font = Font(bold=False)
 
-    # Ümumi total xanasi
+    # Ümumi total xanası
     overall_cell = ws.cell(row=total_row_idx, column=total_col_idx, value=overall_total)
     overall_cell.border = thin_border
-    overall_cell.alignment = Alignment(horizontal="center")
+    overall_cell.alignment = center_align
     overall_cell.font = Font(bold=True if overall_total > 0 else False)
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -1462,8 +1649,13 @@ def region_report(request, region_id):
     region_recipe_drugs = RecipeDrug.objects.filter(recipe__region_id=region_id)
     sales = Sale.objects.filter(region_id=region_id)
 
-    # Ay seçimi
+    # Ay və il seçimi
     month = request.GET.get("month")
+    year = request.GET.get("year")
+    
+    current_year = datetime.now().year
+    current_month = datetime.now().month
+    
     if month:
         try:
             ay = int(month)
@@ -1472,11 +1664,23 @@ def region_report(request, region_id):
     else:
         # Ən son satış ayı
         last_sale_date = sales.aggregate(last_date=Max('sale_date'))['last_date']
-        ay = last_sale_date.month if last_sale_date else None
+        ay = last_sale_date.month if last_sale_date else current_month
+
+    if year:
+        try:
+            il = int(year)
+        except ValueError:
+            il = current_year
+    else:
+        il = current_year
 
     if ay:
         region_recipe_drugs = region_recipe_drugs.filter(recipe__date__month=ay)
         sales = sales.filter(sale_date__month=ay)
+    
+    if il:
+        region_recipe_drugs = region_recipe_drugs.filter(recipe__date__year=il)
+        sales = sales.filter(sale_date__year=il)
 
     # Dərəcə faktorları
     dereceler = {"VIP": 1.00, "I": 0.90, "II": 0.65, "III": 0.40}
@@ -1560,7 +1764,10 @@ def region_report(request, region_id):
         'toplam_komissiya': toplam_komissiya,
         'region': region,
         'ay': ay,
+        'il': il,
         'aylar': range(1, 13),
+        'iller': [2025, 2026, 2027],
+        'current_year': current_year,
     }
 
     return render(request, 'test_2.html', context)

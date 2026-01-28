@@ -2,7 +2,7 @@
 Database query functions for AI assistant
 These functions are called by OpenAI function calling feature
 """
-from doctors.models import Doctors
+from doctors.models import Doctors, Recipe, RecipeDrug
 from regions.models import Region, City, Hospital
 from medicine.models import Medical
 from payment.models import Payment_doctor, Sale, MonthlyDoctorReport
@@ -200,6 +200,66 @@ def get_doctor_financial_details(doctor_name: str, limit: int = 5):
     return result
 
 
+def get_doctor_prescription_stats(doctor_name: str, year: int = None, month: int = None, day: int = None):
+    """
+    Get prescription statistics (recipes and drugs) for a doctor.
+    - If year/month/day verilirsə: həmin gün/ay üçün filtrlə
+    - Əks halda: cari ay üçün statistikaları qaytar
+    """
+    today = datetime.now()
+    year = year or today.year
+    month = month or today.month
+
+    # Həkimi tap (ilk uyğun gələn)
+    doctor = Doctors.objects.filter(ad__icontains=doctor_name).first()
+    if not doctor:
+        return {
+            'doctor_found': False,
+            'doctor_name': doctor_name,
+            'message': 'Bu ada uyğun həkim tapılmadı.'
+        }
+
+    # Reseptlər üzrə filter
+    recipes = Recipe.objects.filter(dr=doctor, date__year=year)
+    if month:
+        recipes = recipes.filter(date__month=month)
+    if day:
+        recipes = recipes.filter(date__day=day)
+
+    total_recipes = recipes.count()
+
+    # Reseptdəki dərmanlar üzrə aqreqasiya
+    drugs_qs = RecipeDrug.objects.filter(recipe__in=recipes)\
+        .values('drug__med_name')\
+        .annotate(total_count=Sum('number'))\
+        .order_by('-total_count')
+
+    drugs = []
+    for d in drugs_qs:
+        drugs.append({
+            'name': d['drug__med_name'],
+            'count': float(d['total_count'] or 0)
+        })
+
+    # Toplam dərman sayı
+    total_drug_count = float(sum(d['total_count'] or 0 for d in drugs_qs))
+
+    return {
+        'doctor_found': True,
+        'doctor': {
+            'id': doctor.id,
+            'ad': doctor.ad,
+            'bolge': doctor.bolge.region_name if doctor.bolge else '',
+        },
+        'year': year,
+        'month': month,
+        'day': day,
+        'total_recipes': total_recipes,
+        'total_drug_count': total_drug_count,
+        'drugs': drugs,
+    }
+
+
 # Function definitions for OpenAI
 FUNCTIONS = [
     {
@@ -279,6 +339,32 @@ FUNCTIONS = [
         }
     },
     {
+        "name": "get_doctor_prescription_stats",
+        "description": "Həkimin müəyyən dövr üçün (gün/ay) yazdığı reseptlərin və dərmanların statistikasını göstərir.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "doctor_name": {
+                    "type": "string",
+                    "description": "Həkimin adı (tam və ya bir hissəsi). Məs: 'Vüsalə' və ya 'Əli Məmmədov'."
+                },
+                "year": {
+                    "type": "integer",
+                    "description": "İl (default: cari il)"
+                },
+                "month": {
+                    "type": "integer",
+                    "description": "Ay (1-12, default: cari ay)"
+                },
+                "day": {
+                    "type": "integer",
+                    "description": "Gün (1-31, optional). Əgər verilsə, yalnız həmin gün üçün nəticə."
+                }
+            },
+            "required": ["doctor_name"]
+        }
+    },
+    {
         "name": "get_doctors_by_region",
         "description": "Müəyyən bölgəyə aid həkimləri göstərir.",
         "parameters": {
@@ -308,5 +394,6 @@ FUNCTION_MAP = {
     "get_financial_summary": get_financial_summary,
     "get_doctors_by_region": get_doctors_by_region,
     "get_doctor_financial_details": get_doctor_financial_details,
+    "get_doctor_prescription_stats": get_doctor_prescription_stats,
 }
 

@@ -34,21 +34,35 @@ def create_backup(request):
         filename = f'solvey_backup_{timestamp}.sql'
         backup_file = os.path.join(backup_dir, filename)
 
-        # Linux üçün: pg_dump birbaşa PATH-dadır
-        pg_dump_path = 'pg_dump'
+        # pg_dump path-i müəyyən et (Linux və Windows üçün)
+        import platform
+        if platform.system() == 'Windows':
+            # Windows üçün PostgreSQL default path
+            pg_dump_path = r'C:\Program Files\PostgreSQL\17\bin\pg_dump.exe'
+            if not os.path.exists(pg_dump_path):
+                # Alternativ path-ləri yoxla
+                for version in ['17', '16', '15', '14', '13', '12']:
+                    alt_path = rf'C:\Program Files\PostgreSQL\{version}\bin\pg_dump.exe'
+                    if os.path.exists(alt_path):
+                        pg_dump_path = alt_path
+                        break
+        else:
+            # Linux üçün: pg_dump birbaşa PATH-dadır
+            pg_dump_path = 'pg_dump'
 
         env = os.environ.copy()
         env['PGPASSWORD'] = db_password
 
         try:
-            subprocess.run([
+            # stderr-i capture et ki, real xəta mesajını görək
+            result = subprocess.run([
                 pg_dump_path,
                 '-h', db_host,
                 '-p', str(db_port),
                 '-U', db_user,
                 '-f', backup_file,
                 db_name
-            ], check=True, env=env)
+            ], check=True, env=env, capture_output=True, text=True)
 
             # Fayl ölçüsü (MB)
             size_bytes = os.path.getsize(backup_file)
@@ -70,7 +84,36 @@ def create_backup(request):
             })
 
         except subprocess.CalledProcessError as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            error_msg = f"pg_dump xətası: {e}"
+            if e.stderr:
+                error_msg += f"\nXəta detalları: {e.stderr}"
+            if e.stdout:
+                error_msg += f"\nÇıxış: {e.stdout}"
+            return JsonResponse({
+                'status': 'error', 
+                'message': error_msg,
+                'details': {
+                    'returncode': e.returncode,
+                    'stderr': e.stderr,
+                    'stdout': e.stdout,
+                    'db_host': db_host,
+                    'db_port': db_port,
+                    'db_user': db_user,
+                    'db_name': db_name,
+                    'pg_dump_path': pg_dump_path
+                }
+            }, status=500)
+        except FileNotFoundError:
+            return JsonResponse({
+                'status': 'error', 
+                'message': f'pg_dump komandası tapılmadı. Path: {pg_dump_path}',
+                'suggestion': 'PostgreSQL client tools quraşdırıldığından əmin olun.'
+            }, status=500)
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error', 
+                'message': f'Gözlənilməz xəta: {str(e)}'
+            }, status=500)
 
     return JsonResponse({'status': 'error', 'message': 'Yalnız POST tələbi qəbul edilir.'}, status=405)
 

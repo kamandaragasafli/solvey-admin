@@ -23,6 +23,7 @@ from datetime import datetime
 import urllib.parse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
 from decimal import Decimal as d
 from collections import defaultdict
@@ -356,6 +357,14 @@ def sales(request):
     # Years for dropdown (sorted desc)
     years = list(Sale.objects.dates("sale_date", "year").distinct())
     years = sorted([y.year for y in years], reverse=True)
+    # 2026-cı ili və cari ili əlavə et (hələ satış olmasa belə)
+    current_year = date.today().year
+    if current_year not in years:
+        years.insert(0, current_year)
+    if 2026 not in years:
+        years.insert(0, 2026)
+    # Yenidən sırala (azalan sırada)
+    years = sorted(set(years), reverse=True)
 
     # Filters
     region_search = request.GET.get("region_search", "").strip()
@@ -456,6 +465,7 @@ def d(v):
 def ajax_region_report(request):
     region_id = request.GET.get("region_id")
     month = request.GET.get("month")
+    year = request.GET.get("year")
     borc_filter = request.GET.get("borc")
     page = request.GET.get("page", 1)  # Page parametri
     per_page = 20 
@@ -474,6 +484,13 @@ def ajax_region_report(request):
             sales = sales.filter(sale_date__month=ay)
         except ValueError:
             sales = Sale.objects.none()
+    
+    if year:
+        try:
+            il = int(year)
+            sales = sales.filter(sale_date__year=il)
+        except ValueError:
+            pass
 
     sales_exist = sales.exists()
 
@@ -492,7 +509,8 @@ def ajax_region_report(request):
         monthly_report = None
         if month:
             try:
-                report_month = date.today().replace(month=int(month), day=1)
+                il = int(year) if year else date.today().year
+                report_month = date(il, int(month), 1)
                 monthly_report = MonthlyDoctorReport.objects.filter(
                     doctor=doctor,
                     report_month=report_month
@@ -508,16 +526,49 @@ def ajax_region_report(request):
             datasiya = d(0)
             hekimden_silinen = d(monthly_report.hekimden_silinen or 0)
             hesablanan_miqdar = d(monthly_report.hesablanan_miqdar or 0)
-            # monthly_report-da geriqaytarma olmadığı üçün 0 qalır
+            geriqaytarma = d(monthly_report.geriqaytarma or 0)
         else:
+            # Hesabat bağlanmayıbsa, seçilmiş ay və il üzrə ödənişləri hesabla
             previous_debt = d(doctor.previous_debt or 0)
             borc = d(doctor.borc or 0)
-            avans = d(doctor.avans or 0)
-            investisiya = d(doctor.investisiya or 0)
-            geriqaytarma = d(doctor.geriqaytarma or 0)  # Burada təyin olunur
             datasiya = d(doctor.datasiya or 0)
             hekimden_silinen = d(doctor.hekimden_silinen or 0)
             hesablanan_miqdar = d(doctor.hesablanan_miqdar or 0)
+            
+            # Ödənişləri seçilmiş ay və il üzrə filtrələ
+            payments = Payment_doctor.objects.filter(doctor=doctor)
+            if month and year:
+                try:
+                    ay = int(month)
+                    il = int(year)
+                    payments = payments.filter(date__month=ay, date__year=il)
+                except ValueError:
+                    payments = Payment_doctor.objects.none()
+            elif month:
+                try:
+                    ay = int(month)
+                    payments = payments.filter(date__month=ay)
+                except ValueError:
+                    payments = Payment_doctor.objects.none()
+            elif year:
+                try:
+                    il = int(year)
+                    payments = payments.filter(date__year=il)
+                except ValueError:
+                    payments = Payment_doctor.objects.none()
+            
+            # Ödəniş növlərinə görə topla
+            avans = d(0)
+            investisiya = d(0)
+            geriqaytarma = d(0)
+            
+            for payment in payments:
+                if payment.payment_type == 'Avans':
+                    avans += d(payment.pay)
+                elif payment.payment_type == 'İnvest':
+                    investisiya += d(payment.pay)
+                elif payment.payment_type == 'Geri_qaytarma':
+                    geriqaytarma += d(payment.pay)
 
         # Əgər satış yoxdursa bu iki sahə sıfır olsun
         if not sales_exist:
@@ -535,6 +586,13 @@ def ajax_region_report(request):
                 recipe_drugs = recipe_drugs.filter(recipe__date__month=ay)
             except ValueError:
                 recipe_drugs = RecipeDrug.objects.none()
+        
+        if year:
+            try:
+                il = int(year)
+                recipe_drugs = recipe_drugs.filter(recipe__date__year=il)
+            except ValueError:
+                pass
 
         drugs_agg = recipe_drugs.values('drug__med_name').annotate(total_count=Sum('number'))
 
@@ -686,6 +744,8 @@ def hesabat_bagla(request):
 def export_region_report_excel(request):
     region_id = request.GET.get("region_id")
     month = request.GET.get("month")
+    year = request.GET.get("year")
+    borc_filter = request.GET.get("borc")
     drugs = list(Medical.objects.all().order_by('id'))  # Bütün dərmanlar
 
     if not region_id:
@@ -701,6 +761,13 @@ def export_region_report_excel(request):
             sales = sales.filter(sale_date__month=ay)
         except ValueError:
             sales = Sale.objects.none()
+    
+    if year:
+        try:
+            il = int(year)
+            sales = sales.filter(sale_date__year=il)
+        except ValueError:
+            pass
     
     sales_exist = sales.exists()
 
@@ -731,6 +798,27 @@ def export_region_report_excel(request):
         cell.alignment = Alignment(horizontal="center", vertical="center", textRotation=90)
 
     ws.freeze_panes = "A3"
+    
+    # Sütun enliklərini sıxlaşdır
+    ws.column_dimensions['A'].width = 5   # №
+    ws.column_dimensions['B'].width = 12  # Bölgə
+    ws.column_dimensions['C'].width = 20  # Həkim
+    ws.column_dimensions['D'].width = 10  # Kod
+    ws.column_dimensions['E'].width = 12  # Şəhər
+    ws.column_dimensions['F'].width = 8   # Dərəcə
+    ws.column_dimensions['G'].width = 12  # İxtisas
+    ws.column_dimensions['H'].width = 12  # Əvvəlki Borc
+    
+    # Dərman sütunları - dar et (I sütunundan başlayır, column 9)
+    for i in range(len(drugs)):
+        col_letter = get_column_letter(9 + i)
+        ws.column_dimensions[col_letter].width = 4
+    
+    # Son sütunlar (Total, Hesablanan, Həkimdən Silinən, Avans, İnvestisiya, Geri qaytarma, Datasiya, Yekun Borc)
+    base_col = 9 + len(drugs)
+    for i in range(8):  # 8 son sütun
+        col_letter = get_column_letter(base_col + i)
+        ws.column_dimensions[col_letter].width = 8
 
     # Cəmlər üçün dəyişənlər
     drug_totals = [0] * len(drugs)
@@ -750,7 +838,8 @@ def export_region_report_excel(request):
         if month:
             try:
                 ay = int(month)
-                report_month = date.today().replace(month=ay, day=1)
+                il = int(year) if year else date.today().year
+                report_month = date(il, ay, 1)
                 monthly_report = MonthlyDoctorReport.objects.filter(
                     doctor=doctor,
                     report_month=report_month
@@ -769,15 +858,47 @@ def export_region_report_excel(request):
             hekimden_silinen = d(monthly_report.hekimden_silinen or 0)
             hesablanan_miqdar = d(monthly_report.hesablanan_miqdar or 0)
         else:
-            # Hesabat hələ bağlanmayıbsa, həkimdən götür
+            # Hesabat hələ bağlanmayıbsa, seçilmiş ay və il üzrə ödənişləri hesabla
             previous_debt = d(doctor.previous_debt or 0)
             borc = d(doctor.borc or 0)
-            avans = d(doctor.avans or 0)
-            investisiya = d(doctor.investisiya or 0)
-            geriqaytarma = d(doctor.geriqaytarma or 0)
             datasiya = d(doctor.datasiya or 0)
             hekimden_silinen = d(doctor.hekimden_silinen or 0)
             hesablanan_miqdar = d(doctor.hesablanan_miqdar or 0)
+            
+            # Ödənişləri seçilmiş ay və il üzrə filtrələ
+            payments = Payment_doctor.objects.filter(doctor=doctor)
+            if month and year:
+                try:
+                    ay = int(month)
+                    il = int(year)
+                    payments = payments.filter(date__month=ay, date__year=il)
+                except ValueError:
+                    payments = Payment_doctor.objects.none()
+            elif month:
+                try:
+                    ay = int(month)
+                    payments = payments.filter(date__month=ay)
+                except ValueError:
+                    payments = Payment_doctor.objects.none()
+            elif year:
+                try:
+                    il = int(year)
+                    payments = payments.filter(date__year=il)
+                except ValueError:
+                    payments = Payment_doctor.objects.none()
+            
+            # Ödəniş növlərinə görə topla
+            avans = d(0)
+            investisiya = d(0)
+            geriqaytarma = d(0)
+            
+            for payment in payments:
+                if payment.payment_type == 'Avans':
+                    avans += d(payment.pay)
+                elif payment.payment_type == 'İnvest':
+                    investisiya += d(payment.pay)
+                elif payment.payment_type == 'Geri_qaytarma':
+                    geriqaytarma += d(payment.pay)
 
         # ƏGər satış yoxdursa, bu iki sahəni sıfırla (AJAX ilə eyni məntiq)
         if not sales_exist:
@@ -785,6 +906,12 @@ def export_region_report_excel(request):
             hesablanan_miqdar = d(0)
 
         yekun_borc = previous_debt + avans + investisiya - geriqaytarma + datasiya - hekimden_silinen
+        
+        # Borc filter tətbiq et
+        if borc_filter == "borclu" and yekun_borc <= 0:
+            continue
+        if borc_filter == "borcsuz" and yekun_borc > 0:
+            continue
 
         # Recipes və drug məlumatları (month filter ilə)
         recipes = Recipe.objects.filter(dr=doctor, region_id=region_id)
@@ -794,6 +921,13 @@ def export_region_report_excel(request):
                 recipes = recipes.filter(date__month=ay)
             except ValueError:
                 recipes = Recipe.objects.none()
+        
+        if year:
+            try:
+                il = int(year)
+                recipes = recipes.filter(date__year=il)
+            except ValueError:
+                pass
 
         drug_map = defaultdict(int)
         total = 0
@@ -843,61 +977,65 @@ def export_region_report_excel(request):
         ]
 
         ws.append(row)
+        
+        # Hər xanaya border və mərkəzləşdirmə əlavə et
+        current_row = ws.max_row
+        for col in range(1, len(headers) + 1):
+            cell = ws.cell(row=current_row, column=col)
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Alt sətir (cəmi)
+    # Alt sətir (cəmi) - bütün cəmləri göstər
     total_row_idx = ws.max_row + 1
+    
+    # Əvvəlcə bütün xanaları boş doldur
+    for col in range(1, len(headers) + 1):
+        ws.cell(row=total_row_idx, column=col, value="")
+    
     # "Cəmi" labelini "Bölgə" sütununa qoy (column 2)
-    ws.cell(row=total_row_idx, column=2, value="Cəmi").font = Font(bold=True)
-    ws.cell(row=total_row_idx, column=2).alignment = Alignment(horizontal="center")
+    cemi_cell = ws.cell(row=total_row_idx, column=2, value="Cəmi")
+    cemi_cell.font = Font(bold=True)
+    cemi_cell.border = thin_border
+    cemi_cell.alignment = Alignment(horizontal="center", vertical="center")
 
     # Əvvəlki borcun cəmi (column 8)
-    ws.cell(row=total_row_idx, column=8, value=float(previous_debt_total)).font = Font(bold=True)
+    prev_debt_cell = ws.cell(row=total_row_idx, column=8, value=float(previous_debt_total))
+    prev_debt_cell.font = Font(bold=True)
+    prev_debt_cell.border = thin_border
+    prev_debt_cell.alignment = Alignment(horizontal="center", vertical="center")
 
     # Dərmanların cəmi (columns 9 to 9+len(drugs)-1)
     drug_start_col = 9
     for i, total_val in enumerate(drug_totals):
-        ws.cell(row=total_row_idx, column=drug_start_col + i, value=total_val).font = Font(bold=True)
+        cell = ws.cell(row=total_row_idx, column=drug_start_col + i, value=total_val)
+        cell.font = Font(bold=True)
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal="center", vertical="center")
 
     # Yekun sütunların cəmləri (base_col = 9 + len(drugs))
     base_col = 9 + len(drugs)
-    ws.cell(row=total_row_idx, column=base_col, value=float(total_total)).font = Font(bold=True)  # Total
-    ws.cell(row=total_row_idx, column=base_col + 1, value=float(hesablanan_miqdar_total)).font = Font(bold=True)
-    ws.cell(row=total_row_idx, column=base_col + 2, value=float(hekimden_silinen_total)).font = Font(bold=True)
-    ws.cell(row=total_row_idx, column=base_col + 3, value=float(avans_total)).font = Font(bold=True)
-    ws.cell(row=total_row_idx, column=base_col + 4, value=float(investisiya_total)).font = Font(bold=True)
-    ws.cell(row=total_row_idx, column=base_col + 5, value=float(geriqaytarma_total)).font = Font(bold=True)
-    ws.cell(row=total_row_idx, column=base_col + 6, value=float(datasiya_total)).font = Font(bold=True)
-    ws.cell(row=total_row_idx, column=base_col + 7, value=float(yekun_borc_total)).font = Font(bold=True)
-
-    # Hüceyrələrə border və hizalama (alt sətir üçün)
-    thin = Side(style='thin', color="BFBFBF")
-    thin_border = Border(left=thin, right=thin, top=thin, bottom=thin)
-
-    # Alt sətir border və alignment
-    for col in range(1, len(headers) + 1):
+    final_totals = [
+        ("Total", float(total_total)),
+        ("Hesablanan Miqdar", float(hesablanan_miqdar_total)),
+        ("Həkimdən Silinən", float(hekimden_silinen_total)),
+        ("Avans", float(avans_total)),
+        ("İnvestisiya", float(investisiya_total)),
+        ("Geri qaytarma", float(geriqaytarma_total)),
+        ("Datasiya", float(datasiya_total)),
+        ("Yekun Borc", float(yekun_borc_total))
+    ]
+    
+    for i, (label, value) in enumerate(final_totals):
+        cell = ws.cell(row=total_row_idx, column=base_col + i, value=value)
+        cell.font = Font(bold=True)
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    
+    # Qalan boş xanalara border əlavə et (№, Həkim, Kod, Şəhər, Dərəcə, İxtisas)
+    for col in [1, 3, 4, 5, 6, 7]:
         cell = ws.cell(row=total_row_idx, column=col)
         cell.border = thin_border
-        if isinstance(cell.value, (int, float)):
-            cell.alignment = Alignment(horizontal="right")
-        else:
-            cell.alignment = Alignment(horizontal="center")
-
-    # Bütün məlumat sətirləri üçün border və alignment
-    for row in ws.iter_rows(min_row=3, max_row=ws.max_row, min_col=1, max_col=len(headers)):
-        for cell in row:
-            cell.border = thin_border
-            if isinstance(cell.value, (int, float)):
-                cell.alignment = Alignment(horizontal="right")
-
-    # Sütun genişliyi tənzimlənməsi
-    for col in ws.columns:
-        max_length = 0
-        col_letter = col[0].column_letter
-        for cell in col:
-            val_len = len(str(cell.value)) if cell.value else 0
-            if val_len > max_length:
-                max_length = val_len
-        ws.column_dimensions[col_letter].width = min(max_length + 2, 50)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
 
     # Fayl adı
     region_name = doctors[0].bolge.region_name if doctors.exists() else "Region"

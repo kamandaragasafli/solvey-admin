@@ -41,15 +41,15 @@
           <option value="12" {% if request.GET.month == "12" %}selected{% endif %}>Dekabr</option>
         </select>
       </div>
-      {% comment %} <div class="col-md-2">
-        <label for="yearSelect" class="form-label small text-muted">İl Seç</label>
+      <div class="col-md-2">
+        <label for="yearSelect" class="form-label small">İl Seç</label>
         <select id="yearSelect" name="year" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
           <option value="">Hamısı</option>
           {% for year in years %}
             <option value="{{ year }}" {% if request.GET.year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
           {% endfor %}
         </select>
-      </div> {% endcomment %}
+      </div>
       <div class="col-md-1 d-grid">
         <button type="submit" class="btn" style="background-color: #5b70f3; color: #f9fafb;">Filtrlə</button>
       </div>

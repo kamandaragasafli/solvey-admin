@@ -767,12 +767,34 @@ def openai_chat(request):
         messages = [
             {
                 'role': 'system',
-                'content': '''Sən Solvey tibbi şirkətinin admin paneli üçün köməkçi AI-sən. 
+                'content': '''Sən Solvey tibbi şirkətinin admin paneli üçün köməkçi AI-sən.
 Azərbaycan dilində cavab ver. Qısa, dəqiq və faydalı cavablar ver.
-İstifadəçilər səndən verilənlər bazasından məlumat istəyə bilərlər. 
-Məsələn: "Ən son əlavə olunan həkimləri göstər", "Həkim statistikalarını göstər", 
-"Bakı bölgəsinin həkimlərini göstər" və s.
-Funksiyaları istifadə edərək verilənlər bazasından məlumat al və istifadəçiyə aydın şəkildə təqdim et.'''
+
+Mütləq qayda:
+- Verilənlər bazasından məlumat almaq üçün HƏMİŞƏ təqdim olunmuş funksiyalardan istifadə et.
+- Heç vaxt özündən rəqəm, statistika və ya tarix UYDURMA, yalnız funksiyaların qaytardığı nəticələri istifadə et.
+- Funksiya sıfır nəticə qaytaranda bunu aydın yaz: "Bu həkim üçün bu dövrdə məlumat tapılmadı."
+
+Kontekst:
+- İstifadəçi ardıcıl suallar verəndə əvvəlki mesajdakı həkim adını və tarixi yadında saxla.
+- Məs: "Məmmədov Əsəd keçən ay nə qədər qeydiyyatı var?" + "noyabrda bəs?" → bu, eyni həkim üçün noyabr ayına aid sorğu deməkdir.
+- "noyabrda bəs?", "bu ay necə?", "keçən ay nə qədər?" kimi qısa cümlələri HƏKİM ADI kimi yox, əvvəlki sualın davamı kimi şərh et.
+
+Tarix şərhi:
+- "keçən ay" → cari tarixdən əvvəlki ay kimi şərh et.
+- "bu ay" → cari ay.
+- "noyabrda" kimi ay adları veriləndə uyğun aya çevir.
+
+Funksiya nümunələri:
+- "Ən son əlavə olunan həkimləri göstər" → get_recent_doctors
+- "Həkim statistikalarını göstər" → get_doctor_statistics
+- "Bakı bölgəsinin həkimlərini göstər" → get_doctors_by_region
+- "Vüsalə üçün bu ay neçə resept yazılıb?" → get_doctor_prescription_stats
+- "Bağırova Könülün aylıq qeydiyyat aylarını göstər" → get_doctor_financial_details və ya əlavə aylıq hesabat funksiyası.
+
+Cavab formatı:
+- Mümkün qədər sadə saxla (ad + bölgə kimi), yalnız istifadəçi əlavə detal istəyəndə daha detallı məlumat ver.
+'''
             }
         ]
         
@@ -881,7 +903,6 @@ def format_function_result(function_name, result):
             return 'Ən son əlavə olunan həkim tapılmadı.'
         text = 'Ən son əlavə olunan həkimlər:\n\n'
         for i, doctor in enumerate(result, 1):
-            text += f"{i}. {doctor['ad']} ({doctor['barkod']})\n"
             text += f"   Bölgə: {doctor['bolge']}, Şəhər: {doctor['city']}\n"
             text += f"   Klinika: {doctor['klinika']}, İxtisas: {doctor['ixtisas']}\n"
             text += f"   Dərəcə: {doctor['derece']}, Tarix: {doctor['created_at']}\n\n"
@@ -922,8 +943,9 @@ def format_function_result(function_name, result):
             return 'Axtarışa uyğun həkim tapılmadı.'
         text = f'Axtarış nəticələri ({len(result)} həkim):\n\n'
         for i, doctor in enumerate(result, 1):
-            text += f"{i}. {doctor['ad']} ({doctor['barkod']})\n"
-            text += f"   Bölgə: {doctor['bolge']}, İxtisas: {doctor['ixtisas']}\n\n"
+            # Daha sadə nəticə: yalnız ad və bölgə göstərək
+            text += f"{i}. {doctor['ad']}\n"
+            text += f"   Bölgə: {doctor['bolge']}\n\n"
         return text
     
     elif function_name == 'get_financial_summary':
@@ -931,6 +953,14 @@ def format_function_result(function_name, result):
         text = '💰 Maliyyə Ümumi Məlumatları:\n\n'
         text += f"Ümumi borc: {stats['total_debt']:.2f} ₼\n"
         text += f"Əvvəlki borc: {stats['total_previous_debt']:.2f} ₼\n"
+        text += f"Cari borc: {stats['total_current_debt']:.2f} ₼\n"
+        text += f"Hesablanan miqdar: {stats['total_calculated_amount']:.2f} ₼\n"
+        text += f"Həkimden silinən: {stats['total_deleted_amount']:.2f} ₼\n"
+        text += f"Datasiya: {stats['total_datasiya']:.2f} ₼\n"
+        text += f"Avans: {stats['total_avans']:.2f} ₼\n"
+        text += f"İnvestisiya: {stats['total_investisiya']:.2f} ₼\n"
+        text += f"Geri qaytarma: {stats['total_geriqaytarma']:.2f} ₼\n"
+        text += f"Yekun borc: {stats['total_yekun_borc']:.2f} ₼\n"
         text += f"Borclu həkim sayı: {stats['doctors_with_debt']} / {stats['total_doctors']}\n"
         return text
     
@@ -939,29 +969,27 @@ def format_function_result(function_name, result):
             return 'Bu bölgədə həkim tapılmadı.'
         text = f'Bölgə həkimləri ({len(result)} həkim):\n\n'
         for i, doctor in enumerate(result, 1):
-            text += f"{i}. {doctor['ad']} ({doctor['barkod']})\n"
-            text += f"   Şəhər: {doctor['city']}, Klinika: {doctor['klinika']}\n"
-            text += f"   İxtisas: {doctor['ixtisas']}, Yekun borc: {doctor['yekun_borc']:.2f} ₼\n\n"
+            # Sadə format: ad və bölgə kifayətdir, əlavə detallar soruşularsa göstərilər
+            text += f"{i}. {doctor['ad']}\n"
+            text += f"   Şəhər: {doctor['city']}, Klinika: {doctor['klinika']}\n\n"
         return text
 
     elif function_name == 'get_doctor_financial_details':
         if not result:
             return 'Bu ada uyğun həkim tapılmadı.'
 
-        # Bir neçə həkim uyğun gələrsə, hamısını siyahı kimi göstər
+        # Bir neçə həkim uyğun gələrsə, hamısını sadə siyahı kimi göstər
         if len(result) > 1:
             text = f'Axtarış nəticələri ({len(result)} həkim):\n\n'
             for i, doctor in enumerate(result, 1):
-                text += f"{i}. {doctor['ad']} ({doctor['barkod']})\n"
-                text += f"   Bölgə: {doctor['bolge']}, Şəhər: {doctor['city']}\n"
-                text += f"   Klinika: {doctor['klinika']}\n"
-                text += f"   Cari yekun borc: {doctor['yekun_borc']:.2f} ₼\n\n"
-            text += "Zəhmət olmasa daha dəqiq ad və ya barkod qeyd edin ki, konkret həkim üçün detallar göstərim."
+                text += f"{i}. {doctor['ad']}\n"
+                text += f"   Bölgə: {doctor['bolge']}\n\n"
+            text += "Zəhmət olmasa daha dəqiq ad və ya barkod qeyd edin ki, konkret həkim üçün tam maliyyə detallarını göstərə bilim."
             return text
 
         # Yalnız bir həkim varsa, detallı maliyyə məlumatları
         doctor = result[0]
-        text = f"💳 Həkim üzrə maliyyə məlumatları: {doctor['ad']} ({doctor['barkod']})\n\n"
+        text = f"💳 Həkim üzrə maliyyə məlumatları: {doctor['ad']}\n\n"
         text += "Cari vəziyyət:\n"
         text += f"  - Əvvəlki borc: {doctor['previous_debt']:.2f} ₼\n"
         text += f"  - Cari borc: {doctor['borc']:.2f} ₼\n"
@@ -988,6 +1016,40 @@ def format_function_result(function_name, result):
             text += "\nSon aylıq hesabatlar:\n"
             for r in reports:
                 text += f"  - {r['month']}: yekun borc {r['yekun_borc']:.2f} ₼, borc {r['borc']:.2f} ₼, avans {r['avans']:.2f} ₼, investisiya {r['investisiya']:.2f} ₼, geri qaytarma {r['geriqaytarma']:.2f} ₼\n"
+
+        return text
+
+    elif function_name == 'get_doctor_prescription_stats':
+        # Həkim tapılmadıqda və ya xəta olduqda
+        if not result.get('doctor_found'):
+            return result.get('message', 'Bu ada uyğun həkim tapılmadı.')
+
+        doctor = result['doctor']
+        year = result.get('year')
+        month = result.get('month')
+        day = result.get('day')
+
+        period_text = ''
+        if year and month and day:
+            period_text = f"{year}-{month:02d}-{day:02d} tarixi üçün"
+        elif year and month:
+            period_text = f"{year}-{month:02d} ayı üçün"
+        elif year:
+            period_text = f"{year}-ci il üçün"
+        else:
+            period_text = "seçilən dövr üçün"
+
+        text = f"🧾 {doctor['ad']} həkimin {period_text} resept statistikası:\n\n"
+        text += f"  - Ümumi resept sayı: {result['total_recipes']}\n"
+        text += f"  - Ümumi dərman sayı (cəmi ədəd): {result['total_drug_count']:.1f}\n\n"
+
+        drugs = result.get('drugs', [])
+        if drugs:
+            text += "Ən çox yazılan dərmanlar:\n"
+            for d in drugs[:10]:
+                text += f"  - {d['name']}: {d['count']:.1f} ədəd\n"
+        else:
+            text += "Bu dövr üçün resept və dərman məlumatı tapılmadı.\n"
 
         return text
 

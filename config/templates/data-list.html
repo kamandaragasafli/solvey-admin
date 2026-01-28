@@ -283,44 +283,171 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #64748b;
     }
-/* Daterangepicker arxa plan və mətn rəngi */
+/* Daterangepicker - Modern Dizayn */
 .daterangepicker {
-    background-color: #273549 !important;
-    color: #f1f1f1 !important;
-    border-radius: 12px;
-    border: 1px solid #000000ff;
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+    border-radius: 16px !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+    padding: 8px !important;
 }
 
-/* Header (ay və il) */
-.daterangepicker .drp-calendar .calendar-table th {
-    color: #273549 !important;
-    font-weight: 600;
+/* Calendar Container */
+.daterangepicker .drp-calendar {
+    padding: 10px !important;
 }
 
-/* Günlər */
+/* Ay və il başlığı */
+.daterangepicker .calendar-table .month {
+    background-color: #0ea5e9 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    margin-bottom: 10px !important;
+}
+
+/* Həftə günləri (Be, Ça, Ç, ...) */
+.daterangepicker .calendar-table thead tr:last-child th {
+    color: #94a3b8 !important;
+    font-weight: 600 !important;
+    font-size: 0.75rem !important;
+    padding: 8px 4px !important;
+    text-transform: uppercase !important;
+}
+
+/* Bütün günlər */
+.daterangepicker td {
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+}
+
 .daterangepicker td.available {
-    background-color: #1a2533;
-    color: #f1f1f1;
+    background-color: #273549 !important;
+    color: #e2e8f0 !important;
 }
 
-/* Seçilən tarix (active/in-range) */
-.daterangepicker td.in-range,
-.daterangepicker td.active {
-    background-color: #006eff !important; /* mavi arxa fon */
-    color: #ffffff !important; /* mətn ağ rəngdə */
-    border-radius: 6px;
-    border: none; /* əgər sərhəd lazım deyilsə */
+.daterangepicker td.available:hover {
+    background-color: #334155 !important;
+    color: #ffffff !important;
+    transform: scale(1.05);
 }
 
+/* Off (keçmiş ay günləri) */
+.daterangepicker td.off {
+    background-color: #1e293b !important;
+    color: #64748b !important;
+}
 
-/* Apply və Cancel düymələri */
+.daterangepicker td.off.in-range {
+    background-color: rgba(14, 165, 233, 0.2) !important;
+    color: #94a3b8 !important;
+}
+
+/* Seçilən tarix intervalı */
+.daterangepicker td.in-range {
+    background-color: rgba(14, 165, 233, 0.3) !important;
+    color: #f1f5f9 !important;
+}
+
+/* Başlanğıc və son tarix */
+.daterangepicker td.active,
+.daterangepicker td.active.start-date,
+.daterangepicker td.active.end-date {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4) !important;
+}
+
+/* Bugünkü tarix */
+.daterangepicker td.today {
+    border: 2px solid #0ea5e9 !important;
+    font-weight: 600 !important;
+}
+
+/* Sol və sağ ox düymələri */
+.daterangepicker th.prev,
+.daterangepicker th.next {
+    color: #0ea5e9 !important;
+    font-size: 1.2rem !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.daterangepicker th.prev:hover,
+.daterangepicker th.next:hover {
+    color: #38bdf8 !important;
+    transform: scale(1.2);
+}
+
+/* Alt hissə (ranges) */
+.daterangepicker .ranges {
+    background-color: #1e293b !important;
+    border-right: 1px solid #334155 !important;
+}
+
+.daterangepicker .ranges li {
+    color: #cbd5e1 !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    margin: 4px !important;
+    transition: all 0.2s ease !important;
+}
+
+.daterangepicker .ranges li:hover {
+    background-color: #334155 !important;
+    color: #ffffff !important;
+}
+
+.daterangepicker .ranges li.active {
+    background-color: #0ea5e9 !important;
+    color: #ffffff !important;
+}
+
+/* Input sahəsi */
+.daterangepicker .drp-selected {
+    color: #f1f5f9 !important;
+    font-weight: 600 !important;
+}
+
+/* Düymələr */
+.daterangepicker .drp-buttons {
+    border-top: 1px solid #334155 !important;
+    padding: 12px !important;
+    background-color: #1e293b !important;
+    border-radius: 0 0 16px 16px !important;
+}
+
 .daterangepicker .applyBtn {
-    background-color: #0b71ffff !important;
-    color: #000 !important;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 8px 20px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
 }
+
+.daterangepicker .applyBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
+}
+
 .daterangepicker .cancelBtn {
-    background-color: #ff1616ff !important;
-    color: #fff !important;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 8px 20px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}
+
+.daterangepicker .cancelBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
 }
 /* Scrollbar track (arxa plan) */
 ::-webkit-scrollbar-track {

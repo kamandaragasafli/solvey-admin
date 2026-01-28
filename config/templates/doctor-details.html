@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static my_filters %}
 {% block content %}
  <link rel="stylesheet" href="{% static 'css/dr-details.css' %}">
  
@@ -42,6 +42,14 @@
                             <div class="info-item">
                                 <span class="info-label">Bölgə:</span>
                                 <span class="info-value">{{ doctor.bolge }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Şəhər:</span>
+                                <span class="info-value">{{ doctor.city }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Klinika:</span>
+                                <span class="info-value">{{ doctor.klinika|before_dash }}</span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Status:</span>
