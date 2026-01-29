@@ -1271,6 +1271,7 @@ def ajax_region_data(request):
     
     # Əvvəlcə date_range-dən ili əldə et
     year_from_range = None
+    date_range = request.GET.get("date_range", "")
     if date_range and " - " in date_range:
         try:
             start_str, end_str = date_range.split(" - ")
@@ -1655,7 +1656,6 @@ def region_report(request, region_id):
     
     current_year = datetime.now().year
     current_month = datetime.now().month
-    
     if month:
         try:
             ay = int(month)

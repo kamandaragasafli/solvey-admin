@@ -359,6 +359,7 @@ function loadAllRegionData(regionId, month, year) {
   
   // Fetch all pages to calculate totals
   fetch(`/reports/ajax/region-report/?region_id=${regionId}&month=${month}&year=${year}&borc=${borcFilter}&page=1`)
+
     .then(response => {
       if (!response.ok) throw new Error("Server cavabı düzgün deyil");
       return response.json();
@@ -372,6 +373,7 @@ function loadAllRegionData(regionId, month, year) {
       for (let page = 2; page <= totalPages; page++) {
         promises.push(
           fetch(`/reports/ajax/region-report/?region_id=${regionId}&month=${month}&year=${year}&borc=${borcFilter}&page=${page}`)
+
             .then(res => res.json())
             .then(pageData => pageData.results || [])
         );
@@ -396,6 +398,7 @@ function loadRegionData(regionId, month, year, page = 1, calculateTotalsFlag = t
   const borcFilter = document.getElementById('borc-status').value;
 
   fetch(`/reports/ajax/region-report/?region_id=${regionId}&month=${month}&year=${year}&borc=${borcFilter}&page=${page}`)
+
     .then(response => {
       if (!response.ok) throw new Error("Server cavabı düzgün deyil");
       return response.json();
@@ -577,6 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentPage = 1; // Hər yeni sorğuda 1-ci səhifəyə qayıt
     if (regionId) {
       loadRegionData(regionId, month, year, 1);
+
     } else {
       const tbody = document.getElementById('dataTable');
       tbody.innerHTML = `<tr><td colspan="25" class="fst-italic">Bölgə seçin</td></tr>`;

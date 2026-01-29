@@ -3,11 +3,9 @@ from builtins import zip as builtin_zip
 
 register = template.Library()
 
-
 @register.filter
 def zip(a, b):
     return list(builtin_zip(a, b))
-
 
 @register.filter
 def index(sequence, i):
@@ -15,15 +13,6 @@ def index(sequence, i):
         return sequence[i]
     except Exception:
         return ''
-
-
-@register.filter
-def index(sequence, position):
-    try:
-        return sequence[position]
-    except IndexError:
-        return None
-
 
 @register.filter
 def before_dash(value):

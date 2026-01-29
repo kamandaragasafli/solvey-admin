@@ -903,6 +903,7 @@ def format_function_result(function_name, result):
             return 'Ən son əlavə olunan həkim tapılmadı.'
         text = 'Ən son əlavə olunan həkimlər:\n\n'
         for i, doctor in enumerate(result, 1):
+            text += f"{i}. {doctor['ad']}\n"
             text += f"   Bölgə: {doctor['bolge']}, Şəhər: {doctor['city']}\n"
             text += f"   Klinika: {doctor['klinika']}, İxtisas: {doctor['ixtisas']}\n"
             text += f"   Dərəcə: {doctor['derece']}, Tarix: {doctor['created_at']}\n\n"
@@ -953,14 +954,6 @@ def format_function_result(function_name, result):
         text = '💰 Maliyyə Ümumi Məlumatları:\n\n'
         text += f"Ümumi borc: {stats['total_debt']:.2f} ₼\n"
         text += f"Əvvəlki borc: {stats['total_previous_debt']:.2f} ₼\n"
-        text += f"Cari borc: {stats['total_current_debt']:.2f} ₼\n"
-        text += f"Hesablanan miqdar: {stats['total_calculated_amount']:.2f} ₼\n"
-        text += f"Həkimden silinən: {stats['total_deleted_amount']:.2f} ₼\n"
-        text += f"Datasiya: {stats['total_datasiya']:.2f} ₼\n"
-        text += f"Avans: {stats['total_avans']:.2f} ₼\n"
-        text += f"İnvestisiya: {stats['total_investisiya']:.2f} ₼\n"
-        text += f"Geri qaytarma: {stats['total_geriqaytarma']:.2f} ₼\n"
-        text += f"Yekun borc: {stats['total_yekun_borc']:.2f} ₼\n"
         text += f"Borclu həkim sayı: {stats['doctors_with_debt']} / {stats['total_doctors']}\n"
         return text
     
