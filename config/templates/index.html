@@ -238,7 +238,7 @@
                 <span class="progress-label">Bölgə paylaşımı</span>
                 {% with total=total_baku|add:total_other %}
                     {% if total > 0 %}
-                        {% with percentage=total_baku|divisibleby:total|floatformat:0 %}
+                        {% with percentage=total_baku|percentage:total|floatformat:0 %}
                             <span class="progress-percentage">{{ percentage }}% Bakı</span>
                         {% endwith %}
                     {% else %}
@@ -249,7 +249,7 @@
             <div class="progress-bar-custom">
                 {% with total=total_baku|add:total_other %}
                     {% if total > 0 %}
-                        <div class="progress-fill" style="width: {{ total_baku|divisibleby:total|floatformat:0 }}%"></div>
+                        <div class="progress-fill" style="width: {{ total_baku|percentage:total|floatformat:0 }}%"></div>
                     {% else %}
                         <div class="progress-fill" style="width: 0%"></div>
                     {% endif %}
@@ -466,7 +466,6 @@
                 {% for d in all_drug %}
                 <th>{{ d.med_name }}</th>
                 {% endfor %}
-                <th>Günlük Qeydiyyat</th>
                 <th>Aylıq Qeydiyyat</th>
               </tr>
             </thead>
@@ -482,7 +481,6 @@
                     {% endwith %}
                   {% endfor %}
 
-                  <td style="font-weight: bold">{{ baki_region_daily_totals|get_total_item:region.region_name }}</td>
                   <td style="font-weight: bold">{{ baki_region_monthly_totals|get_total_item:region.region_name }}</td>
                 </tr>
               {% endfor %}

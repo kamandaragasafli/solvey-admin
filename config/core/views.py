@@ -212,7 +212,7 @@ def index(request):
                 and first_day_of_month <= item["recipe__date"] <= today
             )
 
-            baki_region_drug_counts[region.region_name][drug.med_name] = daily
+            baki_region_drug_counts[region.region_name][drug.med_name] = monthly
             daily_total += daily
             monthly_total += monthly
 
@@ -658,8 +658,8 @@ def export_excel_ayliq_baki(request):
     cell.alignment = center_alignment
 
 
-    # Header
-    headers = ["Bölgə"] + [drug.med_name for drug in all_drug] + ["Gündəlik Qeydiyyat", "Aylıq Qeydiyyat"]
+    # Header (artıq yalnız aylıq məlumat göstəririk)
+    headers = ["Bölgə"] + [drug.med_name for drug in all_drug] + ["Aylıq Qeydiyyat"]
     for col_num, header in enumerate(headers, 1):
         cell = ws.cell(row=3, column=col_num)  # Header 3-cü sətirdə
         cell.value = header
@@ -681,24 +681,23 @@ def export_excel_ayliq_baki(request):
 
         cell.border = thin_border
 
-        # Dərmanlar
+        # Dərmanlar - AYLIQ cəmlər
         for col_num, drug in enumerate(all_drug, start=2):
             cell = ws.cell(row=row_num, column=col_num)
-            cell.value = region_drug_counts_daily[region.region_name][drug.med_name]
+            cell.value = region_drug_counts_monthly[region.region_name][drug.med_name]
             cell.font = calibri_font
             cell.alignment = center_alignment
 
             cell.border = thin_border
 
-        # Günlük və aylıq cəmlər - fonlu, bold, böyük
-        for i, value in enumerate([region_daily_totals[region.region_name], region_monthly_totals[region.region_name]], start=len(all_drug)+2):
-            cell = ws.cell(row=row_num, column=i)
-            cell.value = value
-            cell.font = bold_font
-            cell.alignment = center_alignment
-
-            cell.border = thin_border
-            cell.fill = header_fill
+        # Yalnız AYLQ cəm - fonlu, bold, böyük
+        total_col_index = len(all_drug) + 2
+        cell = ws.cell(row=row_num, column=total_col_index)
+        cell.value = region_monthly_totals[region.region_name]
+        cell.font = bold_font
+        cell.alignment = center_alignment
+        cell.border = thin_border
+        cell.fill = header_fill
 
     # Aşağıda cəm
     total_row = len(baku_region) + 3
@@ -710,22 +709,20 @@ def export_excel_ayliq_baki(request):
 
     for col_num, drug in enumerate(all_drug, start=2):
         cell = ws.cell(row=total_row, column=col_num)
-        cell.value = sum(region_drug_counts_daily[reg.region_name][drug.med_name] for reg in baku_region)
-        cell.font = calibri_font
+        cell.value = sum(region_drug_counts_monthly[reg.region_name][drug.med_name] for reg in baku_region)
+        cell.font = bold_font
         cell.alignment = center_alignment
         cell.border = thin_border
         cell.fill = header_fill
-        cell.font = bold_font
 
-    # Günlük və aylıq toplamlar
-    for i, value in enumerate([sum(region_daily_totals.values()), sum(region_monthly_totals.values())], start=len(all_drug)+2):
-        cell = ws.cell(row=total_row, column=i)
-        cell.value = value
-        cell.font = bold_font
-        cell.alignment = center_alignment
-        cell.border = thin_border
-        cell.fill = header_fill
-        cell.font = bold_font
+    # Yalnız aylıq ümumi toplam
+    total_col_index = len(all_drug) + 2
+    cell = ws.cell(row=total_row, column=total_col_index)
+    cell.value = sum(region_monthly_totals.values())
+    cell.font = bold_font
+    cell.alignment = center_alignment
+    cell.border = thin_border
+    cell.fill = header_fill
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
