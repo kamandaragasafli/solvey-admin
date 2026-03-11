@@ -444,6 +444,121 @@ def sales(request):
     }
     return render(request, "reports/sales.html", context)
 
+
+def export_sales_excel(request):
+    """Aylıq Satışlar səhifəsinin Excel çıxarışı (reports/sales)."""
+    all_region = Region.objects.all().order_by("id")
+    all_drug = Medical.objects.all().order_by("id")
+
+    region_search = request.GET.get("region_search", "").strip()
+    region_id = request.GET.get("region", "").strip()
+    month = request.GET.get("month", "").strip()
+    year = request.GET.get("year", "").strip()
+
+    sales_queryset = Sale.objects.all()
+
+    if region_search:
+        all_region = all_region.filter(region_name__icontains=region_search)
+    if region_id:
+        try:
+            rid = int(region_id)
+            all_region = all_region.filter(id=rid)
+            sales_queryset = sales_queryset.filter(region_id=rid)
+        except ValueError:
+            pass
+    if month:
+        try:
+            sales_queryset = sales_queryset.filter(sale_date__month=int(month))
+        except ValueError:
+            pass
+    if year:
+        try:
+            sales_queryset = sales_queryset.filter(sale_date__year=int(year))
+        except ValueError:
+            pass
+
+    sales_dict = {}
+    totals_per_region = {}
+    totals_per_drug = {d.id: 0 for d in all_drug}
+    grand_total = 0
+    for region in all_region:
+        sales_dict[region.id] = {}
+        rt = 0
+        for drug in all_drug:
+            qty = (
+                sales_queryset.filter(region_id=region.id, drug_id=drug.id)
+                .aggregate(Sum("quantity"))["quantity__sum"]
+                or 0
+            )
+            sales_dict[region.id][drug.id] = qty
+            rt += qty
+            totals_per_drug[drug.id] += qty
+            grand_total += qty
+        totals_per_region[region.id] = rt
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Aylıq Satışlar"
+
+    headers = ["#", "Bölgə"] + [d.med_name for d in all_drug] + ["Total"]
+    ws.append(headers)
+
+    bold_font = Font(bold=True, color="060411")
+    header_fill = PatternFill(fill_type="solid", fgColor="E0E0E0")
+    thin = Side(style="thin", color="000000")
+    thin_border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    total_fill = PatternFill(fill_type="solid", fgColor="C8E6C9")
+
+    for col, cell in enumerate(ws[1], 1):
+        cell.font = bold_font
+        cell.fill = header_fill
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    for i, region in enumerate(all_region, start=1):
+        row = [i, region.region_name]
+        for drug in all_drug:
+            row.append(sales_dict.get(region.id, {}).get(drug.id, 0))
+        row.append(totals_per_region.get(region.id, 0))
+        ws.append(row)
+
+    total_row = ["", "CƏMİ"] + [totals_per_drug[d.id] for d in all_drug] + [grand_total]
+    ws.append(total_row)
+    for cell in ws[ws.max_row]:
+        cell.font = bold_font
+        cell.fill = total_fill
+        cell.border = thin_border
+
+    ws.column_dimensions["A"].width = 5
+    ws.column_dimensions["B"].width = 20
+    for i in range(len(all_drug)):
+        ws.column_dimensions[get_column_letter(3 + i)].width = 12
+    ws.column_dimensions[get_column_letter(3 + len(all_drug))].width = 12
+
+    month_names = {
+        1: "Yanvar", 2: "Fevral", 3: "Mart", 4: "Aprel", 5: "May", 6: "İyun",
+        7: "İyul", 8: "Avqust", 9: "Sentyabr", 10: "Oktyabr", 11: "Noyabr", 12: "Dekabr",
+    }
+    period = ""
+    if month and year:
+        try:
+            period = f"{month_names.get(int(month), month)}_{year}"
+        except (ValueError, KeyError):
+            period = f"{month}_{year}"
+    elif year:
+        period = str(year)
+    else:
+        period = datetime.now().strftime("%Y-%m-%d")
+    filename = f"Ayliq_Satislar_{period}.xlsx"
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
+
+
 def report_list(request):
     region = Region.objects.all().order_by('id')
     drug = Medical.objects.all().order_by('id')
@@ -473,7 +588,7 @@ def ajax_region_report(request):
     if not region_id:
         return JsonResponse({"results": [], "total_pages": 0, "current_page": 1})
 
-    doctors = Doctors.objects.filter(bolge_id=region_id).order_by("id")
+    doctors = Doctors.objects.filter(bolge_id=region_id, is_active=True).order_by("id")
     result = []
 
     # Satışlar (bütün region üçün filtr)
@@ -729,9 +844,14 @@ def hesabat_bagla(request):
                     
                     doctor.save()
 
+            aylar_ad = {
+                1: "Yanvar", 2: "Fevral", 3: "Mart", 4: "Aprel", 5: "May", 6: "İyun",
+                7: "İyul", 8: "Avqust", 9: "Sentyabr", 10: "Oktyabr", 11: "Noyabr", 12: "Dekabr"
+            }
+            ay_ad = aylar_ad.get(ay, ay_tarixi.strftime('%m'))
             return JsonResponse({
                 "success": True,
-                "message": f"{ay_tarixi.strftime('%Y-%m')} ayının hesabatı uğurla bağlandı."
+                "message": f"{ay_ad} {il} ayının hesabatı uğurla bağlandı."
             })
 
         except Exception as e:
@@ -751,7 +871,7 @@ def export_region_report_excel(request):
     if not region_id:
         return HttpResponse("Bölgə seçilməyib.", status=400)
 
-    doctors = Doctors.objects.filter(bolge_id=region_id).select_related('bolge')
+    doctors = Doctors.objects.filter(bolge_id=region_id, is_active=True).select_related('bolge')
     
     # Satışların olub-olmadığını yoxla (AJAX funksiyası ilə eyni məntiq)
     sales = Sale.objects.filter(region_id=region_id)

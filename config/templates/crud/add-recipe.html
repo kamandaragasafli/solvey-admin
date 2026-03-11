@@ -100,23 +100,25 @@
     <table class="custom-dark-table table-sm align-middle text-center">
       <thead>
         <tr>
-          <th>#</th>
+          
           <th>Tarix</th>
           <th>Həkim</th>
           <th>Bölgə</th>
           <th>Dərman</th>
           <th>Say</th>
+          <th>Del</th>
         </tr>
       </thead>
       <tbody>
         {% for record in last_recipes %} 
         <tr>
-          <td>{{ forloop.counter }}</td>
+         
           <td>{{ record.created_at }}</td>
           <td class="text-primary fw-bold">{{ record.recipe.dr.ad }}</td>
           <td>{{ record.recipe.region.region_name }}</td>
           <td class="text-success fw-bold">{{ record.drug.med_name }}</td>
           <td class="text-warning fw-bold">{{ record.number }}</td> 
+          <td><a href="{% url 'del_recipe' record.id %}?next=create_recipe" class="text-danger" title="Sil"><i class="bi bi-trash"></i></a></td>
         </tr>
         {% endfor %} 
       </tbody>
@@ -167,9 +169,8 @@
 }
 
 .custom-dark-table tbody tr:hover {
-  background-color: #0077ffff !important;
-  color: #f9fafb;
-  transition: 0.3s;
+  background-color: #374151 !important;
+  transition: 0.15s;
 }
 
 /* Scrollbar dizaynı */

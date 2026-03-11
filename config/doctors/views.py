@@ -32,6 +32,12 @@ def doctors_list(request):
     regions = Region.objects.all()
     queryset = Doctors.objects.all().prefetch_related('odenisler')
 
+    # Arxiv / Aktiv filter
+    if request.GET.get('archived') == '1':
+        queryset = queryset.filter(is_active=False)
+    else:
+        queryset = queryset.filter(is_active=True)
+
     # Region filter
     region_id = request.GET.get('region_filter')
     if region_id:
@@ -61,13 +67,28 @@ def doctors_list(request):
             "last_payment_amount": last_payment.pay if last_payment else 0
         })
 
-    # Pagination ləğv edildi
-    return render(request, "doctors.html", {"doctors": doctor_data, "regions": regions})
+    # Pagination – 30 həkim / səhifə
+    paginator = Paginator(doctor_data, 30)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "doctors": page_obj,
+        "regions": regions,
+        "is_archived_view": request.GET.get('archived') == '1',
+    }
+    return render(request, "doctors.html", context)
 
 
 def doctors_export_excel(request):
     """Export doctors list to Excel with filters applied"""
     queryset = Doctors.objects.all().prefetch_related('odenisler')
+
+    # Arxiv / Aktiv filter
+    if request.GET.get('archived') == '1':
+        queryset = queryset.filter(is_active=False)
+    else:
+        queryset = queryset.filter(is_active=True)
 
     # Apply same filters as doctors_list
     region_id = request.GET.get('region_filter')
@@ -564,7 +585,9 @@ def del_recipe(request, id):
     # Resepti sil
     rm_recipe.delete()
     
-    # Həkimin detallarına yönləndir
+    next_url = request.GET.get('next')
+    if next_url == 'create_recipe':
+        return redirect('create_recipe')
     return redirect('doctor_detail', doctor_id=doctor_id)
 
 
@@ -619,6 +642,7 @@ def update_doctor(request, pk):
         doctor.cinsiyyet = request.POST.get('cinsiyyet', doctor.cinsiyyet)
         doctor.derece = request.POST.get('derece', doctor.derece)
         doctor.number = request.POST.get('number', doctor.number)
+        doctor.is_active = request.POST.get('is_active') == '1'
 
         # Region, city və klinika yenilənməsi
         bolge_id = request.POST.get('region_id')
@@ -1243,8 +1267,8 @@ def ajax_region_data(request):
     except (TypeError, ValueError):
         return JsonResponse({"results": []})
 
-    # Əsas queryset
-    doctors = Doctors.objects.filter(bolge=region_id).order_by("id")
+    # Əsas queryset – arxivlənmiş həkimlər göstərilməsin
+    doctors = Doctors.objects.filter(bolge=region_id, is_active=True).order_by("id")
 
     # AXTARIŞ FUNKSİONALLIĞI - ƏLAVƏ EDİLDİ
     if search:
@@ -1413,8 +1437,8 @@ def export_region_excel(request):
     except Region.DoesNotExist:
         return HttpResponse("Bölgə tapılmadı.", status=404)
 
-    # 🔹 Əsas queryset
-    doctors = Doctors.objects.filter(bolge=region).select_related('bolge').prefetch_related('odenisler')
+    # 🔹 Əsas queryset – arxivlənmiş həkimlər göstərilməsin
+    doctors = Doctors.objects.filter(bolge=region, is_active=True).select_related('bolge').prefetch_related('odenisler')
 
     # 🔹 Axtarış filteri
     if search_term:

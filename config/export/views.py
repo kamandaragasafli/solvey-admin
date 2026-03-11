@@ -4,7 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from payment.models import Payment_doctor, Sale
 from medicine.models import Medical
-from regions.models import Region, Hospital
+from regions.models import Region, Hospital, City
 from doctors.models import Doctors, RecipeDrug, Recipe
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -12,6 +12,8 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from datetime import datetime, date 
 import pandas as pd
+import re
+from difflib import SequenceMatcher
 import subprocess
 import os
 
@@ -357,6 +359,118 @@ def import_region_from_excel(request):
         return redirect("region_list")
 
     return render(request, "admin.html")
+
+
+def import_doctor_city_from_excel(request):
+    """
+    Həkimlərə şəhər təyin etmək üçün Excel importu.
+    Format: Bölgə, Həkim, Şəhər.
+    Şəhər boşdursa həkimin şəhəri boş qalır. Şəhər yoxdursa yaradılır.
+    """
+    if request.method != "POST":
+        return redirect("admin")
+
+    excel_file = request.FILES.get("excel_city_file")
+    if not excel_file:
+        messages.error(request, "Fayl seçilməyib.")
+        return redirect("admin")
+
+    try:
+        df = pd.read_excel(excel_file, header=0)
+        cols = [str(c).strip() for c in df.columns]
+        df.columns = cols
+
+        def _norm(s):
+            s = str(s).strip().lower().replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c").replace("ğ", "g")
+            return s
+
+        region_col = None
+        doctor_col = None
+        city_col = None
+        for col in cols:
+            c = _norm(col)
+            if "bolg" in c or "bölg" in c or c == "bolge":
+                region_col = col
+            elif "hekim" in c or "həkim" in c:
+                doctor_col = col
+            elif "seher" in c or "şəhər" in c or "sheher" in c or c == "city":
+                city_col = col
+
+        if not region_col or not doctor_col or not city_col:
+            if len(cols) >= 3:
+                region_col = cols[0]
+                doctor_col = cols[1]
+                city_col = cols[2]
+            else:
+                messages.error(request, f"Sütunlar tapılmadı. Mövcud: {cols}")
+                return redirect("admin")
+
+        valid_city_names = [ch[1] for ch in City.CITY_CHOICES]
+        updated_count = 0
+        created_cities = 0
+        not_found_doctors = set()
+
+        for _, row in df.iterrows():
+            region_name = str(row.get(region_col, "")).strip()
+            doctor_name = str(row.get(doctor_col, "")).strip()
+            city_name_raw = str(row.get(city_col, "")).strip()
+
+            if not region_name or not doctor_name:
+                continue
+
+            doctor = Doctors.objects.filter(
+                bolge__region_name__icontains=region_name,
+                ad__iexact=doctor_name
+            ).select_related("bolge").first()
+
+            if not doctor:
+                doctor = Doctors.objects.filter(
+                    bolge__region_name__icontains=region_name,
+                    ad__icontains=doctor_name
+                ).select_related("bolge").first()
+
+            if not doctor:
+                not_found_doctors.add(f"{region_name} / {doctor_name}")
+                continue
+
+            if not city_name_raw or city_name_raw.lower() == "nan":
+                doctor.city = None
+                doctor.save()
+                updated_count += 1
+                continue
+
+            matched_city = None
+            for valid in valid_city_names:
+                if valid.lower() == city_name_raw.lower():
+                    matched_city = valid
+                    break
+                if SequenceMatcher(None, city_name_raw.lower(), valid.lower()).ratio() >= 0.9:
+                    matched_city = valid
+                    break
+
+            if not matched_city:
+                matched_city = city_name_raw
+
+            city_obj, created = City.objects.get_or_create(
+                region=doctor.bolge,
+                city_name=matched_city
+            )
+            if created:
+                created_cities += 1
+
+            doctor.city = city_obj
+            doctor.save()
+            updated_count += 1
+
+        messages.success(request, f"{updated_count} həkimə şəhər təyin edildi.")
+        if created_cities:
+            messages.info(request, f"{created_cities} yeni şəhər yaradıldı.")
+        if not_found_doctors:
+            messages.warning(request, f"Tapılmayan həkimlər: {', '.join(sorted(not_found_doctors)[:5])}{'...' if len(not_found_doctors) > 5 else ''}")
+    except Exception as e:
+        messages.error(request, f"Xəta: {str(e)}")
+
+    return redirect("admin")
 
 
 def import_hospital_from_excel(request):
@@ -777,6 +891,294 @@ def import_sales_from_excel(request):
         return redirect("admin")
 
     return render(request, "admin.html")
+
+
+def _normalize_region_for_match(name):
+    """Bölgə adını müqayisə üçün: bölgə, -Salyan çıxar; Şamaxı↔ŞAMAXI."""
+    s = str(name).strip().lower()
+    for suffix in [" bölgə", " bölge", "-salyan"]:
+        if s.endswith(suffix):
+            s = s[:-len(suffix)].strip()
+    return s.replace("ı", "i")  # Şamaxı ↔ ŞAMAXI
+
+
+def _normalize_drug_for_match(name):
+    """Dərman adını müqayisə üçün: D3 çıxar; görünməyən simvolları sil."""
+    s = str(name).strip().lower().replace("\xa0", " ")
+    s = "".join(c for c in s if c.isprintable() or c.isspace()).strip()
+    if s.endswith(" d3"):
+        s = s[:-3].strip()
+    return s
+
+
+def _normalize_baku_region_for_match(name):
+    """Bakı bölgə adı: 2 Bölgə↔Bakı bölgə-2, Zabrat↔Zabrat."""
+    s = str(name).strip().lower().replace("ı", "i").replace("ö", "o").replace("ə", "e")
+    m = re.search(r"bolge-?\s*(\d+)", s)
+    if m:
+        return f"bolge{m.group(1)}"
+    m = re.search(r"(\d+)\s*bolge", s)
+    if m:
+        return f"bolge{m.group(1)}"
+    return s.replace(" ", "").replace("-", "")
+
+
+def import_baku_sales_from_excel(request):
+    """
+    Bakı Satış Excel importu.
+    Format: Bölgə sütunu + dərman sütunları (Sobseda, Opsidol, ...) + Aylıq satış.
+    Sətirlərdə: 2 Bölgə, 6 Bölgə, Zabrat, Pirallahı və s.
+    """
+    if request.method != "POST":
+        return redirect("admin")
+
+    excel_file = request.FILES.get("excel_baku_sales")
+    selected_date = request.POST.get("baku_sales_date")
+
+    if not excel_file:
+        messages.error(request, "Fayl seçilməyib.")
+        return redirect("admin")
+    if not selected_date:
+        messages.error(request, "Tarix seçilməyib.")
+        return redirect("admin")
+
+    try:
+        import_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
+        df = pd.read_excel(excel_file)
+
+        baku_regions = list(Region.objects.filter(region_type="Bakı"))
+        drug_list = list(Medical.objects.all())
+
+        added_count = 0
+        added_total_qty = 0
+        not_matched_regions = set()
+        not_matched_drugs = set()
+
+        cols = list(df.columns)
+        region_col_idx = 0
+        for i, c in enumerate(cols):
+            if "bölg" in str(c).lower() or str(c).strip().lower() == "bolge":
+                region_col_idx = i
+                break
+
+        drug_col_indices = []
+        for i in range(len(cols)):
+            if i == region_col_idx:
+                continue
+            c = str(cols[i]).strip().lower()
+            if "aylıq" in c or "total" in c or c == "cem" or c == "cəm":
+                continue
+            drug_col_indices.append((i, cols[i]))
+
+        for _, row in df.iterrows():
+            region_name_raw = str(row.iloc[region_col_idx]).strip()
+            if not region_name_raw or region_name_raw == "nan" or region_name_raw.upper() in ("CƏM", "CEM", "YANVAR", "FƏRQ", "TOTAL"):
+                continue
+
+            matched_region = None
+            excel_norm = _normalize_baku_region_for_match(region_name_raw)
+            best_r = 0.84
+            for r in baku_regions:
+                sys_norm = _normalize_baku_region_for_match(r.region_name)
+                if excel_norm == sys_norm:
+                    matched_region = r
+                    break
+                ratio = SequenceMatcher(None, excel_norm, sys_norm).ratio()
+                if ratio >= 0.85 and ratio > best_r:
+                    best_r = ratio
+                    matched_region = r
+
+            if not matched_region:
+                not_matched_regions.add(region_name_raw)
+                continue
+
+            for col_idx, drug_name_raw in drug_col_indices:
+                drug_name_str = str(drug_name_raw).strip()
+                if not drug_name_str or drug_name_str == "nan":
+                    continue
+
+                matched_drug = None
+                excel_drug_norm = _normalize_drug_for_match(drug_name_str)
+                best_ratio = 0.89
+                for d in drug_list:
+                    sys_drug_norm = _normalize_drug_for_match(d.med_name)
+                    if excel_drug_norm == sys_drug_norm:
+                        matched_drug = d
+                        break
+                    if (excel_drug_norm.startswith(sys_drug_norm) or sys_drug_norm.startswith(excel_drug_norm)) and len(sys_drug_norm) >= 4:
+                        matched_drug = d
+                        break
+                    ratio = SequenceMatcher(None, excel_drug_norm, sys_drug_norm).ratio()
+                    if ratio >= 0.85 and ratio > best_ratio:
+                        best_ratio = ratio
+                        matched_drug = d
+
+                if not matched_drug:
+                    not_matched_drugs.add(drug_name_str)
+                    continue
+
+                try:
+                    val = row.iloc[col_idx]
+                    q_str = str(val).replace(",", ".").strip()
+                    q = int(float(q_str)) if q_str and q_str != "nan" else 0
+                    quantity = max(0, q)
+                except (ValueError, TypeError):
+                    quantity = 0
+
+                if quantity > 0:
+                    Sale.objects.create(
+                        region=matched_region,
+                        drug=matched_drug,
+                        quantity=quantity,
+                        sale_date=import_date
+                    )
+                    added_count += 1
+                    added_total_qty += quantity
+
+        messages.success(request, f"{added_count} satış məlumatı (cəmi {added_total_qty} ədəd) {import_date} tarixinə əlavə olundu.")
+        if not_matched_regions:
+            messages.warning(request, f"Uyğunlaşmayan bölgələr: {', '.join(sorted(not_matched_regions))}")
+        if not_matched_drugs:
+            messages.warning(request, f"Uyğunlaşmayan dərmanlar: {', '.join(sorted(not_matched_drugs))}")
+
+    except Exception as e:
+        messages.error(request, f"Xəta: {str(e)}")
+
+    return redirect("admin")
+
+
+def import_region_sales_from_excel(request):
+    """
+    Region Satış Excel importu.
+    Format: fevral2026 | Dərmanlar | ŞAMAXI | ŞƏKİ | ... | TOTAL
+    - Bölgə: 90% oxşarlıq (Gəncə bölgə↔GƏNCƏ, Şirvan-Salyan↔ŞİRVAN)
+    - Dərman: 95% oxşarlıq (Vitomer D3↔Vitomer, Levastronq↔Levostrong)
+    - Mənfi ədədlər → 0
+    """
+    if request.method != "POST":
+        return redirect("admin")
+
+    excel_file = request.FILES.get("excel_region_sales")
+    selected_date = request.POST.get("region_sales_date")
+
+    if not excel_file:
+        messages.error(request, "Fayl seçilməyib.")
+        return redirect("admin")
+
+    if not selected_date:
+        messages.error(request, "Tarix seçilməyib.")
+        return redirect("admin")
+
+    try:
+        import_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
+        df = pd.read_excel(excel_file)
+
+        region_list = list(Region.objects.all())
+        drug_list = list(Medical.objects.all())
+
+        added_count = 0
+        added_total_qty = 0
+        not_matched_regions = set()
+        not_matched_drugs = set()
+
+        # Dərman sütununun indeksini tap
+        cols = list(df.columns)
+        drug_col_idx = 1
+        for i, c in enumerate(cols):
+            c_str = str(c).strip().lower()
+            if "dərman" in c_str or c_str == "dermanlar":
+                drug_col_idx = i
+                break
+
+        # Region sütunları
+        region_col_indices = []
+        for i in range(drug_col_idx + 1, len(cols)):
+            col_name = str(cols[i]).strip().upper()
+            if col_name == "TOTAL" or "total" in col_name.lower():
+                break
+            region_col_indices.append((i, cols[i]))
+
+        for _, row in df.iterrows():
+            drug_name_raw = str(row.iloc[drug_col_idx]).strip()
+            if not drug_name_raw or drug_name_raw == "nan" or drug_name_raw.upper() == "TOTAL":
+                continue
+
+            # Dərman uyğunlaşdırma: 95% oxşarlıq + "Vitomer D3" → "Vitomer" (startswith)
+            matched_drug = None
+            best_ratio = 0.89
+            excel_drug_norm = _normalize_drug_for_match(drug_name_raw)
+
+            for d in drug_list:
+                sys_drug_norm = _normalize_drug_for_match(d.med_name)
+                if excel_drug_norm == sys_drug_norm:
+                    matched_drug = d
+                    break
+                if excel_drug_norm.startswith(sys_drug_norm) or sys_drug_norm.startswith(excel_drug_norm):
+                    if len(sys_drug_norm) >= 4:
+                        matched_drug = d
+                        break
+                ratio = SequenceMatcher(None, excel_drug_norm, sys_drug_norm).ratio()
+                if ratio >= 0.85 and ratio > best_ratio:
+                    best_ratio = ratio
+                    matched_drug = d
+
+            if not matched_drug:
+                not_matched_drugs.add(drug_name_raw)
+                continue
+
+            for col_idx, region_name_raw in region_col_indices:
+                region_name_str = str(region_name_raw).strip()
+                if not region_name_str or region_name_str.upper() == "TOTAL":
+                    continue
+
+                # Bölgə uyğunlaşdırma: 90% oxşarlıq + Gəncə bölgə↔GƏNCƏ, Şirvan-Salyan↔ŞİRVAN
+                matched_region = None
+                best_r = 0.84
+                excel_region_norm = _normalize_region_for_match(region_name_str)
+
+                for r in region_list:
+                    sys_region_norm = _normalize_region_for_match(r.region_name)
+                    if excel_region_norm == sys_region_norm:
+                        matched_region = r
+                        break
+                    ratio = SequenceMatcher(None, excel_region_norm, sys_region_norm).ratio()
+                    if ratio >= 0.85 and ratio > best_r:
+                        best_r = ratio
+                        matched_region = r
+
+                if not matched_region:
+                    not_matched_regions.add(region_name_str)
+                    continue
+
+                try:
+                    val = row.iloc[col_idx]
+                    q_str = str(val).replace(",", ".").strip()
+                    q = int(float(q_str)) if q_str and q_str != "nan" else 0
+                    quantity = max(0, q)
+                except (ValueError, TypeError):
+                    quantity = 0
+
+                if quantity > 0:
+                    Sale.objects.create(
+                        region=matched_region,
+                        drug=matched_drug,
+                        quantity=quantity,
+                        sale_date=import_date
+                    )
+                    added_count += 1
+                    added_total_qty += quantity
+
+        messages.success(request, f"{added_count} satış məlumatı (cəmi {added_total_qty} ədəd) {import_date} tarixinə əlavə olundu.")
+        if not_matched_regions:
+            messages.warning(request, f"Uyğunlaşmayan bölgələr: {', '.join(sorted(not_matched_regions))}")
+        if not_matched_drugs:
+            messages.warning(request, f"Uyğunlaşmayan dərmanlar: {', '.join(sorted(not_matched_drugs))}")
+
+    except Exception as e:
+        messages.error(request, f"Xəta: {str(e)}")
+
+    return redirect("admin")
+
 
 def admin_recipes_delete(request, id):
     recipe = get_object_or_404(RecipeDrug, id=id)

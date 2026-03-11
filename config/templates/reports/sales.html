@@ -57,7 +57,7 @@
 
     <!-- Action Buttons -->
     <div class="d-flex justify-content-end align-items-center mt-4 gap-2">
-      <a href="#" id="excel-btn" class="btn btn-outline-primary btn-sm">
+      <a href="{% url 'export_sales_excel' %}?{{ request.GET.urlencode }}" id="excel-btn" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-file-earmark-excel"></i> Excel
       </a>
       <a href="#"><button class="btn btn-outline-danger btn-sm">

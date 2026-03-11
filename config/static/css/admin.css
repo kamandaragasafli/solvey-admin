@@ -453,8 +453,12 @@ body {
         box-shadow: 0 0 0 0.2rem rgba(77, 171, 247, 0.25);
         z-index: 1000 !important;
     }
-    
 
+    /* Tarix seçicisi olan kartda overflow - təqvim açılsın */
+    .upload-card.upload-card-date-picker,
+    .upload-card:has(.date-picker-fixed) {
+        overflow: visible;
+    }
 
 .file-input-wrapper {
   position: relative;

@@ -127,11 +127,101 @@ class RecipeAdmin(admin.ModelAdmin):
         return obj.drugs.count()
     total_drugs_count.short_description = 'Dərman Sayı'
 
+class RegionFilter(admin.SimpleListFilter):
+    title = 'Bölgə'
+    parameter_name = 'region'
+
+    def lookups(self, request, model_admin):
+        from regions.models import Region
+        return [(r.id, r.region_name) for r in Region.objects.order_by('region_name')]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(recipe__region_id=self.value())
+        return queryset
+
+
 @admin.register(RecipeDrug)
 class RecipeDrugAdmin(admin.ModelAdmin):
-    list_display = ('recipe', 'drug', 'number')
-    list_filter = ('drug',)
-    search_fields = ('recipe__dr__ad', 'drug__med_name')
+    list_display = (
+        'id',
+        'get_doctor_name',
+        'get_region_name',
+        'colored_drug',
+        'colored_number',
+        'get_recipe_date',
+        'colored_created_at',
+    )
+    list_filter = (RegionFilter, 'drug', 'created_at')
+    search_fields = (
+        'recipe__dr__ad',
+        'drug__med_name',
+        'recipe__region__region_name',
+    )
+    ordering = ('-created_at',)
+    list_per_page = 50
+    date_hierarchy = 'created_at'
+    list_select_related = ('recipe__dr', 'recipe__region', 'drug')
+
+    actions = ['toplu_sil_action']
+
+    def get_doctor_name(self, obj):
+        return format_html(
+            '<span style="color:#60a5fa; font-weight:bold;">{}</span>',
+            obj.recipe.dr.ad
+        )
+    get_doctor_name.short_description = 'Həkim'
+    get_doctor_name.admin_order_field = 'recipe__dr__ad'
+
+    def get_region_name(self, obj):
+        return obj.recipe.region.region_name
+    get_region_name.short_description = 'Bölgə'
+    get_region_name.admin_order_field = 'recipe__region__region_name'
+
+    def colored_drug(self, obj):
+        return format_html(
+            '<span style="color:#f59e0b; font-weight:bold;">{}</span>',
+            obj.drug.med_name
+        )
+    colored_drug.short_description = 'Dərman'
+    colored_drug.admin_order_field = 'drug__med_name'
+
+    def colored_number(self, obj):
+        return format_html(
+            '<span style="color:#34d399; font-weight:bold;">{}</span>',
+            obj.number
+        )
+    colored_number.short_description = 'Say'
+    colored_number.admin_order_field = 'number'
+
+    def get_recipe_date(self, obj):
+        return obj.recipe.date.strftime('%d.%m.%Y')
+    get_recipe_date.short_description = 'Resept tarixi'
+    get_recipe_date.admin_order_field = 'recipe__date'
+
+    def colored_created_at(self, obj):
+        return format_html(
+            '<span style="color:#94a3b8;">{}</span>',
+            obj.created_at.strftime('%d.%m.%Y %H:%M')
+        )
+    colored_created_at.short_description = 'Əlavə tarixi'
+    colored_created_at.admin_order_field = 'created_at'
+
+    def toplu_sil_action(self, request, queryset):
+        from core.models import DeletedRecipeDrugLog
+        logs = [
+            DeletedRecipeDrugLog(
+                drug_name=str(rd.drug),
+                recipe_id=rd.recipe.id,
+                deleted_by=request.user,
+            )
+            for rd in queryset.select_related('drug', 'recipe')
+        ]
+        DeletedRecipeDrugLog.objects.bulk_create(logs)
+        count = queryset.count()
+        queryset.delete()
+        self.message_user(request, f'{count} qeydiyyat silindi və log-a yazıldı.')
+    toplu_sil_action.short_description = 'Seçilmiş qeydiyyatları sil (log ilə)'
 
 @admin.register(RealSales)
 class RealSalesAdmin(admin.ModelAdmin):

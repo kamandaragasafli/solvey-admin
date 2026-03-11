@@ -23,14 +23,28 @@
                                 <span class="info-label">İxtisas:</span>
                                 <span class="info-value">{{ doctor.ixtisas }}</span>
                             </div>
+                            {% if doctor.number %}
                             <div class="info-item">
                                 <span class="info-label">Nömrə:</span>
-                                <span class="info-value">{{ doctor.number }}</span>
+                                    <span class="info-value">{{ doctor.number }}</span>
+                                </div>
+                            {% else %}
+                            <div class="info-item">
+                                <span class="info-label">Nömrə:</span>
+                                <span class="info-value">Yoxdur</span>
                             </div>
+                            {% endif %}
+                            {% if doctor.derece %}
                             <div class="info-item">
                                 <span class="info-label">Dərəcə:</span>
                                 <span class="info-value">{{ doctor.get_derece_display }}</span>
                             </div>
+                            {% else %}
+                            <div class="info-item">
+                                <span class="info-label">Dərəcə:</span>
+                                <span class="info-value">Yoxdur</span>
+                            </div>
+                            {% endif %}
                             <div class="info-item">
                                 <span class="info-label">Cinsiyyət:</span>
                                 <span class="info-value">{{ doctor.get_cinsiyyet_display }}</span>
@@ -53,7 +67,11 @@
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Status:</span>
-                                <span class="status-badge active">Aktiv</span>
+                                {% if doctor.is_active %}
+                                <i class="bi bi-check-circle" style="color: green;">Aktiv</i>
+                                {% else %}
+                                <i class="bi bi-x-circle" style="color: red;">Arxivlənmiş</i>
+                                {% endif %}
                             </div>
                             
                         </div>
@@ -219,9 +237,9 @@
                                                       data-modal-target="updateRecipeModal">
                                                         <i class="bi bi-pencil-square"></i>
                                                     </button>
-                                                    <button class="action-icon delete" onclick="deleteRecipe()">
-                                                         <a href="{% url 'del_recipe' r.id %}"><i class="bi bi-trash"></i></a>
-                                                    </button>
+                                                    <a href="{% url 'del_recipe' r.id %}" class="action-icon delete" title="Sil">
+                                                        <i class="bi bi-trash"></i>
+                                                    </a>
                                                 </div>
                                             </td>
                                         </tr>
@@ -414,6 +432,23 @@
               style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
             >
           </div>
+          <div class="mb-3 col-12">
+            <label class="form-label" style="color: #e5e7eb;">Status</label>
+            <div class="form-check form-switch" style="display: flex; align-items: center; gap: 0.75rem;">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                id="is_active"
+                name="is_active"
+                value="1"
+                {% if doctor.is_active %}checked{% endif %}
+                style="width: 3rem; height: 1.5rem; cursor: pointer; accent-color: #2563eb;"
+              >
+              <label for="is_active" class="form-check-label" style="color: #e5e7eb; cursor: pointer; user-select: none;">
+                <span id="isActiveLabel">{% if doctor.is_active %}Aktiv{% else %}Deaktiv{% endif %}</span>
+              </label>
+            </div>
+          </div>
         </div>
         <div class="modal-actions mt-3 d-flex justify-content-end gap-2">
           <button
@@ -491,6 +526,15 @@ document.addEventListener('DOMContentLoaded', function() {
   regionSelect.addEventListener('change', function() {
     loadCitiesHospitals(this.value);
   });
+
+  // Aktiv/Deaktiv toggle label
+  const isActiveToggle = document.getElementById('is_active');
+  const isActiveLabel = document.getElementById('isActiveLabel');
+  if (isActiveToggle && isActiveLabel) {
+    isActiveToggle.addEventListener('change', function() {
+      isActiveLabel.textContent = this.checked ? 'Aktiv' : 'Deaktiv';
+    });
+  }
 
   // Modal open/close functions (global)
   function openModal(modalId) {

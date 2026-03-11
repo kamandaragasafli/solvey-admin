@@ -215,6 +215,33 @@
                                             
                                         </div>
 
+                                        <div class="upload-card danger">
+                                            <div class="card-icon">
+                                                <i class="bi bi-geo-alt"></i>
+                                            </div>
+                                            <h5 class="card-title">Şəhər əlavə et</h5>
+                                            <p class="small text-muted mb-2">Həkimlərə şəhər təyin et</p>
+                                            <form class="upload-form" method="POST" action="{% url 'import_doctor_city' %}" enctype="multipart/form-data">
+                                            {% csrf_token %}
+                                                <div class="file-input-wrapper">
+                                                    <input type="file" name="excel_city_file" class="file-input" accept=".xlsx,.xls" required>
+                                                    <label class="file-label">
+                                                        <i class="bi bi-file-earmark-excel"></i>
+                                                        Excel faylı seçin
+                                                    </label>
+                                                </div>
+                                                <button type="submit" class="upload-btn danger my-2">
+                                                    <i class="bi bi-upload"></i> Yüklə
+                                                </button>
+                                            </form>
+                                            <div class="file-format-info mt-2 p-2 rounded" style="background-color: #c70000ff;">
+                                                <small class="text-white-50">
+                                                    <strong>Format:</strong> <strong>Bölgə</strong>, <strong>Həkim</strong>, <strong>Şəhər</strong><br>
+                                                    Şəhər həkimə təyin edilir. Şəhər yoxdursa yaradılır. Şəhər boşdursa həkimin şəhəri boş qalır.
+                                                </small>
+                                            </div>
+                                        </div>
+
                                              <!-- Borc əlavə et -->
                                             <div class="upload-card success">
                                                 <div class="card-icon">
@@ -339,44 +366,64 @@
                                 <i class="bi bi-cart-plus me-2"></i>Satış Excel Yükləmə
                             </h4>
                             <div class="sales-grid">
-                                <div class="upload-card success">
+                                <div class="upload-card success upload-card-date-picker">
                                     <div class="card-icon">
                                         <i class="bi bi-cart"></i>
                                     </div>
                                     <h5 class="card-title">Bakı Satış əlavə et</h5>
-                                    <form class="upload-form" method="POST" action="#" enctype="multipart/form-data">
+                                    <form class="upload-form" method="POST" action="{% url 'import_baku_sales' %}" enctype="multipart/form-data">
                                     {% csrf_token %}
                                         <div class="file-input-wrapper">
-                                            <input type="file" name="excel_baku_sales" class="file-input" required>
+                                            <input type="file" name="excel_baku_sales" class="file-input" accept=".xlsx,.xls" required>
                                             <label class="file-label">
                                                 <i class="bi bi-file-earmark-excel"></i>
                                                 Excel faylı seçin
                                             </label>
                                         </div>
-                                        <button type="submit" class="upload-btn success">
+                                        <div class="form-group mt-2 date-input-wrapper" style="overflow: visible;">
+                                            <label for="baku_sales_date" class="form-label">Tarix:</label>
+                                            <input type="date" name="baku_sales_date" id="baku_sales_date" class="form-control date-picker-fixed" required>
+                                        </div>
+                                        <button type="submit" class="upload-btn success mt-2">
                                             <i class="bi bi-upload"></i> Yüklə
                                         </button>
                                     </form>
+                                    <div class="file-format-info bg-success mt-2 p-2 rounded">
+                                        <small class="text-white-50">
+                                            <strong>Excel formatı:</strong> 1-ci sütun: Bölgə (2 Bölgə, Zabrat, Pirallahı və s.), sonra dərman sütunları, son sütun: Aylıq satış.<br>
+                                            Bakı bölgələri 85%, dərman adları 85% oxşarsa uyğunlaşır. Mənfi rəqəmlər 0 sayılır.
+                                        </small>
+                                    </div>
                                 </div>
 
-                                <div class="upload-card primary">
+                                <div class="upload-card primary upload-card-date-picker">
                                     <div class="card-icon">
                                         <i class="bi bi-cart"></i>
                                     </div>
                                     <h5 class="card-title">Region Satış əlavə et</h5>
-                                    <form class="upload-form" method="POST" action="#" enctype="multipart/form-data">
+                                    <form class="upload-form" method="POST" action="{% url 'import_region_sales' %}" enctype="multipart/form-data">
                                     {% csrf_token %}
                                         <div class="file-input-wrapper">
-                                            <input type="file" name="excel_region_sales" class="file-input" required>
+                                            <input type="file" name="excel_region_sales" class="file-input" accept=".xlsx,.xls" required>
                                             <label class="file-label">
                                                 <i class="bi bi-file-earmark-excel"></i>
                                                 Excel faylı seçin
                                             </label>
                                         </div>
-                                        <button type="submit" class="upload-btn primary">
+                                        <div class="form-group mt-2 date-input-wrapper" style="overflow: visible;">
+                                            <label for="region_sales_date" class="form-label">Tarix:</label>
+                                            <input type="date" name="region_sales_date" id="region_sales_date" class="form-control date-picker-fixed" required>
+                                        </div>
+                                        <button type="submit" class="upload-btn primary mt-2">
                                             <i class="bi bi-upload"></i> Yüklə
                                         </button>
                                     </form>
+                                    <div class="file-format-info bg-primary mt-2 p-2 rounded">
+                                        <small class="text-white-50">
+                                            <strong>Excel formatı:</strong> 1-ci sütun: tarix/ay (məs. fevral2026), 2-ci: Dərmanlar, sonra bölgələr, son sütun: TOTAL.<br>
+                                            Bölgə adları 90%, dərman adları 95% oxşarsa uyğunlaşır. Mənfi rəqəmlər 0 sayılır.
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -718,7 +765,7 @@ document.getElementById('createBackupBtn').addEventListener('click', function ()
 });
 
 document.getElementById("hesabatForm").addEventListener("submit", function(e) {
-    e.preventDefault(); // səhifə reload olmasın
+    e.preventDefault();
     let formData = new FormData(this);
 
     fetch("{% url 'hesabat_bagla' %}", {
@@ -730,11 +777,9 @@ document.getElementById("hesabatForm").addEventListener("submit", function(e) {
     })
     .then(res => res.json())
     .then(data => {
-        let msgDiv = document.getElementById("hesabatMessage");
-        msgDiv.innerText = data.message;
-        msgDiv.style.color = data.success ? "green" : "red";
+        showToast(data.message, data.success ? 'success' : 'error');
     })
-    .catch(err => console.error("Error:", err));
+    .catch(err => showToast('Xəta baş verdi.', 'error'));
 });
 
 

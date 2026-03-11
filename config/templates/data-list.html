@@ -1,17 +1,18 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card shadow-lg p-3 mb-5" style="width: 90%; margin: auto;">
-  <div class="card-body">
+<div class="data-list-page">
+<div class="card p-4" style="max-width: 98%; margin: 0 auto;">
+  <div class="card-body px-4 pb-4 pt-0">
     <h4 class="card-title mb-4 fw-semibold text-light d-flex align-items-center gap-2">
-      <i class="bi bi-calendar2-week text-primary"></i> Aylıq Dannılar
+      <i class="bi bi-calendar2-week" style="color: #64748b;"></i> Aylıq Dannılar
     </h4>
 
     <!-- Filter Bölməsi -->
     <form method="GET" class="row g-3 align-items-end">
       <div class="col-md-2">
         <label for="region-select" class="form-label small text-secondary">Bölgə seçin</label>
-        <select id="region-select" name="region" class="form-select bg-dark text-light border-0 rounded-3" required>
+        <select id="region-select" name="region" class="form-select" required>
           <option value="" disabled selected>Bölgə Seçin</option>
           {% for r in region %}
             <option value="{{ r.id }}" {% if request.GET.region == r.id|stringformat:"i" %}selected{% endif %}>{{ r.region_name }}</option>
@@ -26,7 +27,7 @@
 
       <div class="col-md-2">
         <label for="month-select" class="form-label small text-secondary">Ay Seçin</label>
-        <select id="month-select" name="month" class="form-select bg-dark text-light border-0 rounded-3">
+        <select id="month-select" name="month" class="form-select">
           <option value="">Ay seçin</option>
           <option value="1" {% if request.GET.month == "1" %}selected{% endif %}>Yanvar</option>
           <option value="2" {% if request.GET.month == "2" %}selected{% endif %}>Fevral</option>
@@ -50,7 +51,7 @@
 
       <div class="col-md-2">
         <label for="name-filter-select" class="form-label small text-secondary">Yazılış Filteri</label>
-        <select id="name-filter-select" name="name_filter" class="form-select bg-dark text-light border-0 rounded-3">
+        <select id="name-filter-select" name="name_filter" class="form-select">
           <option value="" selected>Hamısı</option>
           <option value="with_dannisi" {% if request.GET.name_filter == "with_dannisi" %}selected{% endif %}>Adında dannısı olmayanlar</option>
           <option value="without_dannisi" {% if request.GET.name_filter == "without_dannisi" %}selected{% endif %}>Adında dannısı olanlar</option>
@@ -73,7 +74,7 @@
       </a>
     </div>
 
-    <hr class="border-secondary">
+    <hr class="border-secondary my-4">
 
     <!-- Cədvəl -->
     <div class="table-responsive">
@@ -100,46 +101,68 @@
     </div>
   </div>
 </div>
+</div>
 
 <style>
-  body {
-    background-color: #030b1a;
-    color: #f9fafb;
-    font-family: "Inter", sans-serif;
+  .data-list-page {
+    background: #0f172a;
+    min-height: 100vh;
+    padding: 1.5rem 0;
   }
 
-  .card {
-    background-color: #273549;
+  .data-list-page .card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    color: #f8fafc;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  }
+
+  .data-list-page .form-control,
+  .data-list-page .form-select {
+    background-color: #0f172a !important;
+    color: #e2e8f0 !important;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    transition: border-color 0.15s ease;
+  }
+
+  .data-list-page .form-control:focus,
+  .data-list-page .form-select:focus {
+    background-color: #0f172a !important;
+    border-color: #475569 !important;
+    box-shadow: 0 0 0 2px rgba(71, 85, 105, 0.3);
+    outline: none;
+  }
+
+  .data-list-page .form-control::placeholder {
+    color: #64748b;
+  }
+
+  .data-list-page .form-label {
+    color: #94a3b8;
+  }
+
+  .data-list-page .btn-success {
+    background: #22c55e;
     border: none;
-    border-radius: 16px;
-    color: #f9fafb;
+    color: #fff;
   }
 
-  .form-control, .form-select {
-    background-color: #1a2533 !important;
-    color: #f1f1f1 !important;
-    border: 1px solid #2d3c51;
-    transition: 0.2s ease;
+  .data-list-page .btn-success:hover {
+    background: #16a34a;
+    color: #fff;
   }
 
-  .form-control:focus, .form-select:focus {
-    background-color: #1f2a3a !important;
-    border-color: #55e0a3 !important;
-    box-shadow: 0 0 0 0.25rem rgba(85, 224, 163, 0.25);
+  .data-list-page .btn-outline-light {
+    border-color: #475569;
+    color: #94a3b8;
   }
 
-  .btn-success {
-    background-color: #55e0a3;
-    border: none;
-  }
-
-  .btn-success:hover {
-    background-color: #42c58a;
-  }
-
-  .btn-outline-light:hover {
-    background-color: #ffffff;
-    color: #000000;
+  .data-list-page .btn-outline-light:hover {
+    background: #334155;
+    border-color: #475569;
+    color: #f8fafc;
   }
 
     .table-header {
@@ -206,8 +229,6 @@
 
     .custom-dark-table tbody tr:hover {
       background: #334155;
-      transform: scale(1.01);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
     .custom-dark-table tbody td {
@@ -283,171 +304,148 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #64748b;
     }
-/* Daterangepicker - Modern Dizayn */
+/* Daterangepicker - Minimal Dark Theme */
 .daterangepicker {
-    background-color: #1e293b !important;
-    color: #f1f5f9 !important;
-    border-radius: 16px !important;
+    background: #1e293b !important;
     border: 1px solid #334155 !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
-    padding: 8px !important;
-}
-
-/* Calendar Container */
-.daterangepicker .drp-calendar {
-    padding: 10px !important;
-}
-
-/* Ay və il başlığı */
-.daterangepicker .calendar-table .month {
-    background-color: #0ea5e9 !important;
-    color: #ffffff !important;
-    font-weight: 700 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
     padding: 12px !important;
-    border-radius: 8px !important;
-    margin-bottom: 10px !important;
 }
 
-/* Həftə günləri (Be, Ça, Ç, ...) */
-.daterangepicker .calendar-table thead tr:last-child th {
-    color: #94a3b8 !important;
+.daterangepicker .drp-calendar {
+    padding: 12px !important;
+    background: #1e293b !important;
+}
+
+.daterangepicker .calendar-table {
+    background: #1e293b !important;
+}
+
+.daterangepicker .calendar-table td,
+.daterangepicker .calendar-table th {
+    color: #e2e8f0 !important;
+}
+
+.daterangepicker .calendar-table .month {
+    background: transparent !important;
+    color: #e2e8f0 !important;
     font-weight: 600 !important;
-    font-size: 0.75rem !important;
-    padding: 8px 4px !important;
-    text-transform: uppercase !important;
+    padding: 8px 0 !important;
+    font-size: 0.9rem !important;
 }
 
-/* Bütün günlər */
+.daterangepicker .calendar-table thead tr:last-child th {
+    color: #64748b !important;
+    font-weight: 500 !important;
+    font-size: 0.7rem !important;
+    padding: 6px 2px !important;
+}
+
 .daterangepicker td {
-    border-radius: 8px !important;
-    transition: all 0.2s ease !important;
+    border-radius: 6px !important;
 }
 
 .daterangepicker td.available {
-    background-color: #273549 !important;
     color: #e2e8f0 !important;
 }
 
 .daterangepicker td.available:hover {
-    background-color: #334155 !important;
-    color: #ffffff !important;
-    transform: scale(1.05);
+    background: #24569c !important;
+    color: #f8fafc !important;
 }
 
-/* Off (keçmiş ay günləri) */
 .daterangepicker td.off {
-    background-color: #1e293b !important;
     color: #64748b !important;
 }
 
 .daterangepicker td.off.in-range {
-    background-color: rgba(14, 165, 233, 0.2) !important;
+    background: rgba(51, 65, 85, 0.6) !important;
     color: #94a3b8 !important;
 }
 
-/* Seçilən tarix intervalı */
 .daterangepicker td.in-range {
-    background-color: rgba(14, 165, 233, 0.3) !important;
-    color: #f1f5f9 !important;
+    background: #334155 !important;
+    color: #e2e8f0 !important;
 }
 
-/* Başlanğıc və son tarix */
 .daterangepicker td.active,
 .daterangepicker td.active.start-date,
 .daterangepicker td.active.end-date {
-    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4) !important;
-}
-
-/* Bugünkü tarix */
-.daterangepicker td.today {
-    border: 2px solid #0ea5e9 !important;
+    background: #475569 !important;
+    color: #fff !important;
     font-weight: 600 !important;
 }
 
-/* Sol və sağ ox düymələri */
+.daterangepicker td.today {
+    border: 1px solid #64748b !important;
+}
+
 .daterangepicker th.prev,
 .daterangepicker th.next {
-    color: #0ea5e9 !important;
-    font-size: 1.2rem !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
+    color: #94a3b8 !important;
+    font-size: 1rem !important;
 }
 
 .daterangepicker th.prev:hover,
 .daterangepicker th.next:hover {
-    color: #38bdf8 !important;
-    transform: scale(1.2);
+    color: #e2e8f0 !important;
 }
 
-/* Alt hissə (ranges) */
 .daterangepicker .ranges {
-    background-color: #1e293b !important;
+    background: #1e293b !important;
     border-right: 1px solid #334155 !important;
 }
 
 .daterangepicker .ranges li {
-    color: #cbd5e1 !important;
-    padding: 8px 12px !important;
-    border-radius: 6px !important;
-    margin: 4px !important;
-    transition: all 0.2s ease !important;
+    color: #94a3b8 !important;
+    padding: 8px 14px !important;
 }
 
 .daterangepicker .ranges li:hover {
-    background-color: #334155 !important;
-    color: #ffffff !important;
+    background: #334155 !important;
+    color: #f8fafc !important;
 }
 
 .daterangepicker .ranges li.active {
-    background-color: #0ea5e9 !important;
-    color: #ffffff !important;
+    background: #334155 !important;
+    color: #f8fafc !important;
 }
 
-/* Input sahəsi */
 .daterangepicker .drp-selected {
-    color: #f1f5f9 !important;
-    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    font-size: 0.8rem !important;
 }
 
-/* Düymələr */
 .daterangepicker .drp-buttons {
     border-top: 1px solid #334155 !important;
     padding: 12px !important;
-    background-color: #1e293b !important;
-    border-radius: 0 0 16px 16px !important;
+    background: #0f172a !important;
 }
 
 .daterangepicker .applyBtn {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-    color: #ffffff !important;
+    background: #334155 !important;
+    color: #f8fafc !important;
     border: none !important;
-    padding: 8px 20px !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-    transition: all 0.2s ease !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
 }
 
 .daterangepicker .applyBtn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
+    background: #475569 !important;
 }
 
 .daterangepicker .cancelBtn {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-    color: #ffffff !important;
-    border: none !important;
-    padding: 8px 20px !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-    transition: all 0.2s ease !important;
+    background: transparent !important;
+    color: #94a3b8 !important;
+    border: 1px solid #475569 !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
 }
 
 .daterangepicker .cancelBtn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+    background: #334155 !important;
+    color: #f8fafc !important;
 }
 /* Scrollbar track (arxa plan) */
 ::-webkit-scrollbar-track {
@@ -576,16 +574,17 @@ function loadRegionData(regionId, page = 1) {
       }
 
       const allTh = Array.from(document.querySelectorAll('thead th'));
-      const drugNames = allTh.slice(5, allTh.length - 1).map(th => th.textContent.trim());
+      const headerDrugCount = Math.max(0, allTh.length - 6);
 
       data.results.forEach((item, index) => {
         let drugCells = "";
-        drugNames.forEach(drugName => {
-          const drugObj = item.drugs.find(d => d.name === drugName);
-          const count = drugObj ? drugObj.count : 0;
+        const drugs = item.drugs || [];
+        for (let i = 0; i < headerDrugCount; i++) {
+          const d = drugs[i];
+          const count = d ? d.count : 0;
           const cellClass = count > 0 ? 'class="fw-bold" style="background-color: #111d35ff ;"' : '';
           drugCells += `<td ${cellClass}>${count}</td>`;
-        });
+        }
 
         let odemeClass = "text-success";
         if (item.odeme.type === "avans") odemeClass = "text-primary";

@@ -71,6 +71,7 @@ class Doctors(models.Model):
     borc = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     yekun_borc = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
 
     @property
     def avans(self):

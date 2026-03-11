@@ -9,6 +9,7 @@
 <section class="filters-section">
     <div class="filters-card">
         <form method="get" class="filters-form" id="filtersForm">
+            {% if request.GET.archived %}<input type="hidden" name="archived" value="1">{% endif %}
             <div class="filter-group">
                 <label for="debt_filter" class="filter-label">
                     <i class="fas fa-money-bill-wave"></i>
@@ -62,8 +63,22 @@
 
         <!-- Action Bar -->
         <section class="action-bar">
-            <div class="results-info">
-                <span class="results-count">Toplam <strong id="resultsCount">156</strong> nəticə tapıldı</span>
+            <div class="results-info" style="display: flex; align-items: center; gap: 1rem;">
+                {% if is_archived_view %}
+                <span style="display: flex; align-items: center; gap: 0.5rem; color: #94a3b8; font-weight: 600;">
+                    <i class="bi bi-archive"></i> Arxiv Həkimlər
+                </span>
+                <span style="color: #64748b;">|</span>
+                {% endif %}
+                <span>
+                <span class="results-count">
+                    Toplam
+                    <strong id="resultsCount">
+                        {% if doctors.paginator %}{{ doctors.paginator.count }}{% else %}{{ doctors|length }}{% endif %}
+                    </strong>
+                    nəticə tapıldı
+                </span>
+                </span>
             </div>
             <div class="action-buttons">
                 <a href="{% url 'doctors_export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success" id="exportBtn">
@@ -164,6 +179,69 @@
                 </div>
             </div>
         </section>
+
+        {% if doctors.paginator and doctors.paginator.num_pages > 1 %}
+        <!-- Pagination Section -->
+        <section class="pagination-section">
+            <div class="pagination-nav">
+                <div class="pagination-info">
+                    Səhifə <strong>{{ doctors.number }}</strong> / <strong>{{ doctors.paginator.num_pages }}</strong>
+                </div>
+                <ul class="pagination">
+                    {% with request.GET.urlencode as query_params %}
+                        {# Previous page #}
+                        {% if doctors.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if query_params %}{{ query_params }}&{% endif %}page={{ doctors.previous_page_number }}">
+                                    <i class="fas fa-chevron-left"></i>
+                                    Əvvəlki
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    <i class="fas fa-chevron-left"></i>
+                                    Əvvəlki
+                                </span>
+                            </li>
+                        {% endif %}
+
+                        {# Page numbers (current ±2) #}
+                        {% for num in doctors.paginator.page_range %}
+                            {% if num >= doctors.number|add:"-2" and num <= doctors.number|add:"2" %}
+                                {% if num == doctors.number %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if query_params %}{{ query_params }}&{% endif %}page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+
+                        {# Next page #}
+                        {% if doctors.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if query_params %}{{ query_params }}&{% endif %}page={{ doctors.next_page_number }}">
+                                    Növbəti
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    Növbəti
+                                    <i class="fas fa-chevron-right"></i>
+                                </span>
+                            </li>
+                        {% endif %}
+                    {% endwith %}
+                </ul>
+            </div>
+        </section>
+        {% endif %}
 
 
         <!-- Loading Overlay -->

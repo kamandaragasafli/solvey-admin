@@ -9,6 +9,14 @@
     max-width: 95%; /* Ekranın 95%-i qədər genişlik */
     width: 95%;
 }
+.info-center-section { margin-bottom: 0; }
+.info-center-title { font-size: 0.9rem; color: #94a3b8; margin-bottom: 8px; }
+.info-center-list { padding-left: 1.2rem; margin: 0; font-size: 0.85rem; color: #e2e8f0; }
+.info-center-list li { margin-bottom: 4px; color: #e2e8f0; }
+.info-center-list li .fw-bold { color: #f9fafb; }
+.info-center-section .table { background: transparent; }
+.info-center-section .table th, .info-center-section .table td { border-color: rgba(255,255,255,0.08); color: #e2e8f0; }
+.info-center-section .text-muted { color: #94a3b8 !important; }
 </style>
   <div class="container-fluid py-4">
         <!-- Header Section -->
@@ -103,6 +111,15 @@
         </div>
 
         <!-- Charts and Statistics Section -->
+        <div class="row g-4 mb-3">
+            <div class="col-12 d-flex align-items-center gap-2 flex-wrap">
+                <span class="text-muted me-2">Vaxt filteri:</span>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-primary active" id="chartFilterBuAy" data-month="" data-year="">Bu ay</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="chartFilterKecenAy" data-month="" data-year="">Keçən ay</button>
+                </div>
+            </div>
+        </div>
         <div class="row g-4 mb-5">
             <!-- Regional Drug Charts -->
             <div class="col-lg-4">
@@ -113,27 +130,32 @@
                             Digər bölgələr üzrə dərman qeydiyyatı
                         </h5>
                         <div class="chart-actions">
-                            <button class="btn btn-sm btn-outline-secondary">
-                                <i class="fas fa-download"></i>
-                            </button>
+                            <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-download"></i></button>
                         </div>
                     </div>
                     <div class="chart-card-body">
-                        <canvas id="regionDrugChartOther" height="300"></canvas>
+                        <canvas id="regionDrugChartOther" height="280"></canvas>
                     </div>
                 </div>
-              <div class="chart-card mt-4">
-
-
-                <div class="chart-card-body">
-                    <!-- Chart yerinə boş qutuda kalendar görünəcək -->
-                    <div id="calendarContainer" class="calendar-wrapper"></div>
+                <div class="chart-card mt-4">
+                    <div class="chart-card-header">
+                        <h5 class="chart-title">
+                            <i class="fas fa-cart-shopping me-2"></i>
+                            Digər bölgələr üzrə satış
+                        </h5>
+                    </div>
+                    <div class="chart-card-body">
+                        <canvas id="regionSalesChartOther" height="280"></canvas>
+                    </div>
                 </div>
+                <div class="chart-card mt-4">
+                    <div class="chart-card-body">
+                        <div id="calendarContainer" class="calendar-wrapper"></div>
+                    </div>
                 </div>
-
             </div>
 
-            <div class="col-lg-4 ">
+            <div class="col-lg-4">
                 <div class="chart-card">
                     <div class="chart-card-header">
                         <h5 class="chart-title">
@@ -141,37 +163,25 @@
                             Bakı bölgələri üzrə dərman
                         </h5>
                         <div class="chart-actions">
-                            <button class="btn btn-sm btn-outline-secondary">
-                                <i class="fas fa-download"></i>
-                            </button>
+                            <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-download"></i></button>
                         </div>
                     </div>
                     <div class="chart-card-body">
-                        <canvas id="regionDrugChartBaku" height="300"></canvas>
+                        <canvas id="regionDrugChartBaku" height="280"></canvas>
                     </div>
                 </div>
                 <div class="chart-card mt-4">
-            <div class="chart-card-header d-flex justify-content-between align-items-center">
-                <h5 class="chart-title">
-                <i class="fas fa-chart-column me-2"></i>
-                Bakı bölgələri üzrə satışı
-                </h5>
-                <div class="chart-actions d-flex align-items-center gap-3">
-                <!-- Saat -->
-                <div id="bakuClock" style="font-weight:600; font-size:14px; color:#4850b9;">
-                    --
+                    <div class="chart-card-header d-flex justify-content-between align-items-center">
+                        <h5 class="chart-title">
+                            <i class="fas fa-cart-shopping me-2"></i>
+                            Bakı bölgələri üzrə satışı
+                        </h5>
+                        <div id="bakuClock" style="font-weight:600; font-size:14px; color:#4850b9;">--</div>
+                    </div>
+                    <div class="chart-card-body">
+                        <canvas id="regionSalesChartBaku" height="280"></canvas>
+                    </div>
                 </div>
-                <!-- Yükləmə düyməsi -->
-                <button class="btn btn-sm btn-outline-secondary">
-                    <i class="fas fa-download"></i>
-                </button>
-                </div>
-            </div>
-
-            <div class="chart-card-body">
-                <canvas id="regionDrugChartOther" height="300"></canvas>
-            </div>
-            </div>
             </div>
 
 <!-- Prescription Statistics Card -->
@@ -255,6 +265,64 @@
                     {% endif %}
                 {% endwith %}
             </div>
+        </div>
+
+        <!-- Həkim sıralaması -->
+        <div class="prescription-divider"></div>
+        <div class="info-center-section">
+            <h6 class="info-center-title"><i class="fas fa-trophy me-2"></i>Həkim sıralaması</h6>
+            {% if top_doctors %}
+                <ol class="info-center-list">
+                    {% for d in top_doctors %}
+                        <li><span class="fw-bold">{{ d.ad }}</span> – {{ d.rd_count }} qeydiyyat</li>
+                    {% endfor %}
+                </ol>
+            {% else %}
+                <p class="text-muted small mb-0">Bu ay məlumat yoxdur.</p>
+            {% endif %}
+        </div>
+
+        <!-- Ən çox yazılan dərmanlar -->
+        <div class="prescription-divider"></div>
+        <div class="info-center-section">
+            <h6 class="info-center-title"><i class="fas fa-pills me-2"></i>Ən çox yazılan dərmanlar</h6>
+            {% if top_drugs %}
+                <ol class="info-center-list">
+                    {% for d in top_drugs %}
+                        <li><span class="fw-bold">{{ d.drug__med_name|default:"—" }}</span> – {{ d.total|floatformat:0 }}</li>
+                    {% endfor %}
+                </ol>
+            {% else %}
+                <p class="text-muted small mb-0">Bu ay məlumat yoxdur.</p>
+            {% endif %}
+        </div>
+
+        <!-- Bölgə müqayisəsi -->
+        <div class="prescription-divider"></div>
+        <div class="info-center-section">
+            <h6 class="info-center-title"><i class="fas fa-map-location-dot me-2"></i>Bölgə müqayisəsi</h6>
+            {% if region_comparison %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-dark mb-0" style="font-size: 0.8rem;">
+                        <thead>
+                            <tr>
+                                <th>Bölgə</th>
+                                <th class="text-end">Cəmi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in region_comparison %}
+                                <tr>
+                                    <td>{{ r.region_name }}</td>
+                                    <td class="text-end fw-bold">{{ r.total_qeyd|floatformat:0 }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted small mb-0">Bu ay məlumat yoxdur.</p>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -501,100 +569,88 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-let totalOtherCount = 0;
-let totalBakuCount = 0;
-fetch('/region-drug-data/other/')
-  .then(response => response.json())
-  .then(data => {
-    const ctx = document.getElementById('regionDrugChartOther').getContext('2d');
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: data.labels,
-        datasets: [{
-          label: 'Qeydiyyat sayı',
-          data: data.data,
-          backgroundColor: 'rgba(0, 219, 117, 0.8)',
-          borderColor: 'rgba(0, 190, 102, 1)',
-          borderWidth: 1,
-          borderRadius: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false }
-        },
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            ticks: {
-              autoSkip: false,
-              maxRotation: 90,
-              minRotation: 90
-            }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              stepSize: 1
-            }
-          }
-        }
-      }
-    });
-  });
+(function(){
+  const now = new Date();
+  let chartMonth = now.getMonth() + 1;
+  let chartYear = now.getFullYear();
 
+  const chartOpts = {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    maintainAspectRatio: false,
+    scales: {
+      x: { ticks: { autoSkip: false, maxRotation: 90, minRotation: 90 } },
+      y: { beginAtZero: true, ticks: { stepSize: 1 } }
+    }
+  };
 
-// Bakı bölgələri üçün
-fetch('/region-drug-data/baku/')
-  .then(response => response.json())
-  .then(data => {
-    const ctx = document.getElementById('regionDrugChartBaku').getContext('2d');
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: data.labels,
-        datasets: [{
-          label: 'Qeydiyyat sayı',
-          data: data.data,
-          backgroundColor: '#009bd8ff'
-        }]
-      },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false }
-          },
-          maintainAspectRatio: false,
-          scales: {
-            x: {
-              ticks: {
-                autoSkip: false,
-                maxRotation: 90,  // Dönmə bucağı (və ya 90 etsən tam aşağıya)
-                minRotation: 90
-              }
-            },
-            y: {
-              beginAtZero: true,
-              ticks: {
-                stepSize: 1
-              }
-            }
-          }
-        }
-    });
-  });
+  let charts = { drugOther: null, drugBaku: null, salesOther: null, salesBaku: null };
 
-  function updateTotalText() {
-  if (totalOtherCount !== 0 || totalBakuCount !== 0) {
-    const totalElem = document.getElementById('totalRegistration');
-    totalElem.innerHTML = `
-      Digər: ${totalOtherCount} <br>
-      Bakı: ${totalBakuCount}
-    `;
+  function updateFilterButtons() {
+    const buAy = document.getElementById('chartFilterBuAy');
+    const kecenAy = document.getElementById('chartFilterKecenAy');
+    const m = now.getMonth() + 1;
+    const y = now.getFullYear();
+    let prevM = m - 1, prevY = y;
+    if (prevM < 1) { prevM = 12; prevY = y - 1; }
+    buAy.dataset.month = m;
+    buAy.dataset.year = y;
+    kecenAy.dataset.month = prevM;
+    kecenAy.dataset.year = prevY;
   }
-}
+
+  function loadCharts() {
+    const qs = `?month=${chartMonth}&year=${chartYear}`;
+
+    Promise.all([
+      fetch('/region-drug-data/other/' + qs).then(r => r.json()),
+      fetch('/region-drug-data/baku/' + qs).then(r => r.json()),
+      fetch('/region-sales-data/other/' + qs).then(r => r.json()),
+      fetch('/region-sales-data/baku/' + qs).then(r => r.json())
+    ]).then(([drugOther, drugBaku, salesOther, salesBaku]) => {
+      const createBar = (labels, data, bg) => ({
+        type: 'bar',
+        data: { labels, datasets: [{ label: '', data, backgroundColor: bg, borderRadius: 4 }] },
+        options: chartOpts
+      });
+
+      if (charts.drugOther) charts.drugOther.destroy();
+      charts.drugOther = new Chart(document.getElementById('regionDrugChartOther').getContext('2d'),
+        createBar(drugOther.labels, drugOther.data, 'rgba(0, 219, 117, 0.8)'));
+
+      if (charts.drugBaku) charts.drugBaku.destroy();
+      charts.drugBaku = new Chart(document.getElementById('regionDrugChartBaku').getContext('2d'),
+        createBar(drugBaku.labels, drugBaku.data, '#009bd8ff'));
+
+      if (charts.salesOther) charts.salesOther.destroy();
+      charts.salesOther = new Chart(document.getElementById('regionSalesChartOther').getContext('2d'),
+        createBar(salesOther.labels, salesOther.data, 'rgba(245, 158, 11, 0.8)'));
+
+      if (charts.salesBaku) charts.salesBaku.destroy();
+      charts.salesBaku = new Chart(document.getElementById('regionSalesChartBaku').getContext('2d'),
+        createBar(salesBaku.labels, salesBaku.data, 'rgba(139, 92, 246, 0.8)'));
+    });
+  }
+
+  updateFilterButtons();
+
+  document.getElementById('chartFilterBuAy').addEventListener('click', function() {
+    chartMonth = parseInt(this.dataset.month);
+    chartYear = parseInt(this.dataset.year);
+    document.querySelectorAll('#chartFilterBuAy, #chartFilterKecenAy').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    loadCharts();
+  });
+  document.getElementById('chartFilterKecenAy').addEventListener('click', function() {
+    chartMonth = parseInt(this.dataset.month);
+    chartYear = parseInt(this.dataset.year);
+    document.querySelectorAll('#chartFilterBuAy, #chartFilterKecenAy').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    loadCharts();
+  });
+
+  loadCharts();
+})();
 
 
     document.getElementById('toggle-activity').addEventListener('click', function() {

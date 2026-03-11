@@ -3,161 +3,266 @@
 
 {% block content %}
 <style>
-  /* Ümumi Başlıq və Kart Stil */
-  h2 {
-    color: #0199ffff;
-    margin-bottom: 30px;
-    font-weight: 700;
+  .region-report-page {
+    background: #0f172a;
+    min-height: 100vh;
+    padding: 1.5rem 0;
   }
 
-  .report-card {
-    background-color: #1a1f2b;
-    border: 1px solid #0199ffff;
+  .region-report-page h2 {
+    color: #e2e8f0;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+    font-size: 1.5rem;
+  }
+
+  .region-report-page .report-intro {
+    color: #94a3b8;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .region-report-page .report-card {
+    background: #1e293b;
+    border: 1px solid #334155;
     border-radius: 12px;
-    padding: 25px;
-    margin-bottom: 35px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
     position: relative;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 400px;
+  }
+
+  .region-report-page .report-card h3 {
+    color: #f1f5f9;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .region-report-page .report-card > p {
+    color: #94a3b8;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .region-report-page .export-btn,
+  .region-report-page .print-btn {
+    background: #334155;
+    color: #e2e8f0;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: background 0.2s;
+  }
+
+  .region-report-page .export-btn:hover,
+  .region-report-page .print-btn:hover {
+    background: #475569;
+    color: #fff;
+  }
+
+  .region-report-page form {
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .region-report-page form label {
+    font-weight: 500;
+    color: #94a3b8;
+  }
+
+  .region-report-page form select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+  }
+
+  .region-report-page form button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background: #3b82f6;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  .region-report-page form button:hover {
+    background: #2563eb;
+  }
+
+  .region-report-page .table-wrapper {
     overflow-x: auto;
+    margin-top: 1rem;
+    border-radius: 8px;
+    border: 1px solid #334155;
+  }
+
+  .region-report-page table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 800px;
+    font-size: 0.7rem;
+  }
+
+  .region-report-page th {
+    background: #0f172a;
+    color: #94a3b8;
+    font-weight: 600;
+    padding: 8px 6px;
+    text-align: center;
+    border-bottom: 1px solid #334155;
+    white-space: nowrap;
+  }
+
+  .region-report-page th:first-child,
+  .region-report-page td:first-child {
+    position: sticky;
+    left: 0;
+    background: #1e293b;
+    z-index: 2;
+    border-right: 1px solid #334155;
+  }
+
+  .region-report-page thead th:first-child {
+    background: #0f172a;
+  }
+
+  .region-report-page tbody tr:nth-child(even) td:first-child {
+    background: #1e293b;
+  }
+
+  .region-report-page tbody tr:nth-child(odd) td:first-child {
+    background: #0f172a;
+  }
+
+  .region-report-page td {
+    padding: 6px;
+    text-align: center;
+    color: #e2e8f0;
+    border-bottom: 1px solid #334155;
+  }
+
+  .region-report-page tbody tr:hover td {
+    background: rgba(51, 65, 85, 0.5);
+  }
+
+  .region-report-page tbody tr:hover td:first-child {
+    background: #334155;
+  }
+
+  .region-report-page tfoot td,
+  .region-report-page tfoot th {
+    font-weight: 700;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-top: 2px solid #475569;
+    padding: 8px 6px;
+  }
+
+  .region-report-page td.highlight-green {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+
+  .region-report-page td.highlight-yellow {
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+  }
+
+  .region-report-page td.highlight-blue {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+  }
+
+  .region-report-page td.highlight-red {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+  }
+
+  .region-report-page tfoot .highlight-green,
+  .region-report-page tfoot .highlight-yellow,
+  .region-report-page tfoot .highlight-blue,
+  .region-report-page tfoot .highlight-red {
+    background: inherit;
+  }
+
+  .region-report-page .report-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .region-report-page .report-card details {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    overflow: hidden;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 60px;
+  }
+
+  .region-report-page .report-card details[open] {
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+  }
+
+  .region-report-page .report-card summary {
+    list-style: none;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    user-select: none;
+  }
+
+  .region-report-page .report-card summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .region-report-page .report-card summary .accordion-icon {
+    color: #64748b;
+    font-size: 0.8rem;
     transition: transform 0.2s;
   }
 
-  .report-card:hover {
-    transform: translateY(-5px);
+  .region-report-page .report-card details[open] summary .accordion-icon {
+    transform: rotate(180deg);
   }
 
-  .report-card h3 {
-    color: #f4e7fb;
-    margin-bottom: 12px;
-    font-size: 1.1rem;
+  .region-report-page .report-card summary:hover {
+    background: rgba(255,255,255,0.03);
   }
 
-  /* Export / Print Button */
-  .export-btn, .print-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background-color: #0199ffff;
-    color: #fff;
-    border: none;
-    padding: 7px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: 0.3s;
+  .region-report-page .report-card .accordion-content {
+    padding: 0 1.25rem 1.25rem;
+    border-top: 1px solid #334155;
   }
 
-  .export-btn:hover, .print-btn:hover {
-    background-color: #0199ffff;
-  }
-
-  /* Form Stil */
-  form {
-    margin-bottom: 30px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  form label {
-    font-weight: 600;
-    color: #0199ffff;
-  }
-
-  form select {
-    padding: 7px 12px;
-    border-radius: 8px;
-    border: 1px solid #0199ffff;
-    background-color: #f4f7ff;
-    font-weight: 600;
-    color: #000;
-  }
-
-  form button {
-    padding: 7px 14px;
-    border-radius: 8px;
-    border: none;
-    background-color: #0199ffff;
-    color: #fff;
-    cursor: pointer;
-    font-weight: 600;
-    transition: 0.3s;
-  }
-
-  form button:hover {
-    background-color: #0199ffff;
-  }
-
-  /* Cədvəl Stil */
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    min-width: 850px;
-    margin-top: 18px;
-    font-size: 0.75rem;
-  }
-
-  table, th, td {
-    border: 1px solid #0199ffff;
-  }
-
-  th {
-    background-color: #0199ffff;
-    color: #f4e7fb;
-    font-weight: 600;
-    padding: 8px;
-    text-align: center;
-  }
-
-  td {
-    padding: 7px;
-    text-align: center;
-    color: #fff;
-  }
-
-  tbody tr:nth-child(even) {
-    background-color: rgba(255,255,255,0.05);
-  }
-
-  tfoot td, tfoot th {
-    font-weight: 700;
-    background-color: #0199ffff;
-    color: #f4e7fb;
-  }
-
-  /* Conditional Highlight */
-  td.highlight-green {
-    background-color: #d4edda;
-    color: #155724;
-    font-weight: 600;
-  }
-
-  td.highlight-yellow {
-    background-color: #fff3cd;
-    color: #856404;
-    font-weight: 600;
-  }
-
-  td.highlight-blue {
-    background-color: #cce5ff;
-    color: #004085;
-    font-weight: 600;
-  }
-
-  td.highlight-red {
-    background-color: #f8d7da;
-    color: #721c24;
-    font-weight: 600;
+  .region-report-page .report-card .accordion-content > p {
+    margin-top: 1rem;
   }
 </style>
 
-<h2>{{ region.region_name }} Bölgəsinin Hesabatı</h2>
-<p style="color: #f4e7fb; margin-bottom: 20px;">Ümumi həkimlərin resept sayı: {{ toplam_hekim_say }}</p>
+<div class="region-report-page">
 
-<form method="get">
+  <h2>{{ region.region_name }} — Bölgə Hesabatı</h2>
+  <p class="report-intro">Ümumi həkimlərin resept sayı: {{ toplam_hekim_say }}</p>
+
+  <form method="get">
     <label for="year">İl seçin:</label>
     <select name="year" id="year">
         {% for yil in iller %}
@@ -172,14 +277,23 @@
         {% endfor %}
     </select>
     <button type="submit">Hesabla</button>
-</form>
+  </form>
 
-<!-- 1. Kart -->
-<div class="report-card">
-  <h3>1. Həkimlər üzrə Dərman Sayları</h3>
-  <button class="export-btn">⬇️ Export</button>
-  <p style="color: #f4e7fb;">Bu cədvəldə hər həkimin yazdığı dərmanların sayları göstərilir.</p>
-  <table>
+  <div class="report-accordion">
+  <!-- 1. Kart -->
+  <div class="report-card">
+    <details open>
+      <summary>
+        <span>1. Həkimlər üzrə Dərman Sayları</span>
+        <span class="d-flex align-items-center gap-2">
+          <button class="export-btn" onclick="event.stopPropagation()">⬇️ Export</button>
+          <span class="accordion-icon">▼</span>
+        </span>
+      </summary>
+      <div class="accordion-content">
+    <p>Bu cədvəldə hər həkimin yazdığı dərmanların sayları göstərilir.</p>
+    <div class="table-wrapper">
+    <table>
     <thead>
       <tr>
         <th>Həkimlər</th>
@@ -210,14 +324,25 @@
       </tr>
     </tfoot>
   </table>
-</div>
+    </div>
+      </div>
+    </details>
+  </div>
 
-<!-- 2. Kart -->
-<div class="report-card">
-  <h3>2. Dərəcəyə Görə Bölünmüş Həkim Hesabatı</h3>
-  <button class="export-btn">⬇️ Export</button>
-  <p style="color: #f4e7fb;">Burada hər həkimin dərəcələri və dərman toplamları göstərilir.</p>
-  <table>
+  <!-- 2. Kart -->
+  <div class="report-card">
+    <details>
+      <summary>
+        <span>2. Dərəcəyə Görə Bölünmüş Həkim Hesabatı</span>
+        <span class="d-flex align-items-center gap-2">
+          <button class="export-btn" onclick="event.stopPropagation()">⬇️ Export</button>
+          <span class="accordion-icon">▼</span>
+        </span>
+      </summary>
+      <div class="accordion-content">
+    <p>Burada hər həkimin dərəcələri və dərman toplamları göstərilir.</p>
+    <div class="table-wrapper">
+    <table>
     <thead>
       <tr>
         <th>Həkim</th>
@@ -251,14 +376,25 @@
       </tr>
     </tbody>
   </table>
-</div>
+    </div>
+      </div>
+    </details>
+  </div>
 
-<!-- 3. Kart -->
-<div class="report-card">
-  <h3>3. Satış Hesablanmış Dərmanlar</h3>
-  <button class="export-btn">⬇️ Export</button>
-  <p style="color: #f4e7fb;">Effektivliklə vurulmuş dərmanların hesablanması.</p>
-  <table>
+  <!-- 3. Kart -->
+  <div class="report-card">
+    <details>
+      <summary>
+        <span>3. Satış Hesablanmış Dərmanlar</span>
+        <span class="d-flex align-items-center gap-2">
+          <button class="export-btn" onclick="event.stopPropagation()">⬇️ Export</button>
+          <span class="accordion-icon">▼</span>
+        </span>
+      </summary>
+      <div class="accordion-content">
+    <p>Effektivliklə vurulmuş dərmanların hesablanması.</p>
+    <div class="table-wrapper">
+    <table>
     <thead>
       <tr>
         <th>Həkimlər</th>
@@ -289,14 +425,25 @@
       </tr>
     </tfoot>
   </table>
-</div>
+    </div>
+      </div>
+    </details>
+  </div>
 
-<!-- 4. Kart -->
-<div class="report-card" id="report-card">
-  <h3>4. Komissiyaya uyğun Silinən Dərmanlar</h3>
-  <button class="print-btn" onclick="printDiv('report-card')">🖨️ Çap et</button>
-  <p style="color: #f4e7fb;">Bu cədvəldə yalnız həkimlərin komissiyadan silinən dərman miqdarları göstərilir.</p>
-  <table>
+  <!-- 4. Kart -->
+  <div class="report-card" id="report-card">
+    <details>
+      <summary>
+        <span>4. Komissiyaya uyğun Silinən Dərmanlar</span>
+        <span class="d-flex align-items-center gap-2">
+          <button class="print-btn" onclick="event.stopPropagation(); printDiv('report-card')">🖨️ Çap et</button>
+          <span class="accordion-icon">▼</span>
+        </span>
+      </summary>
+      <div class="accordion-content">
+    <p>Bu cədvəldə yalnız həkimlərin komissiyadan silinən dərman miqdarları göstərilir.</p>
+    <div class="table-wrapper">
+    <table>
     <thead>
       <tr>
         <th>Həkim Adı</th>
@@ -327,9 +474,26 @@
       </tr>
     </tfoot>
   </table>
+    </div>
+      </div>
+    </details>
+  </div>
+  </div>
 </div>
 
 <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.report-accordion details').forEach(function(detail) {
+      detail.addEventListener('toggle', function() {
+        if (this.open) {
+          document.querySelectorAll('.report-accordion details').forEach(function(d) {
+            if (d !== detail) d.open = false;
+          });
+        }
+      });
+    });
+  });
+
   function printDiv(divId) {
     const content = document.getElementById(divId).innerHTML;
     const printWindow = window.open('', '', 'height=600,width=800');

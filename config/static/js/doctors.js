@@ -4,9 +4,13 @@
 class MedicalDashboard {
     constructor() {
         this.currentPage = 1;
-        this.itemsPerPage = 10;
-        this.totalItems = 156;
-        this.filteredItems = 156;
+        this.itemsPerPage = 30;
+
+        const resultsEl = document.getElementById('resultsCount');
+        const initialCount = resultsEl ? parseInt(resultsEl.textContent) || 0 : 0;
+
+        this.totalItems = initialCount;
+        this.filteredItems = initialCount;
         this.filters = {
             search: '',
             debtFilter: '',

@@ -398,7 +398,7 @@
         <span>Dashboard</span>
     </a>
 
-    <a href="{% url 'doctors' %}" class="nav-item {% if request.resolver_match.url_name == 'doctors' %}active{% endif %}">
+    <a href="{% url 'doctors' %}" class="nav-item {% if request.resolver_match.url_name == 'doctors' and not request.GET.archived %}active{% endif %}">
         <i class="fa-solid fa-user-doctor"></i>
         <span>Həkimlər</span>
     </a>
@@ -466,6 +466,10 @@
     <a href="{% url 'closed_accounts' %}" class="nav-item {% if request.resolver_match.url_name == 'closed_accounts' %}active{% endif %}">
         <i class="bi bi-archive"></i>
         <span>Köhnə Hesabat</span>
+    </a>
+    <a href="{% url 'doctors' %}?archived=1" class="nav-item {% if request.resolver_match.url_name == 'doctors' and request.GET.archived %}active{% endif %}">
+        <i class="bi bi-archive"></i>
+        <span>Arxiv Həkimlər</span>
     </a>
 
     <a href="{% url 'create_real_sales' %}" class="nav-item {% if request.resolver_match.url_name == 'create_real_sales' %}active{% endif %}">

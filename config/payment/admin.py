@@ -1,11 +1,38 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from .models import MonthlyDoctorReport, Sale, Payment_doctor, Financial_document
 
 
+@admin.register(Sale)
+class SaleAdmin(admin.ModelAdmin):
+    list_display = ('id', 'colored_region', 'colored_drug', 'colored_quantity', 'colored_sale_date')
+    list_filter = ('region', 'sale_date')
+    search_fields = ('region__region_name', 'drug__med_name')
+    date_hierarchy = 'sale_date'
+    ordering = ('-sale_date', 'region__region_name', 'drug__med_name')
+    list_per_page = 50
+    list_select_related = ('region', 'drug')
 
+    def colored_region(self, obj):
+        return format_html('<span style="color:#60a5fa; font-weight:bold;">{}</span>', obj.region.region_name)
+    colored_region.short_description = 'Bölgə'
+    colored_region.admin_order_field = 'region__region_name'
 
-admin.site.register(Sale)
+    def colored_drug(self, obj):
+        return format_html('<span style="color:#f59e0b; font-weight:bold;">{}</span>', obj.drug.med_name)
+    colored_drug.short_description = 'Dərman'
+    colored_drug.admin_order_field = 'drug__med_name'
+
+    def colored_quantity(self, obj):
+        return format_html('<span style="color:#34d399; font-weight:bold;">{}</span>', obj.quantity)
+    colored_quantity.short_description = 'Miqdar'
+    colored_quantity.admin_order_field = 'quantity'
+
+    def colored_sale_date(self, obj):
+        return format_html('<span style="color:#94a3b8;">{}</span>', obj.sale_date.strftime('%d.%m.%Y'))
+    colored_sale_date.short_description = 'Satış tarixi'
+    colored_sale_date.admin_order_field = 'sale_date'
 
 admin.site.register(Financial_document)
 
@@ -63,18 +90,66 @@ class YearFilter(admin.SimpleListFilter):
         return queryset
 
 class MonthlyDoctorReportAdmin(admin.ModelAdmin):
-    list_display = ('doctor', 'region', 'report_month', 'yekun_borc', 'hesablanan_miqdar', 'hekimden_silinen', 'investisiya', 'avans',  'recipe_total_drugs',)
-    
-    # Xüsusi filterləri əlavə et
-    list_filter = (
-        'region',  # Bölgə filteri
-        MonthFilter,  # Xüsusi ay filteri
-        YearFilter,  # Xüsusi il filteri
-        'doctor',  # Həkim filteri
+    list_display = (
+        'colored_doctor',
+        'colored_region',
+        'colored_report_month',
+        'colored_yekun_borc',
+        'hesablanan_miqdar',
+        'hekimden_silinen',
+        'investisiya',
+        'avans',
+        'recipe_total_drugs',
     )
-    
-    search_fields = ('doctor__ad', 'region__region_name')
+    list_filter = (
+        'region',
+        MonthFilter,
+        YearFilter,
+        'doctor',
+    )
+    search_fields = (
+        'doctor__ad',
+        'region__region_name',
+        'doctor__barkod',
+    )
     date_hierarchy = 'report_month'
     list_per_page = 50
+    ordering = ('-report_month', 'doctor__ad')
+    list_select_related = ('doctor', 'region')
+
+    def colored_doctor(self, obj):
+        from django.utils.html import format_html
+        return format_html(
+            '<span style="color:#60a5fa; font-weight:bold;">{}</span>',
+            obj.doctor.ad
+        )
+    colored_doctor.short_description = 'Həkim'
+    colored_doctor.admin_order_field = 'doctor__ad'
+
+    def colored_region(self, obj):
+        from django.utils.html import format_html
+        return format_html('{}', obj.region.region_name if obj.region else '—')
+    colored_region.short_description = 'Bölgə'
+    colored_region.admin_order_field = 'region__region_name'
+
+    def colored_report_month(self, obj):
+        from django.utils.html import format_html
+        return format_html(
+            '<span style="color:#94a3b8;">{}</span>',
+            obj.report_month.strftime('%B %Y')
+        )
+    colored_report_month.short_description = 'Hesabat ayı'
+    colored_report_month.admin_order_field = 'report_month'
+
+    def colored_yekun_borc(self, obj):
+        from django.utils.html import format_html
+        color = '#ef4444' if (obj.yekun_borc or 0) > 0 else '#34d399'
+        return format_html(
+            '<span style="color:{}; font-weight:bold;">{:.2f} ₼</span>',
+            color, obj.yekun_borc or 0
+        )
+    colored_yekun_borc.short_description = 'Yekun borc'
+    colored_yekun_borc.admin_order_field = 'yekun_borc'
+
 
 admin.site.register(MonthlyDoctorReport, MonthlyDoctorReportAdmin)

@@ -15,12 +15,13 @@ from django.http import JsonResponse
 from django.db.models import Count,  Sum
 from django.utils import timezone
 from django.utils.timezone import make_aware, is_aware
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 from django.db.models import Count
 from django.db.models.functions import Coalesce
-from doctors.models import Doctors, Recipe, RecipeDrug
+from doctors.models import Doctors, Recipe, RecipeDrug, RealSales, RealSalesDrug
 from regions.models import Region, Hospital, City
+from payment.models import Sale
 from core.models import DeletedRecipeDrugLog
 from itertools import chain
 from operator import attrgetter
@@ -275,17 +276,57 @@ def index(request):
         "baki_region_drug_counts": baki_region_drug_counts,
         "baki_region_daily_totals": baki_region_daily_totals,
         "baki_region_monthly_totals": baki_region_monthly_totals,
-  
+
+        # Məlumat mərkəzi
+        "top_doctors": list(
+            Doctors.objects
+            .filter(recipe__date__month=first_day_of_month.month, recipe__date__year=first_day_of_month.year)
+            .annotate(rd_count=Count("recipe__drugs"))
+            .filter(rd_count__gt=0)
+            .order_by("-rd_count")[:10]
+            .values("ad", "rd_count")
+        ),
+        "top_drugs": list(
+            RecipeDrug.objects
+            .filter(recipe__date__month=first_day_of_month.month, recipe__date__year=first_day_of_month.year)
+            .values("drug__med_name")
+            .annotate(total=Sum("number"))
+            .order_by("-total")[:10]
+        ),
+        "region_comparison": list(
+            Region.objects
+            .annotate(
+                total_qeyd=Coalesce(
+                    Sum("doctors__recipe__drugs__number", filter=Q(doctors__recipe__date__month=first_day_of_month.month, doctors__recipe__date__year=first_day_of_month.year)),
+                    0,
+                    output_field=DecimalField()
+                )
+            )
+            .filter(total_qeyd__gt=0)
+            .order_by("-total_qeyd")[:15]
+            .values("region_name", "total_qeyd")
+        ),
     }
 
     return render(request, 'index.html', context)
 
 
 # Region data Start
+def _get_chart_month_year(request):
+    """GET-dən ay/il götür, yoxdursa cari ay/il."""
+    now = timezone.localdate()
+    try:
+        month = int(request.GET.get('month', now.month))
+        year = int(request.GET.get('year', now.year))
+        if 1 <= month <= 12 and 2020 <= year <= 2030:
+            return month, year
+    except (ValueError, TypeError):
+        pass
+    return now.month, now.year
+
+
 def region_drug_data_other(request):
-    now = datetime.now()
-    current_month = now.month
-    current_year = now.year
+    current_month, current_year = _get_chart_month_year(request)
 
     regions = (
         Region.objects
@@ -307,17 +348,13 @@ def region_drug_data_other(request):
     )
 
     labels = [r.region_name for r in regions]
-    counts = [float(r.drug_count) for r in regions]  # Decimal → float
+    counts = [float(r.drug_count) for r in regions]
 
-    return JsonResponse({
-        'labels': labels,
-        'data': counts
-    })
+    return JsonResponse({'labels': labels, 'data': counts})
+
 
 def region_drug_data_baku(request):
-    now = datetime.now()
-    current_month = now.month
-    current_year = now.year
+    current_month, current_year = _get_chart_month_year(request)
 
     regions = (
         Region.objects
@@ -339,12 +376,67 @@ def region_drug_data_baku(request):
     )
 
     labels = [r.region_name for r in regions]
-    counts = [float(r.drug_count) for r in regions]  # Decimal → float
+    counts = [float(r.drug_count) for r in regions]
 
-    return JsonResponse({
-        'labels': labels,
-        'data': counts
-    })
+    return JsonResponse({'labels': labels, 'data': counts})
+
+
+def region_sales_data_other(request):
+    """Digər bölgələr üzrə satış (Sale modeli)."""
+    current_month, current_year = _get_chart_month_year(request)
+
+    regions = (
+        Region.objects
+        .filter(region_type='Digər')
+        .annotate(
+            sales_total=Coalesce(
+                Sum(
+                    'sales__quantity',
+                    filter=(
+                        Q(sales__sale_date__month=current_month) &
+                        Q(sales__sale_date__year=current_year)
+                    )
+                ),
+                0,
+                output_field=DecimalField()
+            )
+        )
+        .order_by('region_name')
+    )
+
+    labels = [r.region_name for r in regions]
+    counts = [float(r.sales_total) for r in regions]
+
+    return JsonResponse({'labels': labels, 'data': counts})
+
+
+def region_sales_data_baku(request):
+    """Bakı bölgələri üzrə satış (RealSales + RealSalesDrug)."""
+    current_month, current_year = _get_chart_month_year(request)
+
+    regions = (
+        Region.objects
+        .filter(region_type='Bakı')
+        .annotate(
+            sales_total=Coalesce(
+                Sum(
+                    'realsales__drug_name__numbers',
+                    filter=(
+                        Q(realsales__date_sale__month=current_month) &
+                        Q(realsales__date_sale__year=current_year)
+                    )
+                ),
+                0,
+                output_field=DecimalField()
+            )
+        )
+        .order_by('region_name')
+    )
+
+    labels = [r.region_name for r in regions]
+    counts = [float(r.sales_total) for r in regions]
+
+    return JsonResponse({'labels': labels, 'data': counts})
 
 
 # Region data end
