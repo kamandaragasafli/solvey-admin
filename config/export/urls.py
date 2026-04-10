@@ -6,14 +6,26 @@ from export import views
 
 urlpatterns = [
     path("settings/", views.admin_view, name="admin"),
+    path("settings/doctors-tbody/", views.admin_doctors_tbody, name="admin_doctors_tbody"),
+    path(
+        "settings/doctor-update/<int:doctor_id>/",
+        views.admin_doctor_inline_update,
+        name="admin_doctor_inline_update",
+    ),
     path("import-drug/", views.import_drug_from_excel, name="import_drug"),
     path("import/", views.imports, name="import"),
     path("import-region/", views.import_region_from_excel, name="import_region"),
     path("import-hospital/", views.import_hospital_from_excel, name="import_hospital"),
     path("import-doctor-city/", views.import_doctor_city_from_excel, name="import_doctor_city"),
+    path(
+        "import-doctor-number/",
+        views.import_doctor_number_from_excel,
+        name="import_doctor_number",
+    ),
     path("import-doctors/", views.import_doctors_from_excel, name="import_doctors"),
     path("import_debts/", views.import_debts_from_excel, name="import_debts"),
     path("import-recipes/",views.import_recipes_from_excel, name="import_recipes"),
+    path("import-recipes-daily/", views.import_recipes_daily_from_excel, name="import_recipes_daily"),
     path("import-finans/",views.import_avn_inv_from_excel, name="import_finance"),
     path("import-sales/",views.import_sales_from_excel, name="excel_sale_file"),
     path("import-region-sales/", views.import_region_sales_from_excel, name="import_region_sales"),
@@ -24,6 +36,8 @@ urlpatterns = [
     path('borc-sifirla/', views.borc_sifirla, name='borc_sifirla'),
     path("yeni-istifadeci/", views.yeni_istifadeci_elave_et, name="yeni_istifadeci"),
     path("delete-user/<int:user_id>/", views.delete_user, name="delete_user"),
+    path('doctor/update-debt/<int:doctor_id>/', views.update_doctor_debt, name='update_doctor_debt'),
+
 
 
 

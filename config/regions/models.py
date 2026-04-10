@@ -5,6 +5,7 @@ class Region(models.Model):
     TYPE = [
     ('Bakı', 'Bakı'),
     ('Digər', 'Digər'),
+    ('Şəhər', 'Şəhər'),
 
     ]
     region_name = models.CharField(max_length=100, unique=True)

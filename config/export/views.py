@@ -10,13 +10,16 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.contrib.auth.models import User
-from datetime import datetime, date 
+from datetime import datetime, date
+from decimal import Decimal, InvalidOperation
 import pandas as pd
 import re
 from difflib import SequenceMatcher
 import subprocess
 import os
-
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 from .models import Backup
 
@@ -202,35 +205,158 @@ def delete_user(request, user_id):
     user.delete()
     return redirect("admin")
 
+
+def _filtered_doctors_qs(get_data):
+    """Həkim Ayarları: bölgə + axtarış + borc filtri (admin_view və AJAX partial üçün)."""
+    selected_bolge = get_data.get('bolge', '')
+    search_query = get_data.get('search', '')
+    borc_filter = get_data.get('borc_filter', '')
+
+    if selected_bolge:
+        doctor = Doctors.objects.filter(bolge__id=selected_bolge).select_related('bolge')
+        if search_query:
+            doctor = doctor.filter(ad__icontains=search_query)
+        if borc_filter == 'positive':
+            doctor = doctor.filter(previous_debt__gt=0)
+        elif borc_filter == 'negative':
+            doctor = doctor.filter(previous_debt__lt=0)
+        elif borc_filter == 'zero':
+            doctor = doctor.filter(previous_debt=0)
+        doctor = doctor.order_by('ad', 'id')
+    else:
+        doctor = Doctors.objects.none()
+
+    return selected_bolge, search_query, borc_filter, doctor
+
+
+def _doctor_inline_form_context():
+    """Həkim Ayarları cədvəli: select seçimləri və bölgələr."""
+    return {
+        "bolgeler": Region.objects.all().order_by("region_name"),
+        "ixtisas_choices": Doctors.İXTİSAS_SECIMI,
+        "kategoriya_choices": Doctors.KATEQORIYA_SECIMI,
+        "derece_choices": Doctors.DERECE_SECIMI,
+    }
+
+
+def admin_doctors_tbody(request):
+    """Həkim cədvəli tbody üçün HTML parçası (səhifəni reload etmədən anlıq filtr)."""
+    if request.method != 'GET':
+        return HttpResponse(status=405)
+    selected_bolge, search_query, borc_filter, doctor = _filtered_doctors_qs(request.GET)
+    ctx = {"selected_bolge": selected_bolge, "doctor": doctor}
+    ctx.update(_doctor_inline_form_context())
+    return render(request, "partials/admin_doctors_tbody.html", ctx)
+
+
+@require_POST
+def admin_doctor_inline_update(request, doctor_id):
+    """Həkim Ayarları cədvəlindən bir sətirin sahələrini yeniləyir."""
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "JSON gözlənilir"}, status=400)
+
+    try:
+        doctor = Doctors.objects.select_related("bolge", "klinika").get(pk=doctor_id)
+    except Doctors.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Həkim tapılmadı"}, status=404)
+
+    ad = (data.get("ad") or "").strip()
+    if not ad:
+        return JsonResponse({"success": False, "error": "Həkim adı boş ola bilməz"}, status=400)
+
+    bolge_raw = data.get("bolge_id")
+    try:
+        region = Region.objects.get(pk=int(bolge_raw))
+    except (ValueError, TypeError, Region.DoesNotExist):
+        return JsonResponse({"success": False, "error": "Bölgə tapılmadı"}, status=400)
+
+    ix = data.get("ixtisas", "")
+    if ix not in dict(Doctors.İXTİSAS_SECIMI):
+        return JsonResponse({"success": False, "error": "İxtisas etibarsızdır"}, status=400)
+
+    kat = data.get("kategoriya", "")
+    if kat not in dict(Doctors.KATEQORIYA_SECIMI):
+        return JsonResponse({"success": False, "error": "Kateqoriya etibarsızdır"}, status=400)
+
+    der = data.get("derece", "")
+    if der not in dict(Doctors.DERECE_SECIMI):
+        return JsonResponse({"success": False, "error": "Dərəcə etibarsızdır"}, status=400)
+
+    try:
+        doctor.previous_debt = Decimal(str(data.get("previous_debt", 0)).replace(",", "."))
+    except (InvalidOperation, TypeError, ValueError):
+        return JsonResponse({"success": False, "error": "Borc düzgün rəqəm deyil"}, status=400)
+
+    if doctor.bolge_id != region.id:
+        hosp = Hospital.objects.filter(region_net=region).first()
+        if not hosp:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "Bu bölgədə xəstəxana yoxdur — əvvəlcə xəstəxana əlavə edin və ya başqa bölgə seçin",
+                },
+                status=400,
+            )
+        doctor.klinika = hosp
+
+    doctor.bolge = region
+    doctor.ad = ad
+    doctor.ixtisas = ix
+    doctor.kategoriya = kat
+    doctor.derece = der
+    doctor.save()
+
+    return JsonResponse({"success": True, "previous_debt": str(doctor.previous_debt)})
+
+
 def admin_view(request):
     backups = Backup.objects.all().order_by('-olusturulma_tarixi')
     recipes = RecipeDrug.objects.all().order_by("-created_at", "-id")[:30]
-    bolgeler = Region.objects.all
-    users = User.objects.all
+    users = User.objects.all()
     current_month = datetime.now().month
     current_year = datetime.now().year
+
+    selected_bolge, search_query, borc_filter, doctor = _filtered_doctors_qs(request.GET)
+
     aylar = [
         ("Yanvar", 1), ("Fevral", 2), ("Mart", 3), ("Aprel", 4),
         ("May", 5), ("İyun", 6), ("İyul", 7), ("Avqust", 8),
         ("Sentyabr", 9), ("Oktyabr", 10), ("Noyabr", 11), ("Dekabr", 12)
     ]
     years_list = [current_year - i for i in range(0, 3)]
-        
 
-
-
-    context ={
-        "backups" :backups,
-        "bolgeler" :bolgeler,
+    context = {
+        "backups": backups,
+        "doctor": doctor,
         "aylar": aylar,
         "current_month": current_month,
         "years_list": years_list,
         "users": users,
-        "recipes" : recipes
+        "recipes": recipes,
+        "selected_bolge": selected_bolge,
+        "search_query": search_query,
+        "borc_filter": borc_filter,
     }
-    
+    context.update(_doctor_inline_form_context())
     return render(request, "admin.html", context)
 
+
+@require_POST
+
+def update_doctor_debt(request, doctor_id):
+    try:
+        data = json.loads(request.body)
+        new_debt = data.get('previous_debt')
+        doctor = Doctors.objects.get(id=doctor_id)
+        doctor.previous_debt = new_debt
+        doctor.save()
+        return JsonResponse({'success': True, 'new_debt': str(doctor.previous_debt)})
+    except Doctors.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Həkim tapılmadı'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 def borc_sifirla(request):
     if request.method == "POST":
@@ -467,6 +593,178 @@ def import_doctor_city_from_excel(request):
             messages.info(request, f"{created_cities} yeni şəhər yaradıldı.")
         if not_found_doctors:
             messages.warning(request, f"Tapılmayan həkimlər: {', '.join(sorted(not_found_doctors)[:5])}{'...' if len(not_found_doctors) > 5 else ''}")
+    except Exception as e:
+        messages.error(request, f"Xəta: {str(e)}")
+
+    return redirect("admin")
+
+
+def import_doctor_number_from_excel(request):
+    """
+    Həkimin telefon nömrəsini Excel ilə yeniləmək.
+
+    Gözlənilən cədvəl (1-ci sətir başlıq):
+      Bölgə | Həkim adı | Nömrə
+    Başlıqlar şaquli/boşluqlu ola bilər; tanınmazsa 1–3-cü sütun sırası ilə götürülür.
+    """
+    if request.method != "POST":
+        return redirect("admin")
+
+    excel_file = request.FILES.get("excel_doctor_number_file")
+    if not excel_file:
+        messages.error(request, "Fayl seçilməyib.")
+        return redirect("admin")
+
+    def _norm(s):
+        s = str(s).strip().lower()
+        s = (
+            s.replace("ı", "i")
+            .replace("ə", "e")
+            .replace("ö", "o")
+            .replace("ü", "u")
+            .replace("ş", "s")
+            .replace("ç", "c")
+            .replace("ğ", "g")
+        )
+        return s
+
+    def _cell_to_phone_str(raw):
+        if pd.isna(raw):
+            return ""
+        if isinstance(raw, bool):
+            return ""
+        if isinstance(raw, int):
+            return str(raw)
+        if isinstance(raw, float):
+            if raw != raw:  # NaN
+                return ""
+            if abs(raw - round(raw)) < 1e-9:
+                return str(int(round(raw)))
+            return str(raw).strip()
+        s = str(raw).strip()
+        if s.lower() in ("nan", "none", ""):
+            return ""
+        return s
+
+    def _find_doctor_in_region(region_name, doctor_name):
+        """Bölgəyə görə həkim: normallaşdırılmış tam uyğunluq, fuzzy (≥0,82), sonra icontains."""
+        hekim_norm = _norm(doctor_name)
+        candidates = Doctors.objects.filter(
+            bolge__region_name__icontains=region_name
+        ).select_related("bolge")
+        best = None
+        best_ratio = 0.82
+        for d in candidates:
+            d_norm = _norm(d.ad)
+            if d_norm == hekim_norm:
+                return d
+            ratio = SequenceMatcher(None, hekim_norm, d_norm).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best = d
+        if best:
+            return best
+        return (
+            Doctors.objects.filter(
+                bolge__region_name__icontains=region_name,
+                ad__icontains=doctor_name.strip(),
+            )
+            .select_related("bolge")
+            .first()
+        )
+
+    try:
+        df = pd.read_excel(excel_file, header=0)
+        cols = [
+            re.sub(r"\s+", " ", str(c).strip().replace("\n", " ").replace("\r", ""))
+            for c in df.columns
+        ]
+        df.columns = cols
+
+        region_col = None
+        doctor_col = None
+        number_col = None
+        for col in cols:
+            c = _norm(col)
+            if region_col is None and (
+                "bolg" in c or "bölg" in c or c == "bolge" or c == "region"
+            ):
+                region_col = col
+            elif doctor_col is None and (
+                "hekim" in c
+                or "həkim" in col.lower()
+                or c == "ad"
+                or "doctor" in c
+                or c.startswith("hekim ")
+            ):
+                doctor_col = col
+            elif number_col is None and (
+                "nomr" in c
+                or "nömr" in col.lower()
+                or "tel" in c
+                or "telefon" in c
+                or "phone" in c
+                or c == "number"
+                or "mobil" in c
+                or c == "nomre"
+            ):
+                number_col = col
+
+        if not region_col or not doctor_col or not number_col:
+            if len(cols) >= 3:
+                region_col = cols[0]
+                doctor_col = cols[1]
+                number_col = cols[2]
+            else:
+                messages.error(
+                    request,
+                    f"Bölgə, Həkim və Nömrə sütunları tapılmadı. Mövcud: {cols}",
+                )
+                return redirect("admin")
+
+        updated_count = 0
+        skipped_empty = 0
+        not_found_doctors = set()
+
+        for _, row in df.iterrows():
+            region_name = str(row.get(region_col, "")).strip()
+            doctor_name = str(row.get(doctor_col, "")).strip()
+            phone = _cell_to_phone_str(row.get(number_col))
+
+            if not region_name or not doctor_name:
+                continue
+            if region_name.lower() == "nan" or doctor_name.lower() == "nan":
+                continue
+            if not phone:
+                skipped_empty += 1
+                continue
+
+            doctor = _find_doctor_in_region(region_name, doctor_name)
+
+            if not doctor:
+                not_found_doctors.add(f"{region_name} / {doctor_name}")
+                continue
+
+            doctor.number = phone
+            doctor.save(update_fields=["number"])
+            updated_count += 1
+
+        messages.success(
+            request, f"{updated_count} həkimin nömrəsi yeniləndi."
+        )
+        if skipped_empty:
+            messages.info(
+                request,
+                f"{skipped_empty} sətirdə nömrə boş olduğu üçün atlandı.",
+            )
+        if not_found_doctors:
+            sample = sorted(not_found_doctors)[:8]
+            messages.warning(
+                request,
+                f"Tapılmayan həkimlər ({len(not_found_doctors)}): "
+                f"{', '.join(sample)}"
+                f"{'...' if len(not_found_doctors) > 8 else ''}",
+            )
     except Exception as e:
         messages.error(request, f"Xəta: {str(e)}")
 
@@ -1176,6 +1474,240 @@ def import_region_sales_from_excel(request):
 
     except Exception as e:
         messages.error(request, f"Xəta: {str(e)}")
+
+    return redirect("admin")
+
+
+def import_recipes_daily_from_excel(request):
+    """
+    Gündəlik Excel import (çox vərəqli fayl):
+      - Hər vərəq adı = bölgə adı
+      - Sütunlar: "Həkim Adı" | "Tarix" (yalnız gün rəqəmi) | dərman1 | dərman2 | ...
+      - Ən son (max) gün rəqəmindəki sətirləri işlənir
+      - Həkim adı normallaşdırılır (kiçik/böyük, ö→o, ə→e, ı→i, ş→s, ç→c, ğ→g)
+      - Tapılmayan həkimlər mesaj kimi bildirilir
+    """
+    if request.method != "POST":
+        return redirect("admin")
+
+    excel_file = request.FILES.get("excel_recipe_file")
+    selected_date = request.POST.get("selected_date")
+
+    if not excel_file:
+        messages.error(request, "Fayl seçilməyib.")
+        return redirect("admin")
+
+    if not selected_date:
+        messages.error(request, "Tarix seçilməyib (il/ay üçün lazımdır).")
+        return redirect("admin")
+
+    def _norm(s):
+        """Ad/bölgə/dərman adını müqayisə üçün sadələşdir."""
+        s = str(s).strip().lower()
+        for f, t in [("ı","i"),("ə","e"),("ö","o"),("ü","u"),("ş","s"),("ç","c"),("ğ","g")]:
+            s = s.replace(f, t)
+        return s
+
+    try:
+        base_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+
+        # Bütün vərəqləri oxu
+        xls = pd.read_excel(excel_file, sheet_name=None, header=0)
+
+        added_count = 0
+        not_found_doctors = []
+        not_found_regions = []
+        not_found_drugs = set()
+
+        # Dərmanları əvvəlcədən yüklə
+        med_map = {}
+        for med in Medical.objects.all():
+            med_map.setdefault(_norm(med.med_name), []).append(med)
+
+        # Bölgələri əvvəlcədən yüklə
+        region_list = list(Region.objects.all())
+
+        for sheet_name, df in xls.items():
+            region_raw = str(sheet_name).strip()
+            if not region_raw or region_raw == "nan":
+                continue
+
+            # ── 1. Bölgəni tap ──────────────────────────────────────────────
+            sheet_norm = _norm(region_raw)
+            matched_region = None
+            best_r = 0.79
+            for r in region_list:
+                r_norm = _norm(r.region_name)
+                if r_norm == sheet_norm:
+                    matched_region = r
+                    best_r = 1.0
+                    break
+                ratio = SequenceMatcher(None, sheet_norm, r_norm).ratio()
+                if ratio > best_r:
+                    best_r = ratio
+                    matched_region = r
+
+            if not matched_region:
+                not_found_regions.append(region_raw)
+                continue
+
+            # ── 2. Sütunları tap ────────────────────────────────────────────
+            df.columns = [str(c).strip() for c in df.columns]
+            hekim_col = None
+            tarix_col = None
+            for col in df.columns:
+                cn = _norm(col)
+                if hekim_col is None and ("hekim" in cn):
+                    hekim_col = col
+                elif tarix_col is None and ("tarix" in cn):
+                    tarix_col = col
+
+            # Tapılmasa mövqeyə görə: 1-ci sütun həkim, 2-ci sütun tarix
+            if hekim_col is None and len(df.columns) >= 1:
+                hekim_col = df.columns[0]
+            if tarix_col is None and len(df.columns) >= 2:
+                tarix_col = df.columns[1]
+
+            if hekim_col is None or tarix_col is None:
+                continue
+
+            # Dərman sütunları: Həkim/Tarix/Total/boş/Unnamed sütunlarını çıxart
+            drug_cols = []
+            for c in df.columns:
+                if c in (hekim_col, tarix_col):
+                    continue
+                c_str = str(c).strip()
+                c_norm = _norm(c_str)
+                if (
+                    not c_str
+                    or c_str.lower().startswith("unnamed:")
+                    or c_norm in ("total", "cem", "cəm")
+                ):
+                    continue
+                drug_cols.append(c)
+
+            # ── 3. Etibarlı sətirləri topla (həkim adı + rəqəmsal gün) ──────
+            valid_rows = []
+            for _, row in df.iterrows():
+                hekim_adi = str(row.get(hekim_col, "")).strip()
+                if not hekim_adi or hekim_adi.lower() in ("nan", ".", "həkim adı", "hekim adi", "hekim"):
+                    continue
+                try:
+                    day_val = str(row.get(tarix_col, "")).strip()
+                    day = int(float(day_val))
+                    if 1 <= day <= 31:
+                        valid_rows.append((day, row, hekim_adi))
+                except (ValueError, TypeError):
+                    continue
+
+            if not valid_rows:
+                continue
+
+            # ── 4. Ən son gün (max) ──────────────────────────────────────────
+            max_day = max(r[0] for r in valid_rows)
+
+            try:
+                import_date = base_date.replace(day=max_day)
+            except ValueError:
+                # Seçilmiş ayda bu gün yoxdur (məs. 31 fevral)
+                messages.warning(request, f"{region_raw}: {base_date.strftime('%Y-%m')}-{max_day:02d} tarixi keçərli deyil, atlandı.")
+                continue
+
+            # ── 5. Yalnız max_day sətirləri işlə ────────────────────────────
+            doctors_in_region = list(Doctors.objects.filter(bolge=matched_region))
+
+            for day, row, hekim_adi in valid_rows:
+                if day != max_day:
+                    continue
+
+                hekim_norm = _norm(hekim_adi)
+
+                # Həkimi tap: əvvəlcə tam uyğunluq, sonra fuzzy
+                doctor = None
+                best_ratio = 0.79
+                for d in doctors_in_region:
+                    d_norm = _norm(d.ad)
+                    if d_norm == hekim_norm:
+                        doctor = d
+                        best_ratio = 1.0
+                        break
+                    ratio = SequenceMatcher(None, hekim_norm, d_norm).ratio()
+                    if ratio > best_ratio:
+                        best_ratio = ratio
+                        doctor = d
+
+                if not doctor:
+                    not_found_doctors.append(f"{hekim_adi} ({region_raw})")
+                    continue
+
+                # Resept yarat
+                recipe = Recipe.objects.create(
+                    region=matched_region,
+                    dr=doctor,
+                    date=import_date
+                )
+
+                # Dərmanları əlavə et
+                for drug_col in drug_cols:
+                    try:
+                        raw_val = row[drug_col]
+                        if pd.isna(raw_val):
+                            say = 0.0
+                        else:
+                            # Excel-də 5,3 / 5.3 / " 5,3 " / formuladan gələn mətn halları
+                            val = str(raw_val).strip().replace(" ", "").replace(",", ".")
+                            say = float(val)
+                    except Exception:
+                        say = 0.0
+
+                    # Excel-dən NaN/inf gəlsə DecimalField xətaya düşməsin
+                    if say != say or say in (float("inf"), float("-inf")):
+                        say = 0.0
+
+                    if say <= 0:
+                        continue
+
+                    drug_key = _norm(drug_col)
+                    meds = med_map.get(drug_key)
+
+                    # Fuzzy axtarış (tam uyğun tapılmasa)
+                    if not meds:
+                        best_drug_ratio = 0.84
+                        best_meds = None
+                        for k, v in med_map.items():
+                            r = SequenceMatcher(None, drug_key, k).ratio()
+                            if r > best_drug_ratio:
+                                best_drug_ratio = r
+                                best_meds = v
+                        meds = best_meds
+
+                    if not meds:
+                        not_found_drugs.add(str(drug_col).strip())
+                        continue
+
+                    for med in meds:
+                        RecipeDrug.objects.create(recipe=recipe, drug=med, number=say)
+
+                added_count += 1
+
+        # ── Nəticə mesajları ─────────────────────────────────────────────────
+        messages.success(request, f"{added_count} resept uğurla əlavə olundu.")
+        if not_found_regions:
+            messages.warning(request, f"Tapılmayan bölgə vərəqləri: {', '.join(sorted(set(not_found_regions)))}")
+        if not_found_doctors:
+            messages.warning(
+                request,
+                f"Tapılmayan həkimlər ({len(not_found_doctors)} nəfər): "
+                f"{', '.join(sorted(set(not_found_doctors))[:20])}"
+                f"{'...' if len(not_found_doctors) > 20 else ''}"
+            )
+        if not_found_drugs:
+            messages.info(request, f"Tapılmayan dərmanlar: {', '.join(sorted(not_found_drugs))}")
+
+    except Exception as e:
+        import traceback
+        messages.error(request, f"Xəta baş verdi: {str(e)}")
+        print(traceback.format_exc())
 
     return redirect("admin")
 

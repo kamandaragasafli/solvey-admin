@@ -1,0 +1,80 @@
+{% load l10n %}
+{% if not selected_bolge %}
+<tr>
+    <td colspan="9" style="text-align:center; padding:2rem; color:#94a3b8;">
+        Zəhmət olmasa yuxarıdan <strong>bölgə seçin</strong> — həkimlər yalnız seçilmiş bölgəyə görə göstərilir.
+    </td>
+</tr>
+{% elif not doctor %}
+<tr>
+    <td colspan="9" style="text-align:center; padding:2rem; color:#94a3b8;">
+        Bu bölgə və filtrlərə uyğun həkim tapılmadı.
+    </td>
+</tr>
+{% else %}
+{% for d in doctor %}
+<tr data-doctor-id="{{ d.id }}"
+    data-orig-bolge="{{ d.bolge_id }}"
+    data-orig-ad="{{ d.ad|escape }}"
+    data-orig-ixtisas="{{ d.ixtisas|escape }}"
+    data-orig-kategoriya="{{ d.kategoriya|escape }}"
+    data-orig-derece="{{ d.derece|escape }}"
+    data-orig-debt="{% localize off %}{{ d.previous_debt|default_if_none:0 }}{% endlocalize %}">
+    <td>{{ forloop.counter }}</td>
+    <td>
+        <select class="form-select form-select-sm admin-doctor-inline-field doctor-bolge" data-doctor-id="{{ d.id }}"
+            style="min-width:130px; background:#1e2a3a; color:#e2e8f0; border:1px solid #2d3f55;">
+            {% for b in bolgeler %}
+            <option value="{{ b.id }}" {% if d.bolge_id == b.id %}selected{% endif %}>{{ b.region_name }}</option>
+            {% endfor %}
+        </select>
+    </td>
+    <td>
+        <input type="text" class="form-control form-control-sm admin-doctor-inline-field doctor-ad" value="{{ d.ad|escape }}"
+            data-doctor-id="{{ d.id }}"
+            style="min-width:140px; background:#1e2a3a; color:#e2e8f0; border:1px solid #2d3f55;">
+    </td>
+    <td>
+        <select class="form-select form-select-sm admin-doctor-inline-field doctor-ixtisas" data-doctor-id="{{ d.id }}"
+            style="min-width:72px; background:#1e2a3a; color:#e2e8f0; border:1px solid #2d3f55;">
+            {% for val, label in ixtisas_choices %}
+            <option value="{{ val }}" {% if d.ixtisas == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </td>
+    <td>
+        <select class="form-select form-select-sm admin-doctor-inline-field doctor-kategoriya" data-doctor-id="{{ d.id }}"
+            style="min-width:56px; background:#1e2a3a; color:#e2e8f0; border:1px solid #2d3f55;">
+            {% for val, label in kategoriya_choices %}
+            <option value="{{ val }}" {% if d.kategoriya == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </td>
+    <td>
+        <select class="form-select form-select-sm admin-doctor-inline-field doctor-derece" data-doctor-id="{{ d.id }}"
+            style="min-width:88px; background:#1e2a3a; color:#e2e8f0; border:1px solid #2d3f55;">
+            {% for val, label in derece_choices %}
+            <option value="{{ val }}" {% if d.derece == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </td>
+    <td>
+        <input type="text" class="form-control form-control-sm admin-doctor-inline-field" readonly tabindex="-1"
+            value="{% if d.avans %}{% localize off %}Avans: {{ d.avans }}{% endlocalize %}{% elif d.investisiya %}{% localize off %}İnvest: {{ d.investisiya }}{% endlocalize %}{% elif d.geriqaytarma %}{% localize off %}Geri: {{ d.geriqaytarma }}{% endlocalize %}{% else %}0{% endif %}"
+            title="Açıq ödənişlərin xülasəsi; birbaşa redaktə olunmur"
+            style="min-width:100px; background:#111827; color:#94a3b8; border:1px solid #2d3f55; cursor:default;">
+    </td>
+    <td>
+        <input type="number" class="form-control form-control-sm admin-doctor-inline-field doctor-debt"
+            value="{% localize off %}{{ d.previous_debt|default_if_none:0 }}{% endlocalize %}" data-doctor-id="{{ d.id }}" step="0.01" inputmode="decimal"
+            style="width:110px; background:#1e2a3a; color:#e2e8f0; border:1px solid #2d3f55; text-align:right;">
+    </td>
+    <td>
+        <button type="button" class="save-doctor-row-btn" data-doctor-id="{{ d.id }}" onclick="saveDoctorRow(this)" disabled
+            style="background:#21eb8d; color:#0f172a; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; font-size:12px; font-weight:600; white-space:nowrap;">
+            <i class="bi bi-check-lg me-1"></i>Yadda saxla
+        </button>
+    </td>
+</tr>
+{% endfor %}
+{% endif %}

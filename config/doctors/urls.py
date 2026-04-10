@@ -35,7 +35,8 @@ urlpatterns = [
     path('export-region-excel/', views.export_region_excel, name='export_region_excel'),
 
     path('reg/',views.get_region, name='test'),
-    path('regs/<int:region_id>', views.region_report, name='region_report')
+    path('regs/<int:region_id>', views.region_report, name='region_report'),
+    path('regs/<int:region_id>/data/', views.region_report_data_ajax, name='region_report_data'),
 
 
 

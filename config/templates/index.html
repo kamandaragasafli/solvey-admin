@@ -267,63 +267,7 @@
             </div>
         </div>
 
-        <!-- Həkim sıralaması -->
-        <div class="prescription-divider"></div>
-        <div class="info-center-section">
-            <h6 class="info-center-title"><i class="fas fa-trophy me-2"></i>Həkim sıralaması</h6>
-            {% if top_doctors %}
-                <ol class="info-center-list">
-                    {% for d in top_doctors %}
-                        <li><span class="fw-bold">{{ d.ad }}</span> – {{ d.rd_count }} qeydiyyat</li>
-                    {% endfor %}
-                </ol>
-            {% else %}
-                <p class="text-muted small mb-0">Bu ay məlumat yoxdur.</p>
-            {% endif %}
-        </div>
-
-        <!-- Ən çox yazılan dərmanlar -->
-        <div class="prescription-divider"></div>
-        <div class="info-center-section">
-            <h6 class="info-center-title"><i class="fas fa-pills me-2"></i>Ən çox yazılan dərmanlar</h6>
-            {% if top_drugs %}
-                <ol class="info-center-list">
-                    {% for d in top_drugs %}
-                        <li><span class="fw-bold">{{ d.drug__med_name|default:"—" }}</span> – {{ d.total|floatformat:0 }}</li>
-                    {% endfor %}
-                </ol>
-            {% else %}
-                <p class="text-muted small mb-0">Bu ay məlumat yoxdur.</p>
-            {% endif %}
-        </div>
-
-        <!-- Bölgə müqayisəsi -->
-        <div class="prescription-divider"></div>
-        <div class="info-center-section">
-            <h6 class="info-center-title"><i class="fas fa-map-location-dot me-2"></i>Bölgə müqayisəsi</h6>
-            {% if region_comparison %}
-                <div class="table-responsive">
-                    <table class="table table-sm table-dark mb-0" style="font-size: 0.8rem;">
-                        <thead>
-                            <tr>
-                                <th>Bölgə</th>
-                                <th class="text-end">Cəmi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for r in region_comparison %}
-                                <tr>
-                                    <td>{{ r.region_name }}</td>
-                                    <td class="text-end fw-bold">{{ r.total_qeyd|floatformat:0 }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <p class="text-muted small mb-0">Bu ay məlumat yoxdur.</p>
-            {% endif %}
-        </div>
+       
     </div>
 </div>
 
@@ -444,6 +388,12 @@
                             </button>
                         </div>
                         <div class="quick-actions-item">
+                            <button type="button" class="btn btn-outline-danger w-100 mb-3" data-bs-toggle="modal" data-bs-target="#cityModal">
+                                <i class="fas fa-map-marker-alt me-2"></i>
+                                Şəhər Qeydiyyat
+                            </button>
+                        </div>
+                        <div class="quick-actions-item">
                             <button type="button" class="btn btn-outline-danger w-100 mb-3" data-bs-toggle="modal" data-bs-target="#regionModal">
                                 <i class="fas fa-map-marker-alt me-2"></i>
                                 Region Qeydiyyat
@@ -462,6 +412,59 @@
 </div>
 
 <!-- Modal -->
+ <!-- Şəhər Modal -->
+ <div class="modal fade" id="cityModal" tabindex="-1" aria-labelledby="cityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered custom-modal">
+    
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="cityModalLabel">Şəhər Qeydiyyat</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
+                <thead class="table-light text-muted" style="font-size: 0.65rem;">
+                  <tr>
+                    <th>#</th>
+                    <th>Bölgə</th>
+                    {% for d in all_drug %}
+                    <th>{{ d.med_name }}</th>
+                    {% endfor %}
+                    <th>Günlük Qeydiyyat</th>
+                    <th>Aylıq Qeydiyyat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                 {% for region in seher_region %}
+                    <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ region.region_name }}</td>
+    
+                    {% for drug in all_drug %}
+                        {% with key=region.region_name|add:"|"|add:drug.med_name %}
+                        <td>{{ seher_region_drug_counts|get_region_drug:key }}</td>
+                        {% endwith %}
+                    {% endfor %}
+    
+                    <td style="font-weight: bold">{{ seher_region_daily_totals|get_total_item:region.region_name }}</td>
+                    <td style="font-weight: bold">{{ seher_region_monthly_totals|get_total_item:region.region_name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+             <a href="{% url 'export_excel_ayliq_seher' %}" class="btn btn-success ">
+            <i class="bi bi-file-earmark-excel"></i> Excel
+            </a>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bağla</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
 <div class="modal fade" id="regionModal" tabindex="-1" aria-labelledby="regionModalLabel" aria-hidden="true">
 <div class="modal-dialog modal-dialog-centered custom-modal">
 

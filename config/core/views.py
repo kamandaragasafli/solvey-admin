@@ -225,6 +225,48 @@ def index(request):
     key=lambda r, totals=baki_region_monthly_totals: totals.get(r.region_name, 0),
     reverse=True
 )
+
+    # Şəhər tipli bölgələr (Region.region_type = "Şəhər") — cityModal üçün
+    seher_region = Region.objects.filter(region_type="Şəhər")
+    seher_drugs_data = (
+        RecipeDrug.objects
+        .filter(recipe__region__in=seher_region)
+        .values("recipe__region__region_name", "drug__med_name", "recipe__date")
+        .annotate(total=Sum("number"))
+    )
+    seher_region_drug_counts = {}
+    seher_region_daily_totals = {}
+    seher_region_monthly_totals = {}
+    for region in seher_region:
+        seher_region_drug_counts[region.region_name] = {}
+        daily_total = Decimal(0)
+        monthly_total = Decimal(0)
+        for drug in all_drug:
+            daily = sum(
+                item["total"]
+                for item in seher_drugs_data
+                if item["recipe__region__region_name"] == region.region_name
+                and item["drug__med_name"] == drug.med_name
+                and item["recipe__date"] == today
+            )
+            monthly = sum(
+                item["total"]
+                for item in seher_drugs_data
+                if item["recipe__region__region_name"] == region.region_name
+                and item["drug__med_name"] == drug.med_name
+                and first_day_of_month <= item["recipe__date"] <= today
+            )
+            seher_region_drug_counts[region.region_name][drug.med_name] = daily
+            daily_total += daily
+            monthly_total += monthly
+        seher_region_daily_totals[region.region_name] = daily_total
+        seher_region_monthly_totals[region.region_name] = monthly_total
+    seher_region = sorted(
+        seher_region,
+        key=lambda r, totals=seher_region_monthly_totals: totals.get(r.region_name, 0),
+        reverse=True,
+    )
+
     today = timezone.localdate()  # Cari tarix
     current_month = today.month   # Cari ay
     current_year = today.year  
@@ -276,6 +318,11 @@ def index(request):
         "baki_region_drug_counts": baki_region_drug_counts,
         "baki_region_daily_totals": baki_region_daily_totals,
         "baki_region_monthly_totals": baki_region_monthly_totals,
+
+        "seher_region": seher_region,
+        "seher_region_drug_counts": seher_region_drug_counts,
+        "seher_region_daily_totals": seher_region_daily_totals,
+        "seher_region_monthly_totals": seher_region_monthly_totals,
 
         # Məlumat mərkəzi
         "top_doctors": list(
@@ -657,6 +704,168 @@ def export_excel_ayliq_region(request):
     wb.save(response)
     return response
 
+
+def export_excel_ayliq_seher(request):
+    """Digər region export ilə eyni düstur; yalnız region_type = Şəhər."""
+    today = timezone.localdate()
+    first_day_of_month = today.replace(day=1)
+
+    seher_region = Region.objects.filter(region_type="Şəhər")
+    all_drug = Medical.objects.all()
+
+    drugs_data = (
+        RecipeDrug.objects
+        .filter(recipe__region__in=seher_region)
+        .values("recipe__region__region_name", "drug__med_name", "recipe__date")
+        .annotate(total=Sum("number"))
+    )
+
+    region_drug_counts_daily = {}
+    region_drug_counts_monthly = {}
+    region_daily_totals = {}
+    region_monthly_totals = {}
+
+    for region in seher_region:
+        region_drug_counts_daily[region.region_name] = {}
+        region_drug_counts_monthly[region.region_name] = {}
+        daily_total = Decimal(0)
+        monthly_total = Decimal(0)
+
+        for drug in all_drug:
+            daily = sum(
+                item["total"]
+                for item in drugs_data
+                if item["recipe__region__region_name"] == region.region_name
+                and item["drug__med_name"] == drug.med_name
+                and item["recipe__date"] == today
+            )
+            monthly = sum(
+                item["total"]
+                for item in drugs_data
+                if item["recipe__region__region_name"] == region.region_name
+                and item["drug__med_name"] == drug.med_name
+                and first_day_of_month <= item["recipe__date"] <= today
+            )
+
+            region_drug_counts_daily[region.region_name][drug.med_name] = daily
+            region_drug_counts_monthly[region.region_name][drug.med_name] = monthly
+            daily_total += daily
+            monthly_total += monthly
+
+        region_daily_totals[region.region_name] = daily_total
+        region_monthly_totals[region.region_name] = monthly_total
+
+    seher_region = sorted(
+        seher_region,
+        key=lambda r: region_monthly_totals.get(r.region_name, 0),
+        reverse=True,
+    )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Aylıq Şəhər Qeydiyyat"
+
+    bold_font = Font(bold=True, name="Calibri", size=12)
+    calibri_font = Font(name="Calibri", size=11)
+    bottom_alignment = Alignment(horizontal="center", vertical="bottom", text_rotation=90)
+    center_alignment = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+    header_fill = PatternFill(start_color="8ab1e3", end_color="8ab1e3", fill_type="solid")
+
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(all_drug) + 3)
+    cell = ws.cell(row=1, column=1)
+    cell.value = f"Tarix: {today} (Şəhər bölgələri)"
+    cell.font = bold_font
+    cell.alignment = center_alignment
+
+    headers = ["№", "Bölgə"] + [drug.med_name for drug in all_drug] + ["Gündəlik Qeydiyyat", "Aylıq Qeydiyyat"]
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=3, column=col_num)
+        cell.value = header
+        cell.font = bold_font
+        cell.alignment = bottom_alignment
+        cell.border = thin_border
+        cell.fill = header_fill
+
+    for index, region in enumerate(seher_region, start=1):
+        row_num = index + 3
+        cell = ws.cell(row=row_num, column=1)
+        cell.value = index
+        cell.font = bold_font
+        cell.alignment = center_alignment
+        cell.border = thin_border
+        cell.fill = header_fill
+
+        cell = ws.cell(row=row_num, column=2)
+        cell.value = region.region_name
+        cell.font = bold_font
+        cell.alignment = center_alignment
+        cell.border = thin_border
+        cell.fill = header_fill
+
+        for col_num, drug in enumerate(all_drug, start=3):
+            cell = ws.cell(row=row_num, column=col_num)
+            cell.value = region_drug_counts_daily[region.region_name][drug.med_name]
+            cell.font = calibri_font
+            cell.alignment = center_alignment
+            cell.border = thin_border
+
+        for i, value in enumerate(
+            [
+                region_daily_totals[region.region_name],
+                region_monthly_totals[region.region_name],
+            ],
+            start=len(all_drug) + 3,
+        ):
+            cell = ws.cell(row=row_num, column=i)
+            cell.value = value
+            cell.font = bold_font
+            cell.alignment = center_alignment
+            cell.border = thin_border
+            cell.fill = header_fill
+
+    total_row = len(seher_region) + 4
+
+    cell = ws.cell(row=total_row, column=2)
+    cell.value = "Cəm"
+    cell.font = Font(bold=True, name="Calibri", color="FFFFFF", size=12)
+    cell.alignment = center_alignment
+    cell.border = thin_border
+    cell.fill = PatternFill(start_color="1f4e78", end_color="1f4e78", fill_type="solid")
+
+    for col_num, drug in enumerate(all_drug, start=3):
+        cell = ws.cell(row=total_row, column=col_num)
+        cell.value = sum(
+            region_drug_counts_daily[reg.region_name][drug.med_name] for reg in seher_region
+        )
+        cell.font = bold_font
+        cell.alignment = center_alignment
+        cell.border = thin_border
+        cell.fill = header_fill
+
+    for i, value in enumerate(
+        [sum(region_daily_totals.values()), sum(region_monthly_totals.values())],
+        start=len(all_drug) + 3,
+    ):
+        cell = ws.cell(row=total_row, column=i)
+        cell.value = value
+        cell.font = bold_font
+        cell.alignment = center_alignment
+        cell.border = thin_border
+        cell.fill = header_fill
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    filename = f"Aylıq Şəhər Qeydiyyat - {today}.xlsx"
+    response["Content-Disposition"] = f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
+    wb.save(response)
+    return response
 
 
 def export_excel_ayliq_baki(request):

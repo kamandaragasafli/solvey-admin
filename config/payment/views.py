@@ -774,13 +774,28 @@ def hesabat_bagla(request):
         try:
             ay = int(request.POST.get("ay"))
             il = int(request.POST.get("il"))
-            region_id = request.POST.get("region_id")
+            region_raw = (request.POST.get("region_id") or "").strip()
             ay_tarixi = date(il, ay, 1)
 
-            if region_id:
-                doctors_qs = Doctors.objects.filter(bolge_id=region_id)
+            # Boş, "all" və s. — bütün bölgələrin həkimləri üçün bir dəfədə bağlama
+            close_all_regions = (
+                not region_raw
+                or region_raw.lower() == "all"
+                or region_raw == "__all__"
+            )
+            if close_all_regions:
+                doctors_qs = Doctors.objects.all().select_related("bolge")
             else:
-                doctors_qs = Doctors.objects.all()
+                try:
+                    region_id = int(region_raw)
+                except (TypeError, ValueError):
+                    return JsonResponse(
+                        {"success": False, "message": "Bölgə seçimi etibarsızdır."},
+                        status=400,
+                    )
+                doctors_qs = Doctors.objects.filter(bolge_id=region_id).select_related(
+                    "bolge"
+                )
 
             with transaction.atomic():
                 for doctor in doctors_qs.select_for_update():
@@ -849,10 +864,11 @@ def hesabat_bagla(request):
                 7: "İyul", 8: "Avqust", 9: "Sentyabr", 10: "Oktyabr", 11: "Noyabr", 12: "Dekabr"
             }
             ay_ad = aylar_ad.get(ay, ay_tarixi.strftime('%m'))
-            return JsonResponse({
-                "success": True,
-                "message": f"{ay_ad} {il} ayının hesabatı uğurla bağlandı."
-            })
+            if close_all_regions:
+                msg = f"{ay_ad} {il} — bütün bölgələr üzrə hesabat uğurla bağlandı."
+            else:
+                msg = f"{ay_ad} {il} ayının hesabatı uğurla bağlandı."
+            return JsonResponse({"success": True, "message": msg})
 
         except Exception as e:
             return JsonResponse({"success": False, "message": f"Xəta baş verdi: {str(e)}"})

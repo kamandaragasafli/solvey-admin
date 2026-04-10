@@ -16,6 +16,11 @@ urlpatterns = [
     path('region-sales-data/baku/', views.region_sales_data_baku, name='region-sales-data-baku'),
 
     path('export-excel-region/', views.export_excel_ayliq_region, name='export_excel_ayliq_region'),
+    path(
+        "export-excel-seher/",
+        views.export_excel_ayliq_seher,
+        name="export_excel_ayliq_seher",
+    ),
     path('export-excel-bakı/', views.export_excel_ayliq_baki, name='export_excel_ayliq_baki'),
     path('api/openai/chat/', views.openai_chat, name='openai_chat'),
 

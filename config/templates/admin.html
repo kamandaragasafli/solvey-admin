@@ -11,6 +11,11 @@
     border-radius: 16px;
     padding: 20px;
   }
+  .save-doctor-row-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.35);
+  }
 </style>
  <link rel="stylesheet" href="{% static 'css/admin.css' %}">
 {% if messages %}
@@ -29,7 +34,11 @@
             <div class="container admin-container">
                 <!-- Tab Navigation -->
                 <div class="tab-navigation" >
-                <button class="tab-btn active" data-tab="data">
+                    <button class="tab-btn active" data-tab="doctor-settings">
+                        <i class="bi bi-person-badge"></i>
+                        <span>Həkim Ayarları</span>
+                    </button>
+                <button class="tab-btn" data-tab="data">
                        <i class="fa-solid fa-notes-medical"></i>
                         <span>Qeydiyyatlar</span>
                     </button>
@@ -41,12 +50,13 @@
                         <i class="bi bi-gear"></i>
                         <span>Sistem Ayarları</span>
                     </button>
+
                     <button class="tab-btn" data-tab="backup">
                         <i class="bi bi-cloud-arrow-down"></i>
                         <span>Backup Ayarları</span>
                     </button>
                 </div>
-                 <div class="tab-pane active" id="data">
+                 <div class="tab-pane" id="data">
             
                         <section class="section-block">
                             <h4 class="section-title">
@@ -272,7 +282,7 @@
                                             </div>
 
                                 <!-- Maliyyə əlavə et -->
-                                        <div class="upload-card dark">
+                                        <div class="upload-card primary upload-card-date-picker">
                                             <div class="card-icon">
                                                 <i class="bi bi-bar-chart"></i>
                                             </div>
@@ -280,7 +290,7 @@
                                             <form class="upload-form" method="POST" action="{% url 'import_finance' %}" enctype="multipart/form-data">
                                                 {% csrf_token %}
                                                 <div class="file-input-wrapper">
-                                                    <input type="file" name="excel_finance_file" class="file-input" required>
+                                                    <input type="file" name="excel_finance_file" class="file-input" accept=".xlsx,.xls" required>
                                                     <label class="file-label">
                                                         <i class="bi bi-file-earmark-excel"></i>
                                                         Excel faylı seçin
@@ -289,71 +299,100 @@
                                                 
                                                 <!-- Tarix seçimi -->
                                                 <div class="date-input-wrapper" style="margin: 15px 0; position: relative; z-index: 10;">
-                                                    <label for="selected_date" style="display: block; margin-bottom: 8px; color: #363636ff;">
+                                                    <label for="selected_date-1" class="form-label" style="display: block; margin-bottom: 8px; color: var(--text-primary);">
                                                         <i class="bi bi-calendar-event"></i> Ödəniş tarixini seçin:
                                                     </label>
                                                     <input type="date" id="selected_date-1" name="selected_date" 
-                                                        class="form-control" 
+                                                        class="form-control date-picker-fixed" 
                                                         value="{% now 'Y-m-d' %}" 
                                                         required
-                                                        style="padding: 10px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #fff;">
+                                                        style="padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary); width: 100%; box-sizing: border-box;">
                                                 </div>
                                                 
-                                                <button type="submit" class="upload-btn dark">
+                                                <button type="submit" class="upload-btn primary my-2">
                                                     <i class="bi bi-upload"></i> Yüklə
                                                 </button>
                                             </form>
                                             
-                                            <!-- Excel fayl formatı haqqında məlumat -->
-                                            <div class="file-format-info" style="margin-top: 20px; padding: 10px; background-color: #2a2a2a; border-radius: 5px;">
+                                            <div class="file-format-info bg-primary mt-2 p-2 rounded">
                                                 <h6 style="color: #fff; margin-bottom: 10px;"><i class="bi bi-info-circle"></i> Excel fayl formatı:</h6>
-                                                <ul style="color: #ccc; font-size: 14px; padding-left: 20px;">
+                                                <ul style="color: rgba(255,255,255,0.85); font-size: 14px; padding-left: 20px; text-align: left;">
                                                     <li>Sütun başlıqları: <strong>ad</strong>, <strong>avans</strong>, <strong>invest</strong></li>
                                                     <li>Birinci sətir başlıq kimi qəbul edilir</li>
                                                     <li>Rəqəmsal olmayan dəyərlər 0 kimi qəbul edilir</li>
                                                 </ul>
                                             </div>
                                         </div>
-                                <div class="upload-card dark">
+                                <div class="upload-card info upload-card-date-picker">
                                     <div class="card-icon">
-                                        <i class="bi bi-bar-chart"></i>
+                                        <i class="bi bi-journal-medical"></i>
                                     </div>
                                     <h5 class="card-title">Qeydiyyat əlavə et</h5>
-                                    <form class="upload-form" method="POST" action="{% url 'import_recipes' %}" enctype="multipart/form-data">
+                                    <form class="upload-form" method="POST" action="{% url 'import_recipes_daily' %}" enctype="multipart/form-data">
                                         {% csrf_token %}
                                         <div class="file-input-wrapper">
-                                            <input type="file" name="excel_recipe_file" class="file-input" id="excel_recipe_file" required>
+                                            <input type="file" name="excel_recipe_file" class="file-input" id="excel_recipe_file" accept=".xlsx,.xls" required>
                                             <label for="excel_recipe_file" class="file-label">
                                                 <i class="bi bi-file-earmark-excel"></i>
                                                 Excel faylı seçin
                                             </label>
                                         </div>
                                         
-                                        <!-- Tarix seçimi - z-index problemi həll edilib -->
                                         <div class="date-input-wrapper" style="margin: 15px 0; position: relative; z-index: 10;">
-                                            <label for="selected_date" style="display: block; margin-bottom: 8px; color: #2b2b2bff;">
+                                            <label for="selected_date-2" class="form-label" style="display: block; margin-bottom: 8px; color: var(--text-primary);">
                                                 <i class="bi bi-calendar-event"></i> Qeydiyyat tarixini seçin:
                                             </label>
                                             <input type="date" id="selected_date-2" name="selected_date" 
                                                 class="form-control date-picker-fixed" 
                                                 value="{% now 'Y-m-d' %}" 
                                                 required
-                                                style="padding: 10px; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #fff; width: 100%; box-sizing: border-box;">
+                                                style="padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary); width: 100%; box-sizing: border-box;">
                                         </div>
                                         
-                                        <button type="submit" class="upload-btn dark">
+                                        <button type="submit" class="upload-btn info my-2">
                                             <i class="bi bi-upload"></i> Yüklə
                                         </button>
                                     </form>
                                     
-                                    <!-- Excel fayl formatı haqqında məlumat -->
-                                    <div class="file-format-info" style="margin-top: 20px; padding: 10px; background-color: #2a2a2a; border-radius: 5px;">
-                                        <h6 style="color: #fff; margin-bottom: 10px;"><i class="bi bi-info-circle"></i> Excel fayl formatı:</h6>
-                                        <ul style="color: #ccc; font-size: 14px; padding-left: 20px;">
-                                            <li>İlk sütunlar: <strong>Həkim</strong>, <strong>Bölgə</strong></li>
+                                    <div class="file-format-info mt-2 p-2 rounded" style="background: linear-gradient(135deg, #0891b2, #0e7490);">
+                                        <h6 style="color: #fff; margin-bottom: 10px;"><i class="bi bi-info-circle"></i> Excel fayl formatı (çox vərəqli):</h6>
+                                        <ul style="color: rgba(255,255,255,0.9); font-size: 14px; padding-left: 20px; text-align: left;">
+                                            <li>Hər <strong>vərəq adı</strong> = bölgə adı</li>
+                                            <li>1-ci sütun: <strong>Həkim Adı</strong></li>
+                                            <li>2-ci sütun: <strong>Tarix</strong> (yalnız ayın günü: 1–31)</li>
                                             <li>Sonrakı sütunlar: Dərman adları</li>
-                                            <li>Birinci sətir başlıq kimi qəbul edilir</li>
-                                            <li>Rəqəmsal olmayan dəyərlər 0 kimi qəbul edilir</li>
+                                            <li>Yalnız <strong>ən son tarix</strong>dəki sətirlər import edilir</li>
+                                            <li>Tarix seçicidən <strong>il və ay</strong> götürülür</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="upload-card warning">
+                                    <div class="card-icon">
+                                        <i class="bi bi-telephone"></i>
+                                    </div>
+                                    <h5 class="card-title">Həkim nömrəsi</h5>
+                                    <p class="small text-muted mb-2">Bölgə, həkim adı və nömrə — Excel ilə</p>
+                                    <form class="upload-form" method="POST" action="{% url 'import_doctor_number' %}" enctype="multipart/form-data">
+                                        {% csrf_token %}
+                                        <div class="file-input-wrapper">
+                                            <input type="file" name="excel_doctor_number_file" class="file-input" accept=".xlsx,.xls" required>
+                                            <label class="file-label">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                Excel faylı seçin
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="upload-btn warning my-2">
+                                            <i class="bi bi-upload"></i> Yüklə
+                                        </button>
+                                    </form>
+                                    <div class="file-format-info mt-2 p-2 rounded" style="background: linear-gradient(135deg, #d97706, #b45309);">
+                                        <h6 style="color: #fff; margin-bottom: 10px;"><i class="bi bi-info-circle"></i> Excel formatı:</h6>
+                                        <ul style="color: rgba(255,255,255,0.92); font-size: 14px; padding-left: 20px; text-align: left;">
+                                            <li>1-ci sətir başlıq: <strong>Bölgə</strong> · <strong>Həkim adı</strong> · <strong>Nömrə</strong> (şaquli yazılmış başlıqlar da qəbul edilir)</li>
+                                            <li>Nömrə Excel-də rəqəm kimi ola bilər; sistem mətn kimi saxlayır</li>
+                                            <li>Başlıqlar tanınmırsa sıra ilə 1-ci, 2-ci, 3-cü sütun istifadə olunur</li>
+                                            <li>Uyğun həkim tapılırsa telefon <strong>nömrə</strong> sahəsi yenilənir</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -461,7 +500,7 @@
                         <div class="form-group">
                             <label for="bolgeSec" class="form-label">Bölgə seçin:</label>
                             <select class="form-select" id="bolgeSec" name="region_id">
-                                <option value="">Bütün bölgələr</option>
+                                <option value="all">Bütün bölgələr</option>
                                 {% for bolge in bolgeler %}
                                     <option value="{{ bolge.id }}">{{ bolge.region_name }}</option>
                                 {% endfor %}
@@ -495,6 +534,7 @@
                     </button>
                 </form>
             </section>
+                   
 
                         
 
@@ -635,6 +675,85 @@
                             </div>
                         </section>
                     </div>
+                    <!--Doctor Settings Tab -->
+                    <div class="tab-pane active" id="doctor-settings">
+                        <section class="section-block">
+                            <h4 class="section-title">
+                                <i class="bi bi-journal-text me-2"></i>Həkim Ayarları
+                            </h4>
+                    
+                            <!-- FİLTER PANELİ -->
+                            <div class="doctor-filters mb-3" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                                
+                                <!-- Bölgə seçimi -->
+                                <select id="filter-bolge" class="form-select" style="width:200px; background:#1e2a3a; color:#fff; border:1px solid #2d3f55; border-radius:8px; padding:8px 12px;">
+                                    <option value="" disabled {% if not selected_bolge %}selected{% endif %}>Bölgə seç...</option>
+                                    {% for b in bolgeler %}
+                                    <option value="{{ b.id }}" {% if selected_bolge == b.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ b.region_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                    
+                                <!-- Axtarış -->
+                                <input 
+                                    type="text" 
+                                    id="filter-search" 
+                                    placeholder="Həkim adı axtar…"
+                                    title="Yazdıqca siyahı yenilənir (səhifə reload olmur)"
+                                    value="{{ search_query }}"
+                                    autocomplete="off"
+                                    style="background:#1e2a3a; color:#fff; border:1px solid #2d3f55; border-radius:8px; padding:8px 12px; width:320px; outline:none;"
+                                >
+                    
+                                <!-- Borc filteri -->
+                                <select id="filter-borc" class="form-select" style="width:180px; background:#1e2a3a; color:#fff; border:1px solid #2d3f55; border-radius:8px; padding:8px 12px;">
+                                    <option value="" {% if borc_filter == '' %}selected{% endif %}>Bütün borclar</option>
+                                    <option value="positive" {% if borc_filter == 'positive' %}selected{% endif %}>Müsbət borc (&gt; 0)</option>
+                                    <option value="negative" {% if borc_filter == 'negative' %}selected{% endif %}>Mənfi borc (&lt; 0)</option>
+                                    <option value="zero" {% if borc_filter == 'zero' %}selected{% endif %}>Borcsuz (= 0)</option>
+                                </select>
+                    
+                                <button type="button" onclick="applyDoctorFilters()" 
+                                    style="background:#2d3f55; color:#e2e8f0; border:1px solid #3d5166; border-radius:8px; padding:8px 18px; cursor:pointer;"
+                                    title="Cədvəli indi yenilə (URL də yenilənir)">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>Yenilə
+                                </button>
+                    
+                                <!-- Sıfırla -->
+                                <button onclick="resetDoctorFilters()" 
+                                    style="background:#2d3f55; color:#aaa; border:none; border-radius:8px; padding:8px 18px; cursor:pointer;">
+                                    <i class="bi bi-x-circle me-1"></i>Sıfırla
+                                </button>
+                                <button onclick="" 
+                                    style="background:#0d6efd; color:#fff; border:none; border-radius:8px; padding:8px 18px; cursor:pointer;">
+                                    <i class="bi bi-pencil me-1"></i>Düzəliş et
+                                </button>
+                            </div>
+                    
+                            <!-- CƏDVƏL -->
+                            <div class="audit-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>№</th>
+                                            <th>Bölgə</th>
+                                            <th>Həkim adı</th>
+                                            <th>İxtisas</th>
+                                            <th>Kategoriya</th>
+                                            <th>Dərəcə</th>
+                                            <th>Maliyyə</th>
+                                            <th>Əvvəlki borc</th>
+                                            <th>Əməliyyat</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="doctor-table-body">
+                                    {% include "partials/admin_doctors_tbody.html" %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
 
                     <!-- Backup Tab -->
                     <div class="tab-pane" id="backup">
@@ -725,6 +844,7 @@
                                 </button>
                             </form>
                         </section>
+                        
                     </div>
                 </div>
             </div>
@@ -782,7 +902,262 @@ document.getElementById("hesabatForm").addEventListener("submit", function(e) {
     .catch(err => showToast('Xəta baş verdi.', 'error'));
 });
 
+// ── FILTER ──────────────────────────────────────────
+const doctorsTbodyUrl = "{% url 'admin_doctors_tbody' %}";
+const doctorInlineUpdateUrlTpl = "{% url 'admin_doctor_inline_update' doctor_id=999999 %}".replace("999999", "__ID__");
+let doctorTableLoadId = 0;
 
+function applyDoctorFilters() {
+    refreshDoctorTableAjax(false);
+}
+
+/**
+ * Cədvəli AJAX ilə yenilə; URL history.replaceState ilə sinxron (paylaşılan link).
+ * @param {boolean} debounceSearch - true: axtarış üçün gözləmə (yazarkən part-part)
+ */
+function refreshDoctorTableAjax(debounceSearch) {
+    const run = function () {
+        const myLoad = ++doctorTableLoadId;
+        const bolge = document.getElementById('filter-bolge').value;
+        const searchEl = document.getElementById('filter-search');
+        const search = searchEl ? searchEl.value : '';
+        const borc = document.getElementById('filter-borc').value;
+        const hadSearchFocus = document.activeElement === searchEl;
+        const selStart = searchEl ? searchEl.selectionStart : null;
+        const selEnd = searchEl ? searchEl.selectionEnd : null;
+
+        const params = new URLSearchParams();
+        if (bolge) params.set('bolge', bolge);
+        if (search) params.set('search', search);
+        if (borc) params.set('borc_filter', borc);
+
+        const url = doctorsTbodyUrl + '?' + params.toString();
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Xəta');
+                return r.text();
+            })
+            .then(function (html) {
+                if (myLoad !== doctorTableLoadId) return;
+                const tb = document.getElementById('doctor-table-body');
+                if (tb) tb.innerHTML = html;
+                initDoctorRowSaveState();
+
+                const u = new URL(window.location.href);
+                u.searchParams.set('tab', 'doctor-settings');
+                if (bolge) u.searchParams.set('bolge', bolge); else u.searchParams.delete('bolge');
+                if (search) u.searchParams.set('search', search); else u.searchParams.delete('search');
+                if (borc) u.searchParams.set('borc_filter', borc); else u.searchParams.delete('borc_filter');
+                history.replaceState(null, '', u.pathname + '?' + u.searchParams.toString());
+
+                if (hadSearchFocus && searchEl) {
+                    searchEl.focus();
+                    try {
+                        if (selStart != null && selEnd != null) {
+                            const len = searchEl.value.length;
+                            searchEl.setSelectionRange(Math.min(selStart, len), Math.min(selEnd, len));
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+            })
+            .catch(function () { /* şəbəkə */ });
+    };
+
+    if (debounceSearch) {
+        clearTimeout(window._doctorSearchDebounce);
+        window._doctorSearchDebounce = setTimeout(run, 280);
+    } else {
+        clearTimeout(window._doctorSearchDebounce);
+        run();
+    }
+}
+
+function resetDoctorFilters() {
+    window.location.href = window.location.pathname + '?tab=doctor-settings';
+}
+
+// Anlıq filtr: bölgə/borc dərhal AJAX; axtarış — qısa debounce ilə (reload yox, fokus qalır)
+(function () {
+    const elBolge = document.getElementById('filter-bolge');
+    const elBorc = document.getElementById('filter-borc');
+    const elSearch = document.getElementById('filter-search');
+    if (!elBolge || !elBorc || !elSearch) return;
+
+    elBolge.addEventListener('change', function () { refreshDoctorTableAjax(false); });
+    elBorc.addEventListener('change', function () { refreshDoctorTableAjax(false); });
+    elSearch.addEventListener('input', function () { refreshDoctorTableAjax(true); });
+    elSearch.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            clearTimeout(window._doctorSearchDebounce);
+            refreshDoctorTableAjax(false);
+        }
+    });
+})();
+
+// ── Həkim sətiri: dəyişiklik olmadan «Yadda saxla» deaktiv ───────────────────
+function parseDebtNum(s) {
+    if (s === null || s === undefined) return 0;
+    const x = String(s).trim().replace(',', '.');
+    if (x === '') return 0;
+    const n = parseFloat(x);
+    return isNaN(n) ? NaN : n;
+}
+
+function debtValuesEqual(a, b) {
+    const na = parseDebtNum(a);
+    const nb = parseDebtNum(b);
+    if (isNaN(na) || isNaN(nb)) return false;
+    return Math.abs(na - nb) < 1e-9;
+}
+
+function isDoctorRowDirty(tr) {
+    if (!tr || !tr.dataset.doctorId) return false;
+    const bolgeEl = tr.querySelector('.doctor-bolge');
+    const adEl = tr.querySelector('.doctor-ad');
+    const ixEl = tr.querySelector('.doctor-ixtisas');
+    const katEl = tr.querySelector('.doctor-kategoriya');
+    const derEl = tr.querySelector('.doctor-derece');
+    const debtEl = tr.querySelector('.doctor-debt');
+    if (!bolgeEl || !adEl) return false;
+    if (String(bolgeEl.value) !== String(tr.dataset.origBolge || '')) return true;
+    if (adEl.value.trim() !== String(tr.dataset.origAd || '')) return true;
+    if (ixEl && String(ixEl.value) !== String(tr.dataset.origIxtisas || '')) return true;
+    if (katEl && String(katEl.value) !== String(tr.dataset.origKategoriya || '')) return true;
+    if (derEl && String(derEl.value) !== String(tr.dataset.origDerece || '')) return true;
+    if (debtEl && !debtValuesEqual(debtEl.value, tr.dataset.origDebt)) return true;
+    return false;
+}
+
+function syncDoctorRowOrigFromDom(tr) {
+    if (!tr || !tr.dataset.doctorId) return;
+    const bolgeEl = tr.querySelector('.doctor-bolge');
+    const adEl = tr.querySelector('.doctor-ad');
+    const ixEl = tr.querySelector('.doctor-ixtisas');
+    const katEl = tr.querySelector('.doctor-kategoriya');
+    const derEl = tr.querySelector('.doctor-derece');
+    const debtEl = tr.querySelector('.doctor-debt');
+    if (bolgeEl) tr.dataset.origBolge = bolgeEl.value;
+    if (adEl) tr.dataset.origAd = adEl.value.trim();
+    if (ixEl) tr.dataset.origIxtisas = ixEl.value;
+    if (katEl) tr.dataset.origKategoriya = katEl.value;
+    if (derEl) tr.dataset.origDerece = derEl.value;
+    if (debtEl) tr.dataset.origDebt = String(parseDebtNum(debtEl.value));
+}
+
+function updateDoctorRowSaveButton(tr) {
+    const btn = tr.querySelector('.save-doctor-row-btn');
+    if (!btn) return;
+    if (btn.dataset.saving === '1') {
+        btn.disabled = true;
+        return;
+    }
+    btn.disabled = !isDoctorRowDirty(tr);
+}
+
+function onDoctorRowFieldChange(e) {
+    const tr = e.target.closest('tr[data-doctor-id]');
+    if (!tr) return;
+    updateDoctorRowSaveButton(tr);
+}
+
+function initDoctorRowSaveState() {
+    document.querySelectorAll('#doctor-table-body tr[data-doctor-id]').forEach(function (tr) {
+        updateDoctorRowSaveButton(tr);
+    });
+}
+
+(function () {
+    const tb = document.getElementById('doctor-table-body');
+    if (!tb) return;
+    tb.addEventListener('input', onDoctorRowFieldChange);
+    tb.addEventListener('change', onDoctorRowFieldChange);
+    initDoctorRowSaveState();
+})();
+
+// ── Həkim sətri: bütün sahələr + saxla ──────────────────────────────────────
+function saveDoctorRow(btn) {
+    const tr = btn.closest('tr');
+    if (!tr || !tr.dataset.doctorId) return;
+    if (btn.disabled) return;
+    const id = tr.dataset.doctorId;
+    const bolgeEl = tr.querySelector('.doctor-bolge');
+    const adEl = tr.querySelector('.doctor-ad');
+    if (!bolgeEl || !adEl) return;
+
+    const payload = {
+        bolge_id: bolgeEl.value,
+        ad: adEl.value.trim(),
+        ixtisas: tr.querySelector('.doctor-ixtisas') ? tr.querySelector('.doctor-ixtisas').value : '',
+        kategoriya: tr.querySelector('.doctor-kategoriya') ? tr.querySelector('.doctor-kategoriya').value : '',
+        derece: tr.querySelector('.doctor-derece') ? tr.querySelector('.doctor-derece').value : '',
+        previous_debt: tr.querySelector('.doctor-debt') ? tr.querySelector('.doctor-debt').value : '0',
+    };
+
+    const url = doctorInlineUpdateUrlTpl.replace('__ID__', id);
+    btn.dataset.saving = '1';
+    btn.disabled = true;
+    const prevHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>...';
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify(payload),
+    })
+        .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+        .then(function (res) {
+            if (res.ok && res.data.success) {
+                showToast('Həkim məlumatları yeniləndi', 'success');
+                const debtIn = tr.querySelector('.doctor-debt');
+                if (debtIn && res.data.previous_debt !== undefined && res.data.previous_debt !== null) {
+                    debtIn.value = String(res.data.previous_debt).replace(',', '.');
+                }
+                syncDoctorRowOrigFromDom(tr);
+            } else {
+                showToast('Xəta: ' + (res.data.error || 'Naməlum'), 'error');
+            }
+        })
+        .catch(function () {
+            showToast('Şəbəkə xətası', 'error');
+        })
+        .finally(function () {
+            delete btn.dataset.saving;
+            btn.innerHTML = prevHtml;
+            updateDoctorRowSaveButton(tr);
+        });
+}
+
+// CSRF token helper
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        document.cookie.split(';').forEach(cookie => {
+            const c = cookie.trim();
+            if (c.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(c.slice(name.length + 1));
+            }
+        });
+    }
+    return cookieValue;
+}
+
+// Toast bildiriş
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed; bottom: 30px; right: 30px; z-index: 9999;
+        background: ${type === 'success' ? '#198754' : '#dc3545'};
+        color: #fff; padding: 12px 24px; border-radius: 10px;
+        font-size: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        animation: fadeIn 0.3s ease;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
   
 </script>
 

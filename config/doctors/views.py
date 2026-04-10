@@ -355,7 +355,18 @@ def icaze_var(il, ay, region_id):
         return (il, ay) < (cari_il, cari_ay)
 
 
-from .utils import fix_recipe_drug_sequence 
+from .utils import fix_recipe_drug_sequence
+
+
+def _doctor_display_name(pk):
+    if pk is None or pk == "":
+        return ""
+    try:
+        ad = Doctors.objects.filter(pk=int(pk)).values_list("ad", flat=True).first()
+        return ad or ""
+    except (ValueError, TypeError):
+        return ""
+
 
 def create_recipe(request):
     regions = Region.objects.all().order_by("region_name")
@@ -388,6 +399,7 @@ def create_recipe(request):
                 "drugs": drugs,
                 "selected_region": selected_region,
                 "selected_doctor": selected_doctor,
+                "selected_doctor_name": _doctor_display_name(selected_doctor),
                 "selected_date": selected_date
             })
 
@@ -404,6 +416,7 @@ def create_recipe(request):
                 "drugs": drugs,
                 "selected_region": selected_region,
                 "selected_doctor": selected_doctor,
+                "selected_doctor_name": _doctor_display_name(selected_doctor),
                 "selected_date": selected_date
             })
 
@@ -419,6 +432,7 @@ def create_recipe(request):
                 "drugs": drugs,
                 "selected_region": selected_region,
                 "selected_doctor": selected_doctor,
+                "selected_doctor_name": _doctor_display_name(selected_doctor),
                 "selected_date": selected_date
             })
 
@@ -481,6 +495,7 @@ def create_recipe(request):
         "drugs": drugs,
         "selected_region": selected_region,
         "selected_doctor": selected_doctor,
+        "selected_doctor_name": _doctor_display_name(selected_doctor),
         "selected_date": selected_date
     })
 
@@ -1661,272 +1676,168 @@ def get_region(request):
     }
     return render(request, "test.html", context)
 
-
 # Borcalacaq Hesablama
 from django.db.models import Max
 
-def region_report(request, region_id):
-    # Dərmanlar və həkimlər
-    dermanlar = Medical.objects.all().order_by('-id')
-    hekimler = Doctors.objects.filter(bolge_id=region_id).order_by('ad')
 
-    # Reseptlər və satışlar (region üzrə)
+def region_report(request, region_id):
+    """Yungul sehife - yalniz formu render edir, hec bir agir SQL yoxdur."""
+    region = get_object_or_404(Region, id=region_id)
+    now = datetime.now()
+    current_year = now.year
+    current_month = now.month
+    report_scope_label = "Şəhər" if (region.region_type or "") == "Şəhər" else "Bölgə"
+    context = {
+        "region": region,
+        "report_scope_label": report_scope_label,
+        "aylar": range(1, 13),
+        "iller": [2025, 2026, 2027],
+        "current_year": current_year,
+        "current_month": current_month,
+    }
+    return render(request, "test_2.html", context)
+
+
+def region_report_data_ajax(request, region_id):
+    """AJAX endpoint - yalniz Hesabla dugmesine basanda cagrilir."""
+    month = request.GET.get("month")
+    year = request.GET.get("year")
+    current_year = datetime.now().year
+
+    region = get_object_or_404(Region, id=region_id)
+    dermanlar = list(Medical.objects.all().order_by("-id"))
+    hekimler = Doctors.objects.filter(bolge_id=region_id, is_active=True).order_by("ad")
+
     region_recipe_drugs = RecipeDrug.objects.filter(recipe__region_id=region_id)
     sales = Sale.objects.filter(region_id=region_id)
 
-    # Ay və il seçimi
-    month = request.GET.get("month")
-    year = request.GET.get("year")
-    
-    current_year = datetime.now().year
-    current_month = datetime.now().month
-    if month:
-        try:
-            ay = int(month)
-        except ValueError:
-            ay = None
-    else:
-        # Ən son satış ayı
-        last_sale_date = sales.aggregate(last_date=Max('sale_date'))['last_date']
-        ay = last_sale_date.month if last_sale_date else current_month
-
-    if year:
-        try:
-            il = int(year)
-        except ValueError:
-            il = current_year
-    else:
+    try:
+        ay = int(month) if month else None
+    except ValueError:
+        ay = None
+    try:
+        il = int(year) if year else current_year
+    except ValueError:
         il = current_year
 
     if ay:
         region_recipe_drugs = region_recipe_drugs.filter(recipe__date__month=ay)
         sales = sales.filter(sale_date__month=ay)
-    
     if il:
         region_recipe_drugs = region_recipe_drugs.filter(recipe__date__year=il)
         sales = sales.filter(sale_date__year=il)
 
-    # Dərəcə faktorları
     dereceler = {"VIP": 1.00, "I": 0.90, "II": 0.65, "III": 0.40}
+
+    # Butun resept saylarini bir sorgu ile cek
+    drug_counts = (
+        region_recipe_drugs
+        .values("recipe__dr_id", "drug_id")
+        .annotate(total=Sum("number"))
+    )
+    drug_map = {}
+    for row in drug_counts:
+        drug_map[(row["recipe__dr_id"], row["drug_id"])] = row["total"]
 
     report_data = []
     for hekim in hekimler:
-        faktor = dereceler.get(hekim.derece, 0)
-        hekim_sira = {'hekim': hekim, 'dermanlar': [], 'faizli_dermanlar': [], 'toplam': 0, 'faizli_toplam': Decimal('0.00')}
+        faktor = Decimal(str(dereceler.get(hekim.derece, 0)))
+        d_say = []
+        d_faizli = []
+        toplam = 0
+        faizli_toplam = Decimal("0.00")
         for derman in dermanlar:
-            toplam = region_recipe_drugs.filter(recipe__dr=hekim, drug=derman).aggregate(total=Sum('number'))['total'] or 0
-            faizli = (Decimal(toplam) * Decimal(faktor)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-            hekim_sira['dermanlar'].append(toplam)
-            hekim_sira['faizli_dermanlar'].append(faizli)
-            hekim_sira['toplam'] += toplam
-            hekim_sira['faizli_toplam'] += faizli
-        report_data.append(hekim_sira)
+            say = drug_map.get((hekim.id, derman.id), 0)
+            faizli = (Decimal(say) * faktor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            d_say.append(say)
+            d_faizli.append(faizli)
+            toplam += say
+            faizli_toplam += faizli
+        report_data.append({
+            "hekim": hekim,
+            "dermanlar": d_say,
+            "faizli_dermanlar": d_faizli,
+            "toplam": toplam,
+            "faizli_toplam": faizli_toplam,
+        })
 
-    # Dərmanların toplamları
-    derman_toplamlari = []
-    faizli_derman_toplamlari = []
-    for i, derman in enumerate(dermanlar):
-        toplam = region_recipe_drugs.filter(drug=derman).aggregate(total=Sum('number'))['total'] or 0
-        derman_toplamlari.append(toplam)
-        toplam_faizli = sum(row['faizli_dermanlar'][i] for row in report_data)
-        faizli_derman_toplamlari.append(round(toplam_faizli, 2))
+    derman_toplamlari = [sum(r["dermanlar"][i] for r in report_data) for i in range(len(dermanlar))]
+    faizli_toplamlari = [round(float(sum(r["faizli_dermanlar"][i] for r in report_data)), 2) for i in range(len(dermanlar))]
+    toplam_hekim_say = sum(r["toplam"] for r in report_data)
+    toplam_faizli_say = round(float(sum(r["faizli_toplam"] for r in report_data)), 2)
 
-    toplam_hekim_say = sum(row['toplam'] for row in report_data)
-    toplam_faizli_say = round(sum(row['faizli_toplam'] for row in report_data), 2)
-
-    # Effektivlik faizləri
+    satis_map = {row["drug_id"]: row["s"] for row in sales.values("drug_id").annotate(s=Sum("quantity"))}
     effektivlik_faizleri = []
     for i, derman in enumerate(dermanlar):
-        satis_sayi = sales.filter(drug=derman).aggregate(s=Sum('quantity'))['s'] or 0
-        faizli_resept = faizli_derman_toplamlari[i]
-        effektivlik = (Decimal(satis_sayi) / Decimal(faizli_resept)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) if faizli_resept > 0 else Decimal('0.00')
-        effektivlik_faizleri.append(effektivlik)
-
-    # Effektivlikli dərmanlar və komissiya
-    for row in report_data:
-        row['effektivlikli_dermanlar'] = []
-        row['effektivlikli_toplam'] = Decimal('0.00')
-        for i, faizli in enumerate(row['faizli_dermanlar']):
-            effektiv = effektivlik_faizleri[i]
-            vurulmus = (faizli * effektiv).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-            row['effektivlikli_dermanlar'].append(vurulmus)
-            row['effektivlikli_toplam'] += vurulmus
+        satis = satis_map.get(derman.id, 0) or 0
+        fp = faizli_toplamlari[i]
+        eff = (Decimal(satis) / Decimal(str(fp))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if fp else Decimal("0.00")
+        effektivlik_faizleri.append(eff)
 
     for row in report_data:
-        row['komissiya_miqdarlari'] = []
-        row['umumi_komissiya'] = Decimal('0.00')
-        for i, effektiv in enumerate(row['effektivlikli_dermanlar']):
-            komissiya_faizi = dermanlar[i].komissiya or Decimal('0')
-            miqdar = (effektiv * komissiya_faizi).quantize(Decimal('0.01'))
-            row['komissiya_miqdarlari'].append(miqdar)
-            row['umumi_komissiya'] += miqdar
-        # Həkim modelinə yaz
-        hekim = row['hekim']
-        hekim.hesablanan_miqdar = row['effektivlikli_toplam']
-        hekim.hekimden_silinen = row['umumi_komissiya']
-        hekim.save()
-        row['hekim_effektiv_komissiya'] = list(zip(row['effektivlikli_dermanlar'], row['komissiya_miqdarlari']))
+        eff_d = []
+        eff_t = Decimal("0.00")
+        kom_d = []
+        kom_t = Decimal("0.00")
+        for i, faizli in enumerate(row["faizli_dermanlar"]):
+            vurulmus = (faizli * effektivlik_faizleri[i]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            eff_d.append(vurulmus)
+            eff_t += vurulmus
+            kom_faiz = dermanlar[i].komissiya or Decimal("0")
+            miqdar = (vurulmus * kom_faiz).quantize(Decimal("0.01"))
+            kom_d.append(miqdar)
+            kom_t += miqdar
+        row["effektivlikli_dermanlar"] = eff_d
+        row["effektivlikli_toplam"] = eff_t
+        row["komissiya_miqdarlari"] = kom_d
+        row["umumi_komissiya"] = kom_t
+        # DB-ye yaz — yalniz Hesabla basanda
+        hekim = row["hekim"]
+        hekim.hesablanan_miqdar = eff_t
+        hekim.hekimden_silinen = kom_t
+        hekim.save(update_fields=["hesablanan_miqdar", "hekimden_silinen"])
 
-    effektivlikli_derman_toplamlari = [round(sum(row['effektivlikli_dermanlar'][i] for row in report_data), 2) for i in range(len(dermanlar))]
-    toplam_effektivlikli_say = round(sum(effektivlikli_derman_toplamlari), 2)
-    toplam_komissiya = sum(row['umumi_komissiya'] for row in report_data).quantize(Decimal('0.01'))
-    komissiya_toplamlari = [sum(row['komissiya_miqdarlari'][i] for row in report_data).quantize(Decimal('0.01')) for i in range(len(dermanlar))]
+    effektivlikli_toplamlari = [
+        round(float(sum(r["effektivlikli_dermanlar"][i] for r in report_data)), 2)
+        for i in range(len(dermanlar))
+    ]
+    toplam_effektivlikli_say = round(sum(effektivlikli_toplamlari), 2)
+    komissiya_toplamlari = [
+        float(sum(r["komissiya_miqdarlari"][i] for r in report_data).quantize(Decimal("0.01")))
+        for i in range(len(dermanlar))
+    ]
+    toplam_komissiya = float(sum(r["umumi_komissiya"] for r in report_data).quantize(Decimal("0.01")))
 
-    region = get_object_or_404(Region, id=region_id)
+    def flt(v):
+        return float(v)
 
-    context = {
-        'dermanlar': dermanlar,
-        'hekimler_data': report_data,
-        'derman_toplamlari': derman_toplamlari,
-        'faizli_derman_toplamlari': faizli_derman_toplamlari,
-        'effektivlik_faizleri': effektivlik_faizleri,
-        'effektivlikli_derman_toplamlari': effektivlikli_derman_toplamlari,
-        'toplam_effektivlikli_say': toplam_effektivlikli_say,
-        'komissiya_toplamlari': komissiya_toplamlari,
-        'toplam_hekim_say': toplam_hekim_say,
-        'toplam_faizli_say': toplam_faizli_say,
-        'toplam_komissiya': toplam_komissiya,
-        'region': region,
-        'ay': ay,
-        'il': il,
-        'aylar': range(1, 13),
-        'iller': [2025, 2026, 2027],
-        'current_year': current_year,
-    }
+    json_hekimler = []
+    for row in report_data:
+        json_hekimler.append({
+            "ad": row["hekim"].ad,
+            "derece": row["hekim"].derece,
+            "dermanlar": row["dermanlar"],
+            "faizli_dermanlar": [flt(x) for x in row["faizli_dermanlar"]],
+            "toplam": row["toplam"],
+            "faizli_toplam": flt(row["faizli_toplam"]),
+            "effektivlikli_dermanlar": [flt(x) for x in row["effektivlikli_dermanlar"]],
+            "effektivlikli_toplam": flt(row["effektivlikli_toplam"]),
+            "komissiya_miqdarlari": [flt(x) for x in row["komissiya_miqdarlari"]],
+            "umumi_komissiya": flt(row["umumi_komissiya"]),
+        })
 
-    return render(request, 'test_2.html', context)
-
-
-
-
-# def region_report(request, region_id):
-#     dermanlar = Medical.objects.all().order_by('med_name')
-#     hekimler = Doctors.objects.filter(bolge_id=region_id).order_by('ad')
-#     region_recipe_drugs = RecipeDrug.objects.filter(recipe__region_id=region_id)
-
-#     dereceler = {
-#         "VİP": 1.00,
-#         "I": 0.90,
-#         "II": 0.65,
-#         "III": 0.40,
-#     }
-
-#     report_data = []
-#     for hekim in hekimler:
-#         derece = hekim.derece
-#         faktor = dereceler.get(derece, 0)
-
-#         hekim_sira = {
-#             'hekim': hekim,
-#             'dermanlar': [],
-#             'faizli_dermanlar': [],
-#             'toplam': 0,
-#             'faizli_toplam': 0,
-#         }
-
-#         for derman in dermanlar:
-#             toplam = region_recipe_drugs.filter(recipe__dr=hekim, drug=derman).aggregate(
-#                 total=Sum('number')
-#             )['total'] or 0
-
-#             faizli = (Decimal(str(toplam)) * Decimal(str(faktor))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-
-#             hekim_sira['dermanlar'].append(toplam)
-#             hekim_sira['faizli_dermanlar'].append(faizli)
-
-#             hekim_sira['toplam'] += toplam
-#             hekim_sira['faizli_toplam'] += faizli
-
-#         report_data.append(hekim_sira)
-
-#     # Dərmanların toplamı (sütunlar üzrə)
-#     derman_toplamlari = []
-#     faizli_derman_toplamlari = []
-#     for index, derman in enumerate(dermanlar):
-#         toplam = region_recipe_drugs.filter(drug=derman).aggregate(total=Sum('number'))['total'] or 0
-#         derman_toplamlari.append(toplam)
-
-#         toplam_faizli = sum(row['faizli_dermanlar'][index] for row in report_data)
-#         faizli_derman_toplamlari.append(round(toplam_faizli, 2))
-
-#     toplam_hekim_say = sum(item['toplam'] for item in report_data)
-#     toplam_faizli_say = round(sum(item['faizli_toplam'] for item in report_data), 2)
-
-#     # Effektivlik faizləri hesablanması
-#     sales = Sale.objects.filter(region_id=region_id)
-#     effektivlik_faizleri = []
-
-#     for index, derman in enumerate(dermanlar):
-#         satis_sayi = sales.filter(drug=derman).aggregate(s=Sum('quantity'))['s'] or 0
-#         faizli_resept = faizli_derman_toplamlari[index]
-
-#         effektivlik = (Decimal(satis_sayi) / Decimal(faizli_resept)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) if faizli_resept > 0 else Decimal('0.00')
-#         effektivlik_faizleri.append(effektivlik)
-
-#     # Həkim reseptlərinə effektivlik tətbiqi
-#     for row in report_data:
-#         row['effektivlikli_dermanlar'] = []
-#         row['effektivlikli_toplam'] = Decimal('0.00')
-
-#         for i, faizli in enumerate(row['faizli_dermanlar']):
-#             effektivlik = Decimal(str(effektivlik_faizleri[i]))
-#             vurulmus = (Decimal(str(faizli)) * effektivlik).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-#             row['effektivlikli_dermanlar'].append(vurulmus)
-#             row['effektivlikli_toplam'] += vurulmus
-
-#     # Həkim modelinə yaz (hesablanan miqdar)
-#     for row in report_data:
-#         hekim = row['hekim']
-#         hekim.hesablanan_miqdar = row['effektivlikli_toplam']
-#         hekim.save()
-
-#     # Effektivlikli dərman toplamları (sütunlara görə cəmlər)
-#     effektivlikli_derman_toplamlari = []
-#     for i in range(len(dermanlar)):
-#         cem = sum(row['effektivlikli_dermanlar'][i] for row in report_data)
-#         effektivlikli_derman_toplamlari.append(round(cem, 2))
-
-#     toplam_effektivlikli_say = round(sum(effektivlikli_derman_toplamlari), 2)
-
-#     # Komissiyalı hesablamalar
-#     for row in report_data:
-#         row['komissiya_miqdarlari'] = []
-#         row['umumi_komissiya'] = Decimal('0')
-
-#         for i, effektiv_miqdar in enumerate(row['effektivlikli_dermanlar']):
-#             derman = dermanlar[i]
-#             komissiya_faizi = derman.komissiya or Decimal('0')
-#             miqdar = Decimal(str(effektiv_miqdar)) * komissiya_faizi
-#             miqdar = miqdar.quantize(Decimal('0.01'))
-#             row['komissiya_miqdarlari'].append(miqdar)
-#             row['umumi_komissiya'] += miqdar
-
-#         row['hekimden_silinen'] = row['umumi_komissiya']
-
-#     toplam_komissiya = sum(row['umumi_komissiya'] for row in report_data).quantize(Decimal('0.01'))
-
-#     # Həkim modelinə yaz (komissiya və effektivlik)
-#     for row in report_data:
-#         hekim = row['hekim']
-#         hekim.hesablanan_miqdar = row['effektivlikli_toplam']
-#         row['hekim_effektiv_komissiya'] = list(zip(row['effektivlikli_dermanlar'], row['komissiya_miqdarlari']))
-#         hekim.hekimden_silinen = row['umumi_komissiya']
-#         hekim.save()
-
-#     region = get_object_or_404(Region, id=region_id)
-
-#     context = {
-#         'dermanlar': dermanlar,
-#         'hekimler_data': report_data,
-#         'derman_toplamlari': derman_toplamlari,
-#         'faizli_derman_toplamlari': faizli_derman_toplamlari,
-#         'effektivlik_faizleri': effektivlik_faizleri,
-#         'region': region,
-#         'toplam_hekim_say': toplam_hekim_say,
-#         'toplam_faizli_say': toplam_faizli_say,
-#         'effektivlikli_derman_toplamlari': effektivlikli_derman_toplamlari,
-#         'toplam_effektivlikli_say': toplam_effektivlikli_say,
-#         'toplam_komissiya': toplam_komissiya,
-#     }
-
-#     return render(request, 'test_2.html', context)
+    return JsonResponse({
+        "dermanlar": [d.med_name for d in dermanlar],
+        "hekimler": json_hekimler,
+        "derman_toplamlari": derman_toplamlari,
+        "faizli_toplamlari": faizli_toplamlari,
+        "toplam_hekim_say": toplam_hekim_say,
+        "toplam_faizli_say": toplam_faizli_say,
+        "effektivlik_faizleri": [flt(x) for x in effektivlik_faizleri],
+        "effektivlikli_toplamlari": effektivlikli_toplamlari,
+        "toplam_effektivlikli_say": toplam_effektivlikli_say,
+        "komissiya_toplamlari": komissiya_toplamlari,
+        "toplam_komissiya": toplam_komissiya,
+        "ay": ay,
+        "il": il,
+    }, json_dumps_params={"ensure_ascii": False})
