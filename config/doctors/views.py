@@ -1,4 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
+from django.views.decorators.http import require_POST
 from .models import Doctors, RecipeDrug, Recipe, RealSales, RealSalesDrug
 from medicine.models import Medical
 from django.contrib import messages
@@ -7,18 +9,17 @@ from payment.models import Payment_doctor, Sale, MonthlyDoctorReport
 from django.http import JsonResponse
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 import openpyxl
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from django.core.paginator import Paginator
 from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
 from openpyxl import Workbook
-from django.db.models import Sum , Q
+from django.db.models import Sum, Q, OuterRef, Subquery
 from django.utils import timezone
 from collections import defaultdict
 from datetime import datetime
 from core.models import DeletedRecipeDrugLog 
 from django.contrib.auth.models import User 
-from decimal import Decimal, ROUND_HALF_UP
 from regions.models import Region, Hospital, City
 from django.db import transaction, IntegrityError
 from django.db.models import Max
@@ -26,6 +27,7 @@ import urllib.parse
 from datetime import date, timedelta
 from django.core.paginator import Paginator
 import json
+from io import BytesIO
 
 
 def doctors_list(request):
@@ -82,7 +84,7 @@ def doctors_list(request):
 
 def doctors_export_excel(request):
     """Export doctors list to Excel with filters applied"""
-    queryset = Doctors.objects.all().prefetch_related('odenisler')
+    queryset = Doctors.objects.all()
 
     # Arxiv / Aktiv filter
     if request.GET.get('archived') == '1':
@@ -106,6 +108,15 @@ def doctors_export_excel(request):
     search_query = request.GET.get('search')
     if search_query:
         queryset = queryset.filter(ad__icontains=search_query)
+
+    # Son ödəniş: hər həkim üçün prefetch yox — 2 correlated subquery (yaddın / zaman)
+    latest_payment = Payment_doctor.objects.filter(doctor_id=OuterRef('pk')).order_by(
+        '-date', '-id'
+    )
+    queryset = queryset.select_related('bolge', 'city', 'klinika').annotate(
+        _export_last_pay_date=Subquery(latest_payment.values('date')[:1]),
+        _export_last_pay_amt=Subquery(latest_payment.values('pay')[:1]),
+    )
 
     # Create Excel workbook
     wb = openpyxl.Workbook()
@@ -185,12 +196,15 @@ def doctors_export_excel(request):
     # Create filename
     filename = f"Həkimlər_siyahısı_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
-    # Prepare response
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
     response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
     response['Content-Disposition'] = f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
-    wb.save(response)
     return response
 
 
@@ -278,7 +292,30 @@ def doctor_detail(request, doctor_id):
     
     
     payments = Payment_doctor.objects.filter(doctor=doctor).order_by("-date")[:10]
-    recipe = RecipeDrug.objects.filter(recipe__dr=doctor).select_related('recipe', 'drug', 'recipe__region').order_by('recipe__date') 
+    recipe = RecipeDrug.objects.filter(recipe__dr=doctor).select_related(
+        "recipe", "drug", "recipe__region"
+    )
+
+    recipe_date_from = ""
+    recipe_date_to = ""
+    fd = request.GET.get("recipe_date_from", "").strip()
+    td = request.GET.get("recipe_date_to", "").strip()
+    if fd:
+        try:
+            df = date.fromisoformat(fd)
+            recipe = recipe.filter(recipe__date__gte=df)
+            recipe_date_from = fd
+        except ValueError:
+            pass
+    if td:
+        try:
+            dt = date.fromisoformat(td)
+            recipe = recipe.filter(recipe__date__lte=dt)
+            recipe_date_to = td
+        except ValueError:
+            pass
+
+    recipe = recipe.order_by("recipe__date") 
 
 
     # Əgər resept modeli varsa
@@ -304,6 +341,8 @@ def doctor_detail(request, doctor_id):
         "recipe": recipe,
         "silinme_list": silinme_list,
         "regions": regions,
+        "recipe_date_from": recipe_date_from,
+        "recipe_date_to": recipe_date_to,
     }
     return render(request, "doctor-details.html", context)
 
@@ -606,6 +645,52 @@ def del_recipe(request, id):
     return redirect('doctor_detail', doctor_id=doctor_id)
 
 
+@require_POST
+def bulk_del_recipe_lines(request, doctor_id):
+    doctor = get_object_or_404(Doctors, id=doctor_id)
+    raw_ids = request.POST.getlist("recipe_ids")
+    id_list = []
+    for x in raw_ids:
+        try:
+            id_list.append(int(x))
+        except (TypeError, ValueError):
+            continue
+
+    if not id_list:
+        messages.warning(request, "Silinəcək resept sətiri seçilməyib.")
+        return redirect('doctor_detail', doctor_id=doctor.id)
+
+    lines = list(
+        RecipeDrug.objects.filter(
+            pk__in=id_list,
+            recipe__dr_id=doctor.pk,
+        ).select_related("recipe", "drug")
+    )
+
+    if not lines:
+        messages.warning(request, "Seçilmiş sətirlər tapılmadı və ya bu həkimə aid deyil.")
+        return redirect('doctor_detail', doctor_id=doctor.id)
+
+    with transaction.atomic():
+        DeletedRecipeDrugLog.objects.bulk_create(
+            [
+                DeletedRecipeDrugLog(
+                    drug_name=str(rd.drug),
+                    recipe_id=rd.recipe_id,
+                    deleted_by=request.user if request.user.is_authenticated else None,
+                )
+                for rd in lines
+            ]
+        )
+        RecipeDrug.objects.filter(
+            pk__in=[rd.pk for rd in lines],
+            recipe__dr_id=doctor.pk,
+        ).delete()
+
+    messages.success(request, f"{len(lines)} resept sətiri silindi.")
+    return redirect('doctor_detail', doctor_id=doctor.id)
+
+
 def del_payments(request, id):
     payment = get_object_or_404(Payment_doctor, id=id)
     doctor_id = payment.doctor.id
@@ -615,24 +700,77 @@ def del_payments(request, id):
 
 
 
-def update_recipe(request):
+def update_recipe(request, id):
+    """Resept sətirini (RecipeDrug) və əsas reseptin tarixini/bölgəsini yenilə."""
+    rd = get_object_or_404(
+        RecipeDrug.objects.select_related("recipe__dr", "recipe__region", "drug"),
+        id=id,
+    )
+    rp = rd.recipe
     regions = Region.objects.all().order_by("region_name")
-    doctors = Doctors.objects.all().order_by("id")
-    drugs = Medical.objects.all().order_by("id")
+
     if request.method == "POST":
-        recipe_id = request.POST.get("recipe_id")
-        recipe = get_object_or_404(Recipe, id=recipe_id)
-        recipe.region_id = request.POST.get("region_id")
-        recipe.dr_id = request.POST.get("doctor_id")
-        recipe.date = request.POST.get("date")
-        recipe.save()
-        return redirect('recipe_detail', recipe_id=recipe.id)
-    return render(request, "crud/update-recipe.html", {
-        "recipe": recipe,
-        "regions": regions,
-        "doctors": doctors,
-        "drugs": drugs,
-    })
+        number_raw = (request.POST.get("number") or "").strip().replace(",", ".")
+        date_str = (request.POST.get("date") or "").strip()
+        region_id_raw = (request.POST.get("region_id") or "").strip()
+
+        err = []
+        try:
+            num = Decimal(number_raw)
+            if num <= 0:
+                err.append("Say 0-dan böyük olmalıdır.")
+        except InvalidOperation:
+            err.append("Düzgün say daxil edin.")
+
+        parsed_date = None
+        try:
+            parsed_date = date.fromisoformat(date_str)
+        except ValueError:
+            err.append("Düzgün tarix seçin.")
+
+        if not region_id_raw.isdigit():
+            err.append("Bölgə seçin.")
+        elif not Region.objects.filter(pk=int(region_id_raw)).exists():
+            err.append("Bölgə tapılmadı.")
+
+        is_ajax = (
+            request.POST.get("ajax") == "1"
+            or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        )
+
+        if err:
+            if is_ajax:
+                return JsonResponse({"ok": False, "errors": err}, status=400)
+            for m in err:
+                messages.error(request, m)
+        else:
+            num = num.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+            rp.date = parsed_date
+            rp.region_id = int(region_id_raw)
+            rd.number = num
+            with transaction.atomic():
+                rp.save(update_fields=("date", "region_id"))
+                rd.save(update_fields=("number",))
+            ok_msg = f"{rd.drug.med_name} — resept sətiri yeniləndi."
+            if is_ajax:
+                return JsonResponse(
+                    {
+                        "ok": True,
+                        "redirect_url": reverse("doctor_detail", args=[rp.dr_id]),
+                        "message": ok_msg,
+                    }
+                )
+            messages.success(request, ok_msg)
+            return redirect("doctor_detail", doctor_id=rp.dr_id)
+
+    return render(
+        request,
+        "crud/update_recipe.html",
+        {
+            "rd": rd,
+            "regions": regions,
+        },
+    )
 
 
 

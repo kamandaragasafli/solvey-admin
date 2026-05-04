@@ -1,9 +1,48 @@
 from django.contrib import admin
+from django import forms
 from django.utils.html import format_html
-from django.urls import reverse
+from django.urls import reverse, path
 from django.db.models import Sum, DecimalField
 from django.db.models.functions import Coalesce
+from django.db import transaction
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.core.exceptions import PermissionDenied
+from regions.models import Region
+from core.models import DeletedRecipeDrugLog
 from .models import Doctors, Recipe, RecipeDrug, RealSales, RealSalesDrug
+
+
+class RecipeDailyBulkDeleteForm(forms.Form):
+    """Tarix üçün brauzer təqvimi (native date picker)."""
+
+    region = forms.ModelChoiceField(
+        queryset=Region.objects.none(),
+        empty_label="— Seçin —",
+        label="Bölgə",
+        required=True,
+    )
+    recipe_date = forms.DateField(
+        label="Resept tarixi",
+        required=True,
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(
+            format="%Y-%m-%d",
+            attrs={"type": "date", "style": "max-width:14rem;padding:0.35rem 0.5rem;"},
+        ),
+    )
+    confirm = forms.BooleanField(
+        required=True,
+        label="Təsdiq",
+        help_text=(
+            "Başa düşürəm ki, bu əməliyyat geri qaytarıla bilməz və seçilmiş tarix üçün "
+            "həmin bölgədəki bütün resept qeydiyyatları silinəcək."
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["region"].queryset = Region.objects.order_by("region_name")
 
 @admin.register(Doctors)
 class DoctorsAdmin(admin.ModelAdmin):
@@ -143,6 +182,8 @@ class RegionFilter(admin.SimpleListFilter):
 
 @admin.register(RecipeDrug)
 class RecipeDrugAdmin(admin.ModelAdmin):
+    change_list_template = "admin/doctors/recipedrug/change_list.html"
+
     list_display = (
         'id',
         'get_doctor_name',
@@ -164,6 +205,89 @@ class RecipeDrugAdmin(admin.ModelAdmin):
     list_select_related = ('recipe__dr', 'recipe__region', 'drug')
 
     actions = ['toplu_sil_action']
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "delete-daily-by-region/",
+                self.admin_site.admin_view(self.delete_daily_by_region_view),
+                name="doctors_recipedrug_delete_daily_by_region",
+            ),
+        ]
+        return custom + urls
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["delete_daily_url"] = reverse(
+            "admin:doctors_recipedrug_delete_daily_by_region"
+        )
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def delete_daily_by_region_view(self, request):
+        if not request.user.has_perm("doctors.delete_recipedrug"):
+            raise PermissionDenied
+        title = "Günlük bölgə üzrə qeydiyyatı sil"
+
+        if request.method != "POST":
+            form = RecipeDailyBulkDeleteForm()
+            return render(
+                request,
+                "admin/doctors/recipedrug/delete_daily_region.html",
+                {"title": title, "form": form},
+            )
+
+        form = RecipeDailyBulkDeleteForm(request.POST)
+        if not form.is_valid():
+            return render(
+                request,
+                "admin/doctors/recipedrug/delete_daily_region.html",
+                {"title": title, "form": form},
+            )
+
+        region = form.cleaned_data["region"]
+        target_date = form.cleaned_data["recipe_date"]
+        region_id = region.pk
+
+        recipe_qs = Recipe.objects.filter(region_id=region_id, date=target_date)
+        recipe_count = recipe_qs.count()
+        line_qs = RecipeDrug.objects.filter(
+            recipe__region_id=region_id, recipe__date=target_date
+        ).select_related("drug", "recipe")
+
+        line_count = line_qs.count()
+        if recipe_count == 0:
+            messages.warning(
+                request,
+                f"{region.region_name} — {target_date.strftime('%d.%m.%Y')} üçün silinəcək qeydiyyat yoxdur.",
+            )
+            return redirect("admin:doctors_recipedrug_changelist")
+
+        with transaction.atomic():
+            batch = []
+            batch_size = 500
+            for rd in line_qs.iterator(chunk_size=batch_size):
+                batch.append(
+                    DeletedRecipeDrugLog(
+                        drug_name=str(rd.drug),
+                        recipe_id=rd.recipe_id,
+                        deleted_by=request.user if request.user.is_authenticated else None,
+                    )
+                )
+                if len(batch) >= batch_size:
+                    DeletedRecipeDrugLog.objects.bulk_create(batch)
+                    batch = []
+            if batch:
+                DeletedRecipeDrugLog.objects.bulk_create(batch)
+            deleted = recipe_qs.delete()
+
+        messages.success(
+            request,
+            f"{region.region_name} • {target_date.strftime('%d.%m.%Y')}: "
+            f"{recipe_count} resept silindi ({line_count} dərman sətri); "
+            f"cəmi qeydə alınmış obyekt: {deleted[0]}",
+        )
+        return redirect("admin:doctors_recipedrug_changelist")
 
     def get_doctor_name(self, obj):
         return format_html(
@@ -208,7 +332,6 @@ class RecipeDrugAdmin(admin.ModelAdmin):
     colored_created_at.admin_order_field = 'created_at'
 
     def toplu_sil_action(self, request, queryset):
-        from core.models import DeletedRecipeDrugLog
         logs = [
             DeletedRecipeDrugLog(
                 drug_name=str(rd.drug),

@@ -20,6 +20,11 @@ urlpatterns = [
     path('add-data/', views.create_recipe, name='create_recipe'),
     path('add-recipe-data/', views.create_detail_recipe, name='create_detail_recipe'),
     path('remove-data/<int:id>/',views.del_recipe, name='del_recipe'),
+    path(
+        'bulk-remove-lines/<int:doctor_id>/',
+        views.bulk_del_recipe_lines,
+        name='bulk_del_recipe_lines',
+    ),
     path('details/update-data/<int:id>/', views.update_recipe, name='update_recipe'),
 
     path('real-sales/', views.create_real_sales, name='create_real_sales'),

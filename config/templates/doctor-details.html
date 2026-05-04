@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static my_filters %}
+{% load static my_filters l10n %}
 {% block content %}
  <link rel="stylesheet" href="{% static 'css/dr-details.css' %}">
  
@@ -77,7 +77,7 @@
                         </div>
                     </div>
                     <div class="doctor-actions">
-                        <button class="action-btn edit" onclick="editDoctor()">
+                        <button type="button" class="action-btn edit" onclick="editDoctorClick()">
                             <i class="bi bi-pencil"></i>
                             <span>Redaktə et</span>
                         </button>
@@ -192,25 +192,90 @@
                         </div>
 
                         <!-- Recipes Table -->
-                        <div class="table-card">
-                            <div class="table-header">
-                                <h3>
-                                    <i class="bi bi-file-earmark-medical"></i>
-                                    Yazılan Reseptlər
+                        <div class="table-card table-card--recipes">
+                            <div class="table-header recipe-card-title-row">
+                                <h3 class="recipe-section-title">
+                                    <span class="recipe-section-title-icon"><i class="bi bi-file-earmark-medical"></i></span>
+                                    <span>Yazılan Reseptlər</span>
                                 </h3>
-                               <a href="{% url 'create_detail_recipe' %}?doctor_id={{ doctor.id }}">
-                                <button class="add-btn">
-                                  <i class="bi bi-plus"></i>
-                                  Əlavə et
-                                </button>
-                              </a>
-
+                            </div>
+                            <div class="recipe-card-toolbar">
+                                    <form
+                                      class="recipe-date-range-form"
+                                      method="get"
+                                      action="{% url 'doctor_detail' doctor.id %}"
+                                      aria-labelledby="recipe-filter-heading"
+                                    >
+                                        <span id="recipe-filter-heading" class="recipe-date-range-label">
+                                            <i class="bi bi-calendar-range" aria-hidden="true"></i>
+                                            Tarix
+                                        </span>
+                                        <div class="recipe-date-inputs-row" role="group" aria-label="Tarix seçimi">
+                                            <label class="recipe-date-field">
+                                                <span class="recipe-date-field-hint">Başlanğıc</span>
+                                                <input
+                                                  type="date"
+                                                  name="recipe_date_from"
+                                                  class="recipe-date-input"
+                                                  value="{{ recipe_date_from }}"
+                                                  aria-label="Başlanğıc tarix"
+                                                />
+                                            </label>
+                                            <span class="recipe-date-arrow" aria-hidden="true"><i class="bi bi-arrow-right"></i></span>
+                                            <label class="recipe-date-field">
+                                                <span class="recipe-date-field-hint">Son</span>
+                                                <input
+                                                  type="date"
+                                                  name="recipe_date_to"
+                                                  class="recipe-date-input"
+                                                  value="{{ recipe_date_to }}"
+                                                  aria-label="Son tarix"
+                                                />
+                                            </label>
+                                        </div>
+                                        <div class="recipe-date-form-actions">
+                                        <button type="submit" class="recipe-date-filter-btn">
+                                            <i class="bi bi-funnel" aria-hidden="true"></i>
+                                            Filtrlə
+                                        </button>
+                                        {% if recipe_date_from or recipe_date_to %}
+                                        <a href="{% url 'doctor_detail' doctor.id %}" class="recipe-date-clear-btn">Sıfırla</a>
+                                        {% endif %}
+                                        </div>
+                                    </form>
+                                    <div class="recipe-toolbar-actions">
+                                    <button
+                                      type="submit"
+                                      form="bulk-recipes-form"
+                                      id="bulk-recipes-delete-btn"
+                                      class="bulk-recipes-delete-btn"
+                                      hidden
+                                    >
+                                      <i class="bi bi-trash"></i>
+                                      <span class="bulk-recipes-delete-label">Sil</span>
+                                    </button>
+                                   <a href="{% url 'create_detail_recipe' %}?doctor_id={{ doctor.id }}">
+                                    <button class="add-btn add-btn--recipe" type="button">
+                                      <i class="bi bi-plus-lg"></i>
+                                      Əlavə et
+                                    </button>
+                                  </a>
+                                    </div>
                             </div>
                             <div class="table-container">
                               {% if recipe %}
-                                <table class="data-table">
+                              <form
+                                id="bulk-recipes-form"
+                                method="post"
+                                action="{% url 'bulk_del_recipe_lines' doctor.id %}"
+                              >
+                                {% csrf_token %}
+                                <table class="data-table data-table--with-bulk-select">
                                     <thead>
                                         <tr>
+                                            <th scope="col" class="data-table-cell-check recipe-select-col-head recipe-select-col-head--empty">
+                                              <span class="recipe-select-head-placeholder" aria-hidden="true"></span>
+                                            </th>
                                             <th>№</th>
                                             <th>Tarix</th>
                                             <th>Dərman Adı</th>
@@ -222,6 +287,17 @@
                                     <tbody>
                                     {% for r in recipe %}
                                         <tr>
+                                            <td class="data-table-cell-check recipe-select-col-body">
+                                              <label class="recipe-row-check-wrap">
+                                                <input
+                                                  type="checkbox"
+                                                  name="recipe_ids"
+                                                  value="{{ r.id }}"
+                                                  class="recipe-line-cb recipe-checkbox-input"
+                                                  aria-label="Resept sətirini seç: {{ r.drug.med_name }}"
+                                                />
+                                              </label>
+                                            </td>
                                             <td>{{ forloop.counter }}</td>
                                             <td>{{ r.recipe.date|date:"d.m.Y" }}</td>
                                             <td>
@@ -233,8 +309,15 @@
                                                 <div class="action-buttons">
                                                     <button
                                                       type="button"
-                                                      class="action-icon edit"
-                                                      data-modal-target="updateRecipeModal">
+                                                      class="action-icon edit js-recipe-edit-open"
+                                                      title="Redaktə"
+                                                      aria-label="Resepti redaktə et"
+                                                      data-update-url="{% url 'update_recipe' r.id %}"
+                                                      data-number="{% localize off %}{{ r.number }}{% endlocalize %}"
+                                                      data-date="{{ r.recipe.date|date:'Y-m-d' }}"
+                                                      data-region-id="{{ r.recipe.region_id }}"
+                                                      data-drug-name="{{ r.drug.med_name|escape }}"
+                                                    >
                                                         <i class="bi bi-pencil-square"></i>
                                                     </button>
                                                     <a href="{% url 'del_recipe' r.id %}" class="action-icon delete" title="Sil">
@@ -246,10 +329,15 @@
                                         {% endfor %}
                                     </tbody>
                                 </table>
+                              </form>
+                              {% else %}
+                              {% if recipe_date_from or recipe_date_to %}
+                              <p class="text-muted p-3">Seçilmiş tarix intervalında resept yoxdur.</p>
+                              {% else %}
+                              <p class="text-muted p-3">Hələ heç bir resept yazılmayıb.</p>
+                              {% endif %}
+                              {% endif %}
                             </div>
-                             {% else %}
-                          <p class="text-muted p-3">Hələ heç bir resept yazılmayıb.</p>
-                          {% endif %}
                         </div>
 
                         <!-- Recipes Table -->
@@ -261,7 +349,7 @@
                                 </h3>
                             </div>
                             <div class="table-container">
-                              {% if recipe %}
+                              {% if silinme_list %}
                                 <table class="data-table">
                                     <thead>
                                         <tr>
@@ -291,7 +379,6 @@
                 </div>
             </div>
         </main>
-    </div>
 
     <!-- Modal for Edit Doctor -->
 <div id="editDoctorModal" class="modal" style="display: none; background-color: rgba(15,23,42,0.85);">
@@ -303,7 +390,7 @@
       </button>
     </div>
     <div class="modal-body" style="background-color: #111827;">
-      <form method="POST" action="{% url 'update-doctor' doctor.id %}">
+      <form id="editDoctorForm" method="POST" action="{% url 'update-doctor' doctor.id %}">
         {% csrf_token %}
         <div class="row">
           <div class="mb-3 col-md-6">
@@ -472,6 +559,108 @@
   </div>
 </div>
 
+<!-- Modal: Resept sətiri redaktə -->
+<div
+  id="updateRecipeModal"
+  class="modal"
+  role="dialog"
+  aria-labelledby="recipeEditModalTitle"
+  aria-modal="true"
+  style="display: none; background-color: rgba(15,23,42,0.88); align-items: center; justify-content: center;"
+  onclick="if (event.target === this) { closeModal('updateRecipeModal'); }"
+>
+  <div
+    class="modal-content"
+    style="background-color: #111827; color: #f9fafb; border-radius: 16px; border: 1px solid #4b5563; max-width: 520px; width: 92%;"
+    onclick="event.stopPropagation();"
+  >
+    <div class="modal-header" style="border-bottom: 1px solid #374151; background-color: #020617;">
+      <h3 id="recipeEditModalTitle" class="mb-0" style="color: #e5e7eb; font-size: 1.05rem;">
+        <i class="bi bi-pencil-square me-2 text-primary"></i>Resept sətirini redaktə et
+      </h3>
+      <button
+        type="button"
+        class="close-btn"
+        onclick="closeModal('updateRecipeModal')"
+        style="background: transparent; border: none; color: #9ca3af;"
+        aria-label="Bağla"
+      >
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="background-color: #111827;">
+      <p class="small mb-1" style="color: #94a3b8;">Həkim</p>
+      <p class="mb-3 fw-semibold">{{ doctor.ad }}</p>
+      <p class="small mb-1" style="color: #94a3b8;">Dərman</p>
+      <p class="mb-3 fw-semibold text-success" id="recipeModalDrugName" style="color: #86efac !important;"></p>
+      <div
+        id="recipeModalErrors"
+        class="mb-3 p-2 rounded small"
+        style="display: none; background: rgba(127, 29, 29, 0.35); border: 1px solid #b91c1c; color: #fecaca;"
+        role="alert"
+      ></div>
+      <form id="updateRecipeModalForm" method="post" action="">
+        {% csrf_token %}
+        <input type="hidden" name="ajax" value="1" />
+        <div class="mb-3">
+          <label for="recipe_edit_number" class="form-label small" style="color: #e5e7eb;">Say</label>
+          <input
+            type="number"
+            name="number"
+            id="recipe_edit_number"
+            step="0.1"
+            min="0.1"
+            required
+            class="form-control"
+            style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+          />
+        </div>
+        <div class="mb-3">
+          <label for="recipe_edit_date" class="form-label small" style="color: #e5e7eb;">Resept tarixi</label>
+          <input
+            type="date"
+            name="date"
+            id="recipe_edit_date"
+            required
+            class="form-control"
+            style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+          />
+        </div>
+        <div class="mb-3">
+          <label for="recipe_edit_region_id" class="form-label small" style="color: #e5e7eb;">Bölgə</label>
+          <select
+            name="region_id"
+            id="recipe_edit_region_id"
+            required
+            class="form-select"
+            style="background-color: #1f2937; border: 1px solid #4b5563; color: #f9fafb;"
+          >
+            {% for rg in regions %}
+              <option value="{{ rg.id }}">{{ rg.region_name }}</option>
+            {% endfor %}
+          </select>
+          <p class="form-text small mt-2 mb-0" style="color: #9ca3af;">
+            Eyni reseptdəki bütün sətirlər bu tarix və bölgəni paylaşır.
+          </p>
+        </div>
+        <div class="d-flex justify-content-end gap-2 flex-wrap mt-3">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="closeModal('updateRecipeModal')"
+            style="background-color: #374151; border-color: #4b5563; color: #e5e7eb;"
+          >
+            Ləğv et
+          </button>
+          <button type="submit" class="btn btn-primary" style="background-color: #2563eb; border: none;">
+            <i class="bi bi-check-lg me-1"></i>Yadda saxla
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 
   <!-- JS: Region seçildikdə şəhər və xəstəxanaları yükləmək -->
 <script>
@@ -536,52 +725,162 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Modal open/close functions (global)
-  function openModal(modalId) {
-    const modalEl = document.getElementById(modalId);
+  const bulkRecipesForm = document.getElementById('bulk-recipes-form');
+  const bulkRecipesDeleteBtn = document.getElementById('bulk-recipes-delete-btn');
+  function updateBulkRecipesDeleteUi() {
+    if (!bulkRecipesForm || !bulkRecipesDeleteBtn) return;
+    const checked = bulkRecipesForm.querySelectorAll('.recipe-line-cb:checked');
+    const n = checked.length;
+    bulkRecipesDeleteBtn.hidden = n === 0;
+    bulkRecipesDeleteBtn.innerHTML =
+      '<i class="bi bi-trash"></i><span class="bulk-recipes-delete-label">Sil' +
+      (n ? ' (' + n + ')' : '') +
+      '</span>';
+  }
+
+  if (bulkRecipesForm && bulkRecipesDeleteBtn) {
+    bulkRecipesForm.addEventListener('submit', function(e) {
+      const checked = bulkRecipesForm.querySelectorAll('.recipe-line-cb:checked');
+      if (!checked.length) {
+        e.preventDefault();
+        return;
+      }
+      var msg =
+        checked.length +
+        ' sətir silinsin? Bu əməliyyat geri alına bilməz.';
+      if (!window.confirm(msg)) {
+        e.preventDefault();
+      }
+    });
+
+    bulkRecipesForm.querySelectorAll('.recipe-line-cb').forEach(function(cb) {
+      cb.addEventListener('change', updateBulkRecipesDeleteUi);
+    });
+
+    updateBulkRecipesDeleteUi();
+  }
+
+  function openDoctorModal(modalId) {
+    var modalEl = document.getElementById(modalId);
     if (!modalEl) return;
-    modalEl.style.display = 'block';
-    // Reinitialize dropdowns when modal opens
-    if (regionSelect.value) {
+    modalEl.style.display = 'flex';
+    modalEl.classList.add('show');
+    modalEl.setAttribute('aria-modal', 'true');
+    setTimeout(function() {
+      if (!modalEl.contains(document.activeElement)) {
+        var firstInput = modalEl.querySelector('input:not([type="hidden"]), select, textarea, button:not(.close-btn)');
+        if (firstInput) firstInput.focus();
+      }
+    }, 50);
+    if (typeof regionSelect !== 'undefined' && regionSelect && regionSelect.value) {
       loadCitiesHospitals(regionSelect.value);
     }
   }
 
-  function closeModal(modalId) {
-    const modalEl = document.getElementById(modalId);
+  window.closeModal = function(modalId) {
+    var modalEl = document.getElementById(modalId);
     if (!modalEl) return;
+    modalEl.classList.remove('show');
     modalEl.style.display = 'none';
-  }
+    modalEl.removeAttribute('aria-modal');
+  };
 
-  // Attach click handlers to buttons with data-modal-target
+  window.editDoctorClick = function() {
+    openDoctorModal('editDoctorModal');
+  };
+
+  window.openDoctorModal = openDoctorModal;
+
+  (function initRecipeEditModal() {
+    var recipeModal = document.getElementById('updateRecipeModal');
+    var recipeForm = document.getElementById('updateRecipeModalForm');
+    var recipeErr = document.getElementById('recipeModalErrors');
+    var recipeDrugEl = document.getElementById('recipeModalDrugName');
+    if (!recipeModal || !recipeForm || !recipeErr || !recipeDrugEl) return;
+
+    document.querySelectorAll('.js-recipe-edit-open').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var url = btn.getAttribute('data-update-url');
+        if (!url) return;
+        recipeForm.action = url;
+        var numInp = recipeForm.querySelector('#recipe_edit_number');
+        var dateInp = recipeForm.querySelector('#recipe_edit_date');
+        var regSel = recipeForm.querySelector('#recipe_edit_region_id');
+        if (numInp) {
+          var rn = (btn.getAttribute('data-number') || '').trim().replace(/\s/g, '').replace(',', '.');
+          numInp.value = rn;
+        }
+        if (dateInp) dateInp.value = btn.getAttribute('data-date') || '';
+        if (regSel) regSel.value = btn.getAttribute('data-region-id') || '';
+        recipeDrugEl.textContent = btn.getAttribute('data-drug-name') || '';
+        recipeErr.style.display = 'none';
+        recipeErr.textContent = '';
+        recipeModal.style.display = 'flex';
+        recipeModal.classList.add('show');
+        recipeModal.setAttribute('aria-modal', 'true');
+        setTimeout(function() {
+          if (numInp) numInp.focus();
+        }, 80);
+      });
+    });
+
+    recipeForm.addEventListener('submit', function(ev) {
+      ev.preventDefault();
+      recipeErr.style.display = 'none';
+      recipeErr.textContent = '';
+      var tokenInp = recipeForm.querySelector('[name=csrfmiddlewaretoken]');
+      var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+      if (tokenInp && tokenInp.value) {
+        headers['X-CSRFToken'] = tokenInp.value;
+      }
+      fetch(recipeForm.action, {
+        method: 'POST',
+        body: new FormData(recipeForm),
+        headers: headers,
+        credentials: 'same-origin'
+      })
+        .then(function(res) {
+          return res.json().then(function(data) {
+            return { res: res, data: data };
+          }).catch(function() {
+            return { res: res, data: null };
+          });
+        })
+        .then(function(bundle) {
+          var data = bundle.data;
+          var res = bundle.res;
+          if (data && data.ok === true && data.redirect_url) {
+            window.location.href = data.redirect_url;
+            return;
+          }
+          var msg = 'Yadda saxlanmadı.';
+          if (data && data.errors && data.errors.length) {
+            msg = data.errors.join(' ');
+          } else if (data && data.message) {
+            msg = data.message;
+          } else if (!data) {
+            msg = 'Server cavabı oxunmur (HTTP ' + res.status + ').';
+          }
+          recipeErr.textContent = msg;
+          recipeErr.style.display = 'block';
+        })
+        .catch(function() {
+          recipeErr.textContent = 'Şəbəkə xətası.';
+          recipeErr.style.display = 'block';
+        });
+    });
+  })();
+
   document.querySelectorAll('[data-modal-target]').forEach(btn => {
     btn.addEventListener('click', function () {
       const targetId = this.getAttribute('data-modal-target');
-      if (targetId) {
-        openModal(targetId);
-      }
+      if (targetId) openDoctorModal(targetId);
     });
   });
 });
 
-// Pəncərə xaricinə klikləyəndə də bağlamaq istəyirsənsə
-window.onclick = function(event) {
-    const modal = document.getElementById('updateRecipeModal');
-    if (event.target == modal) {
-        modal.style.display = "none";
-    }
-}
 </script>
 
-</div>
-
-
-
-
 <script src="{% static 'js/dr-details.js' %}"></script>
-
-</body>
-</html>
-
 
 {% endblock %}

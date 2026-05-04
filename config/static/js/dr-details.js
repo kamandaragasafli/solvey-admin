@@ -9,36 +9,14 @@
 
 
 function editDoctor() {
+    if (typeof window.editDoctorClick === 'function') {
+        window.editDoctorClick();
+        return;
+    }
     const modal = document.getElementById('editDoctorModal');
-    modal.classList.add('show');
+    if (!modal) return;
     modal.style.display = 'flex';
-    
-    // Handle form submission
-    const form = document.getElementById('editDoctorForm');
-    form.onsubmit = function(e) {
-        e.preventDefault();
-        
-        // Get form data
-        const formData = new FormData(form);
-        const doctorData = {
-            name: document.getElementById('doctorName').value,
-            specialty: document.getElementById('doctorSpecialty').value,
-            phone: document.getElementById('doctorPhone').value,
-            degree: document.getElementById('doctorDegree').value,
-            category: document.getElementById('doctorCategory').value,
-            region: document.getElementById('doctorRegion').value
-        };
-        
-        // Simulate API call
-        showToast('Həkim məlumatları yenilənir...', 'info');
-        
-        setTimeout(() => {
-            // Update the doctor info card
-            updateDoctorInfo(doctorData);
-            closeModal('editDoctorModal');
-            showToast('Həkim məlumatları uğurla yeniləndi!', 'success');
-        }, 1500);
-    };
+    modal.classList.add('show');
 }
 
 function deleteDoctor() {
@@ -139,12 +117,14 @@ function deleteRecipe(recipeId) {
 
 // Modal Functions
 function closeModal(modalId) {
+    if (typeof window.closeModal === 'function' && window.closeModal !== closeModal) {
+        window.closeModal(modalId);
+        return;
+    }
     const modal = document.getElementById(modalId);
+    if (!modal) return;
     modal.classList.remove('show');
-    
-    setTimeout(() => {
-        modal.style.display = 'none';
-    }, 300);
+    modal.style.display = 'none';
 }
 
 // Close modal when clicking outside

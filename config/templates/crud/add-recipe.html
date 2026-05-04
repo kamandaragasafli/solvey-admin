@@ -41,6 +41,8 @@
                 value="{{ selected_doctor_name|default:'' }}"
                 {% if not selected_region %}disabled{% endif %}
                 style="background-color: #273549; color: #f9fafb; border: none; width: 100%; min-height: 44px;" />
+              <button type="button" id="doctor-search-clear" class="doctor-search-clear"
+                aria-label="Adı təmizlə" title="Adı təmizlə" tabindex="-1" hidden>&times;</button>
               <ul id="doctor-dropdown" class="doctor-dropdown-list" role="listbox" aria-label="Həkim axtarış nəticələri"></ul>
             </div>
           </div>
@@ -218,6 +220,35 @@
   background: transparent;
 }
 
+.doctor-search-input {
+  padding-right: 2.5rem !important;
+}
+.doctor-search-clear {
+  display: flex;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: #4b5563;
+  color: #f9fafb;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+}
+.doctor-search-clear:hover {
+  background: #6b7280;
+  color: #fff;
+}
+
 /* Axtarış: placeholder ağ (brauzer default qara olmaması üçün) */
 .doctor-search-input::placeholder {
   color: #f3f4f6;
@@ -273,6 +304,7 @@
     const regionSelect = document.getElementById("region-select");
     const doctorIdInput = document.getElementById("doctor-id");
     const doctorSearch = document.getElementById("doctor-search");
+    const doctorSearchClearBtn = document.getElementById("doctor-search-clear");
     const doctorDropdown = document.getElementById("doctor-dropdown");
     const form = regionSelect.closest("form");
     const doctorSearchBox = doctorSearch.closest(".doctor-search-box");
@@ -344,10 +376,27 @@
       return doctorsCache.filter((d) => norm(d.ad).includes(nq));
     }
 
+    function updateDoctorClearVisibility() {
+      if (!doctorSearchClearBtn) return;
+      const show =
+        !doctorSearch.disabled &&
+        !!(doctorSearch.value && doctorSearch.value.trim());
+      doctorSearchClearBtn.toggleAttribute("hidden", !show);
+    }
+
+    function clearDoctorSearch() {
+      doctorIdInput.value = "";
+      doctorSearch.value = "";
+      hideDropdown();
+      updateDoctorClearVisibility();
+      doctorSearch.focus();
+    }
+
     function selectDoctor(id, ad) {
       doctorIdInput.value = String(id);
       doctorSearch.value = ad;
       hideDropdown();
+      updateDoctorClearVisibility();
     }
 
     function loadDoctors(regionId, keepSelection) {
@@ -362,6 +411,7 @@
         doctorSearch.disabled = true;
         doctorSearch.placeholder = PLACEHOLDER_NO_REGION;
         hideDropdown();
+        updateDoctorClearVisibility();
         return;
       }
 
@@ -372,6 +422,7 @@
         doctorIdInput.value = "";
         doctorSearch.value = "";
       }
+      updateDoctorClearVisibility();
 
       fetch(ajaxUrl + "?region_id=" + encodeURIComponent(regionId))
         .then((r) => {
@@ -397,6 +448,7 @@
           }
 
           hideDropdown();
+          updateDoctorClearVisibility();
         })
         .catch((err) => {
           if (mySeq !== loadSeq) return;
@@ -404,6 +456,7 @@
           doctorsCache = [];
           doctorIdInput.value = "";
           hideDropdown();
+          updateDoctorClearVisibility();
         });
     }
 
@@ -414,6 +467,7 @@
     doctorSearch.addEventListener("input", function () {
       cancelBlurHide();
       doctorIdInput.value = "";
+      updateDoctorClearVisibility();
       renderList(filterDoctors(this.value));
     });
 
@@ -430,6 +484,18 @@
     doctorDropdown.addEventListener("mousedown", function () {
       cancelBlurHide();
     });
+
+    if (doctorSearchClearBtn) {
+      doctorSearchClearBtn.addEventListener("mousedown", function (e) {
+        e.preventDefault();
+        cancelBlurHide();
+      });
+      doctorSearchClearBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        clearDoctorSearch();
+      });
+    }
 
     doctorSearch.addEventListener("keydown", function (e) {
       const items = doctorDropdown.querySelectorAll("li:not(.doctor-dd-empty)");
@@ -484,6 +550,8 @@
       totalField.value = total;
     }
     inputs.forEach((input) => input.addEventListener("input", updateTotal));
+
+    updateDoctorClearVisibility();
   });
 })();
 </script>

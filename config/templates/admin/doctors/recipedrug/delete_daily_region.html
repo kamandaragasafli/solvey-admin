@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% block title %}{{ title }} | {{ site_title|default:"Admin" }}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static "admin/css/forms.css" %}">{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Əsas</a>
+  &rsaquo; <a href="{% url 'admin:doctors_recipedrug_changelist' %}">Reseptdəki Dərmanlar</a>
+
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p>Seçilmiş <strong>bölgə</strong> və <strong>resept tarixi</strong> üçün bütün günlük qeydiyyatlar silinəcək; əvvəl log yazılır. Tarixi sahədə təqvimdən seçin (brauzerin öz təqvimi).</p>
+
+<form method="post" class="module aligned" style="margin-top:1.5em;max-width:40rem;">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="errornote">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <fieldset class="module">
+    {% for field in form %}
+      <div class="form-row{% if field.errors %} errors{% endif %}">
+        {{ field.errors }}
+        {{ field.label_tag }}
+        {{ field }}
+        {% if field.help_text %}<div class="help">{{ field.help_text|safe }}</div>{% endif %}
+      </div>
+    {% endfor %}
+  </fieldset>
+  <div class="submit-row" style="margin-top: 1rem;">
+    <input type="submit" value="Sil" class="default" style="background:#ba2121;color:#fff;">
+    <a href="{% url 'admin:doctors_recipedrug_changelist' %}" class="button cancel-link" style="margin-left: 1rem;">Ləğv et</a>
+  </div>
+</form>
+{% endblock %}

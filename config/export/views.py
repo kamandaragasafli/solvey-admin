@@ -19,9 +19,24 @@ import subprocess
 import os
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
 import json
 
 from .models import Backup
+
+
+def _strict_excel_cell_text(value):
+    """
+    Ad soyad üçün: yalnız boşluqları normallaşdırır, hərfləri dəyişmir.
+    'Amin' ≠ 'Amil' qalır; avtomatik düzəltmə və ya fuzzy uyğunluq yoxdur.
+    """
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    s = str(value).strip()
+    if s.lower() in ("nan", "none", ""):
+        return ""
+    return " ".join(s.split())
+
 
 @csrf_exempt
 def create_backup(request):
@@ -537,23 +552,23 @@ def import_doctor_city_from_excel(request):
         not_found_doctors = set()
 
         for _, row in df.iterrows():
-            region_name = str(row.get(region_col, "")).strip()
-            doctor_name = str(row.get(doctor_col, "")).strip()
-            city_name_raw = str(row.get(city_col, "")).strip()
+            region_name = _strict_excel_cell_text(row.get(region_col, ""))
+            doctor_name = _strict_excel_cell_text(row.get(doctor_col, ""))
+            city_name_raw = _strict_excel_cell_text(row.get(city_col, ""))
 
             if not region_name or not doctor_name:
                 continue
 
-            doctor = Doctors.objects.filter(
-                bolge__region_name__icontains=region_name,
-                ad__iexact=doctor_name
-            ).select_related("bolge").first()
+            region_obj = Region.objects.filter(region_name__iexact=region_name).first()
+            if not region_obj:
+                not_found_doctors.add(f"{region_name} / {doctor_name}")
+                continue
 
-            if not doctor:
-                doctor = Doctors.objects.filter(
-                    bolge__region_name__icontains=region_name,
-                    ad__icontains=doctor_name
-                ).select_related("bolge").first()
+            doctor = (
+                Doctors.objects.filter(bolge=region_obj, ad=doctor_name)
+                .select_related("bolge")
+                .first()
+            )
 
             if not doctor:
                 not_found_doctors.add(f"{region_name} / {doctor_name}")
@@ -628,6 +643,25 @@ def import_doctor_number_from_excel(request):
         )
         return s
 
+    def _find_doctor_strict(region_name_excel, doctor_name_excel):
+        """
+        Yalnız tam uyğun: bölgə adı (rejistrə həssas deyil), həkim adı DB-dəki ilə
+        simvol-simvol eyni olmalıdır. Fuzzy və icontains yoxdur.
+        """
+        rn = _strict_excel_cell_text(region_name_excel)
+        dn = _strict_excel_cell_text(doctor_name_excel)
+        if not rn or not dn:
+            return None
+        region = Region.objects.filter(region_name__iexact=rn).first()
+        if not region:
+            return None
+        return (
+            Doctors.objects.filter(bolge=region, ad=dn)
+            .select_related("bolge")
+            .order_by("id")
+            .first()
+        )
+
     def _cell_to_phone_str(raw):
         if pd.isna(raw):
             return ""
@@ -645,33 +679,6 @@ def import_doctor_number_from_excel(request):
         if s.lower() in ("nan", "none", ""):
             return ""
         return s
-
-    def _find_doctor_in_region(region_name, doctor_name):
-        """Bölgəyə görə həkim: normallaşdırılmış tam uyğunluq, fuzzy (≥0,82), sonra icontains."""
-        hekim_norm = _norm(doctor_name)
-        candidates = Doctors.objects.filter(
-            bolge__region_name__icontains=region_name
-        ).select_related("bolge")
-        best = None
-        best_ratio = 0.82
-        for d in candidates:
-            d_norm = _norm(d.ad)
-            if d_norm == hekim_norm:
-                return d
-            ratio = SequenceMatcher(None, hekim_norm, d_norm).ratio()
-            if ratio > best_ratio:
-                best_ratio = ratio
-                best = d
-        if best:
-            return best
-        return (
-            Doctors.objects.filter(
-                bolge__region_name__icontains=region_name,
-                ad__icontains=doctor_name.strip(),
-            )
-            .select_related("bolge")
-            .first()
-        )
 
     try:
         df = pd.read_excel(excel_file, header=0)
@@ -739,7 +746,7 @@ def import_doctor_number_from_excel(request):
                 skipped_empty += 1
                 continue
 
-            doctor = _find_doctor_in_region(region_name, doctor_name)
+            doctor = _find_doctor_strict(region_name, doctor_name)
 
             if not doctor:
                 not_found_doctors.add(f"{region_name} / {doctor_name}")
@@ -1031,16 +1038,27 @@ def import_recipes_from_excel(request):
             not_found_doctors = set()
             not_found_regions = set()
             not_found_drugs = set()
+            ambiguous_doctors = set()
+            ambiguous_drugs = set()
 
-            # Dərmanları əvvəlcədən bazadan çək və sadələşdirilmiş formada dictionary qur
+            # Dərmanları əvvəlcədən bazadan çək:
+            # eyni normalizasiya açarına düşən çoxlu qeydlər varsa yalnız birini seçirik.
             med_map = {}
-            for med in Medical.objects.all():
-                ad = med.med_name.strip().lower().replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c")
-                med_map.setdefault(ad, []).append(med)
+            for med in Medical.objects.all().order_by("id"):
+                ad = (
+                    med.med_name.strip().lower()
+                    .replace("ı", "i").replace("ə", "e").replace("ö", "o")
+                    .replace("ü", "u").replace("ş", "s").replace("ç", "c")
+                    .replace("ğ", "g")
+                )
+                if ad in med_map:
+                    ambiguous_drugs.add(med.med_name.strip())
+                    continue
+                med_map[ad] = med
 
             for _, row in df.iterrows():
-                hekim_adi = str(row.get("Həkim", "")).strip()
-                bolge_adi = str(row.get("Bölgə", "")).strip()
+                hekim_adi = _strict_excel_cell_text(row.get("Həkim", ""))
+                bolge_adi = _strict_excel_cell_text(row.get("Bölgə", ""))
 
                 if not hekim_adi or hekim_adi == ".":
                     continue
@@ -1051,36 +1069,43 @@ def import_recipes_from_excel(request):
                     not_found_regions.add(bolge_adi)
                     continue
 
-                doctors = Doctors.objects.filter(ad__iexact=hekim_adi, bolge=region)
+                doctors = Doctors.objects.filter(ad=hekim_adi, bolge=region).order_by("id")
                 if not doctors.exists():
                     not_found_doctors.add(f"{hekim_adi} ({bolge_adi})")
                     continue
 
-                for doctor in doctors:
-                    # Yeni: Seçilmiş tarixi istifadə et
-                    recipe = Recipe.objects.create(region=region, dr=doctor, date=import_date)
+                if doctors.count() > 1:
+                    ambiguous_doctors.add(f"{hekim_adi} ({bolge_adi})")
+                doctor = doctors.first()
 
-                    for drug_name in df.columns[2:]:
-                        try:
-                            say_str = str(row[drug_name]).replace(",", ".").strip()
-                            say = float(say_str)
-                        except Exception:
-                            say = 0
+                # Yeni: Seçilmiş tarixi istifadə et
+                recipe = Recipe.objects.create(region=region, dr=doctor, date=import_date)
 
-                        if say <= 0:
-                            continue
+                for drug_name in df.columns[2:]:
+                    try:
+                        say_str = str(row[drug_name]).replace(",", ".").strip()
+                        say = float(say_str)
+                    except Exception:
+                        say = 0
 
-                        drug_key = drug_name.strip().lower().replace("ı", "i").replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ş", "s").replace("ç", "c")
+                    if say <= 0:
+                        continue
 
-                        meds = med_map.get(drug_key)
-                        if not meds:
-                            not_found_drugs.add(drug_name.strip())
-                            continue
+                    drug_key = (
+                        drug_name.strip().lower()
+                        .replace("ı", "i").replace("ə", "e").replace("ö", "o")
+                        .replace("ü", "u").replace("ş", "s").replace("ç", "c")
+                        .replace("ğ", "g")
+                    )
 
-                        for med in meds:
-                            RecipeDrug.objects.create(recipe=recipe, drug=med, number=say)
+                    med = med_map.get(drug_key)
+                    if not med:
+                        not_found_drugs.add(drug_name.strip())
+                        continue
 
-                    added_count += 1
+                    RecipeDrug.objects.create(recipe=recipe, drug=med, number=say)
+
+                added_count += 1
 
             messages.success(request, f"{added_count} resept {import_date} tarixinə uğurla əlavə olundu.")
             if not_found_regions:
@@ -1089,6 +1114,17 @@ def import_recipes_from_excel(request):
                 messages.warning(request, f"Tapılmayan həkimlər: {', '.join(sorted(not_found_doctors))}")
             if not_found_drugs:
                 messages.warning(request, f"Tapılmayan dərmanlar: {', '.join(sorted(not_found_drugs))}")
+            if ambiguous_doctors:
+                messages.warning(
+                    request,
+                    "Eyni ad-soyadda bir neçə həkim tapıldı, yalnız birinə yazıldı: "
+                    + ", ".join(sorted(ambiguous_doctors))
+                )
+            if ambiguous_drugs:
+                messages.warning(
+                    request,
+                    "Bəzi dərman adları bazada təkrarlanır, eyni açar üçün yalnız bir qeyd istifadə olundu."
+                )
 
         except Exception as e:
             messages.error(request, f"Xəta baş verdi: {str(e)}")
@@ -1483,9 +1519,12 @@ def import_recipes_daily_from_excel(request):
     Gündəlik Excel import (çox vərəqli fayl):
       - Hər vərəq adı = bölgə adı
       - Sütunlar: "Həkim Adı" | "Tarix" (yalnız gün rəqəmi) | dərman1 | dərman2 | ...
-      - Ən son (max) gün rəqəmindəki sətirləri işlənir
-      - Həkim adı normallaşdırılır (kiçik/böyük, ö→o, ə→e, ı→i, ş→s, ç→c, ğ→g)
-      - Tapılmayan həkimlər mesaj kimi bildirilir
+      - Tarix sütunu formada seçilmiş tam tarixdəki günlə eyni olmalıdır; uyğunsuzluqda bütün import ləğv olunur
+      - Həkim adı bazadakı ilə simvol-simvol eyni olmalıdır
+      - Həmin tarix+bölgə+həkim üçün bazada Resept artıq varsa təkrar import xətadır (heç bir dəyişiklik yazılmır)
+      - Tarix xanası boş sətir tamamilə atlanır (əvvəlki günə miras qoyulmur); həkim boşdursa əvvəlki sətirin həkimi
+      - Eyni gündə eyni həkimin bir neçə sətirdə müxtəlif dərmanları bir reseptdə birləşir
+      - Eyni dərman sütunu bir neçə sətirdə gəlirsə məbləğlər TOPLANIR (hər sətirdə Tarix dolu olmalıdır)
     """
     if request.method != "POST":
         return redirect("admin")
@@ -1518,6 +1557,9 @@ def import_recipes_daily_from_excel(request):
         not_found_doctors = []
         not_found_regions = []
         not_found_drugs = set()
+        target_day = base_date.day
+        prepared = []
+        date_mismatch_sheets = []
 
         # Dərmanları əvvəlcədən yüklə
         med_map = {}
@@ -1527,6 +1569,7 @@ def import_recipes_daily_from_excel(request):
         # Bölgələri əvvəlcədən yüklə
         region_list = list(Region.objects.all())
 
+        # ── 1. Faylı oxuyub hər vərəq üçün plan hazırla (DB-yə yazılmır) ──
         for sheet_name, df in xls.items():
             region_raw = str(sheet_name).strip()
             if not region_raw or region_raw == "nan":
@@ -1586,81 +1629,139 @@ def import_recipes_daily_from_excel(request):
                     continue
                 drug_cols.append(c)
 
-            # ── 3. Etibarlı sətirləri topla (həkim adı + rəqəmsal gün) ──────
+            # ── 3. Etibarlı sətirləri topla (Tarix boş sətir atlanır; boş həkim → əvvəlki sətirin həkimi)
             valid_rows = []
+            last_hekim = None
             for _, row in df.iterrows():
-                hekim_adi = str(row.get(hekim_col, "")).strip()
-                if not hekim_adi or hekim_adi.lower() in ("nan", ".", "həkim adı", "hekim adi", "hekim"):
+                raw_h = row.get(hekim_col, "")
+                hekim_adi = _strict_excel_cell_text(raw_h)
+                if hekim_adi.lower() in ("nan", ".", "həkim adı", "hekim adi", "hekim"):
+                    hekim_adi = ""
+
+                if hekim_adi:
+                    last_hekim = hekim_adi
+                elif last_hekim:
+                    hekim_adi = last_hekim
+                else:
                     continue
-                try:
-                    day_val = str(row.get(tarix_col, "")).strip()
-                    day = int(float(day_val))
-                    if 1 <= day <= 31:
-                        valid_rows.append((day, row, hekim_adi))
-                except (ValueError, TypeError):
+
+                tv = row.get(tarix_col, "")
+                if tv is None or (isinstance(tv, float) and pd.isna(tv)):
+                    tv = ""
+                day_str = str(tv).strip()
+                if day_str.lower() in ("", "nan", "none"):
+                    day = None
+                else:
+                    day = None
+                    try:
+                        d = int(float(day_str))
+                        if 1 <= d <= 31:
+                            day = d
+                    except (ValueError, TypeError):
+                        day = None
+
+                if day is None:
                     continue
+
+                valid_rows.append((day, row, hekim_adi))
 
             if not valid_rows:
                 continue
 
-            # ── 4. Ən son gün (max) ──────────────────────────────────────────
-            max_day = max(r[0] for r in valid_rows)
-
-            try:
-                import_date = base_date.replace(day=max_day)
-            except ValueError:
-                # Seçilmiş ayda bu gün yoxdur (məs. 31 fevral)
-                messages.warning(request, f"{region_raw}: {base_date.strftime('%Y-%m')}-{max_day:02d} tarixi keçərli deyil, atlandı.")
+            rows_target_day = [(d, r, h) for d, r, h in valid_rows if d == target_day]
+            if not rows_target_day:
+                days_in_sheet = sorted({d for d, _, __ in valid_rows})
+                date_mismatch_sheets.append(
+                    f"{region_raw}: Exceldə Tarix günləri {days_in_sheet}, sistemdə seçilib {target_day}"
+                )
                 continue
 
-            # ── 5. Yalnız max_day sətirləri işlə ────────────────────────────
-            doctors_in_region = list(Doctors.objects.filter(bolge=matched_region))
+            prepared.append({
+                "matched_region": matched_region,
+                "region_raw": region_raw,
+                "drug_cols": drug_cols,
+                "rows_target_day": rows_target_day,
+            })
 
-            for day, row, hekim_adi in valid_rows:
-                if day != max_day:
+        duplicate_recipes = []
+        for entry in prepared:
+            unique_doc = {}
+            for _d, _row, hekim_adi in entry["rows_target_day"]:
+                doctor = (
+                    Doctors.objects.filter(bolge=entry["matched_region"], ad=hekim_adi)
+                    .order_by("id")
+                    .first()
+                )
+                if not doctor:
                     continue
+                dn = _norm(hekim_adi)
+                unique_doc.setdefault(dn, doctor)
+            for dn, doctor in unique_doc.items():
+                if Recipe.objects.filter(
+                    dr=doctor, region=entry["matched_region"], date=base_date
+                ).exists():
+                    dup_name = doctor.ad
+                    rn = entry["matched_region"].region_name
+                    duplicate_recipes.append(f"{dup_name} — {rn} ({base_date.isoformat()})")
 
-                hekim_norm = _norm(hekim_adi)
+        if date_mismatch_sheets or duplicate_recipes:
+            parts = []
+            if date_mismatch_sheets:
+                parts.append(
+                    "Tarix uyğun gəlmir: sistemdə seçilmiş tarix günü ilə cədvəldəki Tarix eyni olmalıdır. "
+                    + "; ".join(sorted(set(date_mismatch_sheets)))
+                )
+            if duplicate_recipes:
+                parts.append(
+                    "Bu tarix üçün bazada artıq resept mövcuddur (təkrar idxal bağlanır): "
+                    + "; ".join(sorted(set(duplicate_recipes)))
+                )
+            messages.error(request, "İmport edilmədi. " + " ".join(parts))
+            return redirect("admin")
 
-                # Həkimi tap: əvvəlcə tam uyğunluq, sonra fuzzy
-                doctor = None
-                best_ratio = 0.79
-                for d in doctors_in_region:
-                    d_norm = _norm(d.ad)
-                    if d_norm == hekim_norm:
-                        doctor = d
-                        best_ratio = 1.0
-                        break
-                    ratio = SequenceMatcher(None, hekim_norm, d_norm).ratio()
-                    if ratio > best_ratio:
-                        best_ratio = ratio
-                        doctor = d
+        # ── 2. Əməliyyatların hamısı uğursuzluqda geri qaytarılır ──
+        def _apply_sheet_entry(entry):
+            nonlocal added_count
+            matched_region = entry["matched_region"]
+            region_raw = entry["region_raw"]
+            drug_cols = entry["drug_cols"]
+            rows_target_day = entry["rows_target_day"]
+            import_date = base_date
+
+            doctor_recipes = {}
+            for _day, row, hekim_adi in rows_target_day:
+                doc_norm = _norm(hekim_adi)
+                doctor = (
+                    Doctors.objects.filter(bolge=matched_region, ad=hekim_adi)
+                    .order_by("id")
+                    .first()
+                )
 
                 if not doctor:
                     not_found_doctors.append(f"{hekim_adi} ({region_raw})")
                     continue
 
-                # Resept yarat
-                recipe = Recipe.objects.create(
-                    region=matched_region,
-                    dr=doctor,
-                    date=import_date
-                )
+                recipe = doctor_recipes.get(doc_norm)
+                if recipe is None:
+                    recipe = Recipe.objects.create(
+                        region=matched_region,
+                        dr=doctor,
+                        date=import_date,
+                    )
+                    doctor_recipes[doc_norm] = recipe
+                    added_count += 1
 
-                # Dərmanları əlavə et
                 for drug_col in drug_cols:
                     try:
                         raw_val = row[drug_col]
                         if pd.isna(raw_val):
                             say = 0.0
                         else:
-                            # Excel-də 5,3 / 5.3 / " 5,3 " / formuladan gələn mətn halları
                             val = str(raw_val).strip().replace(" ", "").replace(",", ".")
                             say = float(val)
                     except Exception:
                         say = 0.0
 
-                    # Excel-dən NaN/inf gəlsə DecimalField xətaya düşməsin
                     if say != say or say in (float("inf"), float("-inf")):
                         say = 0.0
 
@@ -1670,7 +1771,6 @@ def import_recipes_daily_from_excel(request):
                     drug_key = _norm(drug_col)
                     meds = med_map.get(drug_key)
 
-                    # Fuzzy axtarış (tam uyğun tapılmasa)
                     if not meds:
                         best_drug_ratio = 0.84
                         best_meds = None
@@ -1685,10 +1785,21 @@ def import_recipes_daily_from_excel(request):
                         not_found_drugs.add(str(drug_col).strip())
                         continue
 
-                    for med in meds:
-                        RecipeDrug.objects.create(recipe=recipe, drug=med, number=say)
+                    med_pick = sorted(meds, key=lambda m: m.id)[0]
+                    try:
+                        qty = Decimal(str(say))
+                    except InvalidOperation:
+                        continue
+                    existing_rd = RecipeDrug.objects.filter(recipe=recipe, drug=med_pick).first()
+                    if existing_rd:
+                        existing_rd.number = existing_rd.number + qty
+                        existing_rd.save(update_fields=["number"])
+                    else:
+                        RecipeDrug.objects.create(recipe=recipe, drug=med_pick, number=qty)
 
-                added_count += 1
+        with transaction.atomic():
+            for entry in prepared:
+                _apply_sheet_entry(entry)
 
         # ── Nəticə mesajları ─────────────────────────────────────────────────
         messages.success(request, f"{added_count} resept uğurla əlavə olundu.")
