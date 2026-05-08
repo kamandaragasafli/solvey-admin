@@ -611,6 +611,10 @@
 <i class="bi bi-shield-check"></i>
 <span>Powered by OpenAI</span>
 </div>
+<div class="chat-footer-info" style="margin-top: 6px;">
+  <i class="bi bi-box-arrow-up-right"></i>
+  <a href="{% url 'ai-assistant' %}" style="color: inherit; text-decoration: underline;">Tam səhifədə aç</a>
+</div>
 </div>
 </aside>
  {% if messages %}
@@ -657,6 +661,18 @@ const closeBtn = document.getElementById('closeBtn');
 const sendBtn = document.getElementById('sendBtn');
 const msgInput = document.getElementById('msgInput');
 const chatBody = document.getElementById('chatBody');
+
+// Keep a short conversation history for context
+// Format matches OpenAI-style chat roles (user/assistant)
+let sohbetTarixcesi = [];
+const MAX_HISTORY = 10;
+
+function pushHistory(role, content){
+    sohbetTarixcesi.push({ role, content });
+    if (sohbetTarixcesi.length > MAX_HISTORY) {
+        sohbetTarixcesi = sohbetTarixcesi.slice(-MAX_HISTORY);
+    }
+}
 
 
 function acKapat(toggle) {
@@ -709,6 +725,7 @@ async function sendMesaj() {
     chatBody.appendChild(satir);
     chatBody.scrollTop = chatBody.scrollHeight;
     msgInput.value = '';
+    pushHistory('user', text);
 
     // Typing indicator
     const typingRow = document.createElement('div');
@@ -730,28 +747,32 @@ async function sendMesaj() {
             },
             body: JSON.stringify({ 
                 message: text,
-                model: 'gpt-3.5-turbo'
+                // Backend must support this model; if not, it will return an error message.
+                model: 'gpt-4o-mini',
+                history: sohbetTarixcesi
             })
         });
 
         // Remove typing indicator
         typingRow.remove();
 
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-            throw new Error('API request failed');
+            const serverMsg = data.reply || data.error || data.message || `HTTP ${res.status}`;
+            throw new Error(serverMsg);
         }
-
-        const data = await res.json();
 
         // Server cavabını əlavə et
         const botSatir = document.createElement('div');
         botSatir.className = 'mb-2 text-start';
         const botBalon = document.createElement('div');
         botBalon.className = 'msg other';
-        botBalon.textContent = data.reply || data.message || 'Üzr istəyirəm, cavab ala bilmədim.';
+        const replyText = data.reply || data.message || 'Üzr istəyirəm, cavab ala bilmədim.';
+        botBalon.textContent = replyText;
         botSatir.appendChild(botBalon);
         chatBody.appendChild(botSatir);
         chatBody.scrollTop = chatBody.scrollHeight;
+        pushHistory('assistant', replyText);
 
     } catch (err) {
         // Remove typing indicator
@@ -764,7 +785,9 @@ async function sendMesaj() {
         errorMsg.className = 'msg other';
         errorMsg.style.background = 'rgba(239, 68, 68, 0.2)';
         errorMsg.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-        errorMsg.textContent = 'Xəta baş verdi. Zəhmət olmasa yenidən cəhd edin.';
+        errorMsg.textContent = (err && err.message)
+            ? `Xəta: ${err.message}`
+            : 'Xəta baş verdi. Zəhmət olmasa yenidən cəhd edin.';
         errorRow.appendChild(errorMsg);
         chatBody.appendChild(errorRow);
         chatBody.scrollTop = chatBody.scrollHeight;

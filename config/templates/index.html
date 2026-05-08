@@ -9,6 +9,141 @@
     max-width: 95%; /* Ekranın 95%-i qədər genişlik */
     width: 95%;
 }
+.report-modal .modal-content{
+    background: linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(2,6,23,0.98) 100%);
+    border: 1px solid rgba(148,163,184,0.14);
+    border-radius: 16px;
+    box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+    overflow: hidden;
+}
+.report-modal .modal-header{
+    background: rgba(15,23,42,0.75);
+    border-bottom: 1px solid rgba(148,163,184,0.12);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 14px 16px;
+}
+.report-modal .modal-title{
+    color: #e5e7eb;
+    font-weight: 800;
+    letter-spacing: .2px;
+}
+.report-modal .modal-body{
+    padding: 14px 16px;
+}
+.report-modal .modal-footer{
+    background: rgba(2,6,23,0.7);
+    border-top: 1px solid rgba(148,163,184,0.12);
+    padding: 12px 16px;
+}
+.report-modal .btn-close{
+    filter: invert(1) grayscale(1);
+    opacity: 0.75;
+}
+.report-modal .btn-close:hover{ opacity: 1; }
+.report-modal .table-responsive{
+    border: 1px solid rgba(148,163,184,0.12);
+    border-radius: 12px;
+    background: rgba(2,6,23,0.55);
+    overflow: auto;
+    max-height: 70vh;
+}
+.report-table{
+    margin: 0;
+    color: #e5e7eb;
+    font-size: 0.82rem;
+    --bs-table-color: #e5e7eb;
+    --bs-table-bg: transparent;
+    --bs-table-striped-color: #e5e7eb;
+    --bs-table-striped-bg: rgba(148,163,184,0.08);
+    --bs-table-active-color: #e5e7eb;
+    --bs-table-active-bg: rgba(59,130,246,0.16);
+    --bs-table-hover-color: #e5e7eb;
+    --bs-table-hover-bg: rgba(59,130,246,0.14);
+}
+.report-table thead th{
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: rgba(30,41,59,0.98) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(148,163,184,0.14) !important;
+    text-transform: none;
+    letter-spacing: .2px;
+    white-space: nowrap;
+    padding: 10px 12px !important;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+.report-table td, .report-table th{
+    border-color: rgba(148,163,184,0.12) !important;
+    vertical-align: middle;
+    white-space: nowrap;
+    padding: 8px 12px !important;
+}
+.report-table tbody td{
+    background: rgba(2,6,23,0.18) !important;
+}
+
+/* Freeze first 2 columns for wide tables */
+.report-table th:nth-child(1),
+.report-table td:nth-child(1){
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    min-width: 46px;
+    width: 46px;
+    background: rgba(30,41,59,0.98) !important;
+}
+.report-table th:nth-child(2),
+.report-table td:nth-child(2){
+    position: sticky;
+    left: 46px;
+    z-index: 3;
+    min-width: 130px;
+    max-width: 130px;
+    background: rgba(30,41,59,0.98) !important;
+}
+.report-table td:nth-child(2){
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Ensure stripes/hover keep dark palette */
+.report-table.table-striped > tbody > tr:nth-of-type(odd) > *{
+    background-color: rgba(148,163,184,0.06) !important;
+}
+.report-table.table-hover > tbody > tr:hover > *{
+    background-color: rgba(59,130,246,0.14) !important;
+}
+.report-modal .form-control{
+    background: rgba(2,6,23,0.45) !important;
+    border: 1px solid rgba(148,163,184,0.18) !important;
+    color: #e5e7eb !important;
+}
+.report-modal .form-control::placeholder{ color: rgba(226,232,240,0.55); }
+.report-modal .btn-outline-primary{
+    border-color: rgba(59,130,246,0.55);
+    color: #93c5fd;
+}
+.report-modal .btn-outline-primary:hover{
+    background: rgba(59,130,246,0.14);
+    border-color: rgba(59,130,246,0.75);
+    color: #bfdbfe;
+}
+.report-modal .btn-success{
+    background: linear-gradient(180deg, rgba(34,197,94,0.95) 0%, rgba(22,163,74,0.95) 100%);
+    border: 0;
+    box-shadow: 0 10px 24px rgba(34,197,94,0.18);
+}
+.report-modal .btn-success:hover{ filter: brightness(1.05); }
+.report-modal .btn-secondary{
+    background: rgba(148,163,184,0.14);
+    border: 1px solid rgba(148,163,184,0.18);
+    color: #e5e7eb;
+}
+.report-modal .btn-secondary:hover{ background: rgba(148,163,184,0.20); }
+.report-modal .fw-bold{ color: #f8fafc; }
 .info-center-section { margin-bottom: 0; }
 .info-center-title { font-size: 0.9rem; color: #94a3b8; margin-bottom: 8px; }
 .info-center-list { padding-left: 1.2rem; margin: 0; font-size: 0.85rem; color: #e2e8f0; }
@@ -259,9 +394,9 @@
             <div class="progress-bar-custom">
                 {% with total=total_baku|add:total_other %}
                     {% if total > 0 %}
-                        <div class="progress-fill" style="width: {{ total_baku|percentage:total|floatformat:0 }}%"></div>
+                        <div class="progress-fill" data-width="{{ total_baku|percentage:total|floatformat:0 }}%"></div>
                     {% else %}
-                        <div class="progress-fill" style="width: 0%"></div>
+                        <div class="progress-fill" data-width="0%"></div>
                     {% endif %}
                 {% endwith %}
             </div>
@@ -363,38 +498,22 @@
                         </h5>
                     </div>
                     <div class="quick-actions-body">
-                        <div class="quick-action-item">
-                            <button class="btn btn-outline-primary w-100 mb-3">
-                                 <a class="nav-link ps-5" href="{% url 'add-doctor' %}">Yeni Həkim Əlavə Et<i class="fas fa-user-plus me-2"></i></a>
-                             
-                            </button>
-                        </div>
-                        <div class="quick-action-item">
-                            <button class="btn btn-outline-success w-100 mb-3">
-                                <i class="fas fa-hospital me-2"></i>
-                                Xəstəxana Qeydiyyatı
-                            </button>
-                        </div>
+
+
                         <div class="quick-action-item">
                             <button class="btn btn-outline-warning w-100 mb-3">
                                 <i class="fas fa-pills me-2"></i>
                                 Dərman Kataloqu
                             </button>
                         </div>
-                        <div class="quick-action-item">
-                            <button class="btn btn-outline-info w-100 mb-3">
-                                <i class="fas fa-chart-bar me-2"></i>
-                                Hesabat Yarat
-                            </button>
-                        </div>
                         <div class="quick-actions-item">
                             <button type="button" class="btn btn-outline-danger w-100 mb-3" data-bs-toggle="modal" data-bs-target="#cityModal">
                                 <i class="fas fa-map-marker-alt me-2"></i>
-                                Şəhər Qeydiyyat
+                                Sumqayıt-Naxçıvan Qeydiyyat
                             </button>
                         </div>
                         <div class="quick-actions-item">
-                            <button type="button" class="btn btn-outline-danger w-100 mb-3" data-bs-toggle="modal" data-bs-target="#regionModal">
+                            <button type="button" class="btn btn-outline-info w-100 mb-3" data-bs-toggle="modal" data-bs-target="#regionModal">
                                 <i class="fas fa-map-marker-alt me-2"></i>
                                 Region Qeydiyyat
                             </button>
@@ -413,7 +532,7 @@
 
 <!-- Modal -->
  <!-- Şəhər Modal -->
- <div class="modal fade" id="cityModal" tabindex="-1" aria-labelledby="cityModalLabel" aria-hidden="true">
+ <div class="modal fade report-modal" id="cityModal" tabindex="-1" aria-labelledby="cityModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered custom-modal">
     
         <div class="modal-content">
@@ -423,13 +542,13 @@
           </div>
           <div class="modal-body">
             <div class="table-responsive">
-              <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
+              <table class="table report-table table-bordered table-hover table-striped table-sm align-middle text-center" id="city-result-table">
                 <thead class="table-light text-muted" style="font-size: 0.65rem;">
                   <tr>
                     <th>#</th>
                     <th>Bölgə</th>
                     {% for d in all_drug %}
-                    <th>{{ d.med_name }}</th>
+                    <th class="drug-header"><div class="rotate-90"><span>{{ d.med_name }}</span></div></th>
                     {% endfor %}
                     <th>Günlük Qeydiyyat</th>
                     <th>Aylıq Qeydiyyat</th>
@@ -465,42 +584,59 @@
       </div>
     </div>
     
-<div class="modal fade" id="regionModal" tabindex="-1" aria-labelledby="regionModalLabel" aria-hidden="true">
+<div class="modal fade report-modal" id="regionModal" tabindex="-1" aria-labelledby="regionModalLabel" aria-hidden="true">
 <div class="modal-dialog modal-dialog-centered custom-modal">
 
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="regionModalLabel">Region Qeydiyyat</h5>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <h5 class="modal-title mb-0" id="regionModalLabel">Region Qeydiyyat</h5>
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted" style="font-size: 0.85rem;">Tarix aralığı:</span>
+            <input type="text" id="region-date-range" class="form-control form-control-sm bg-dark text-light"
+                   style="width: 220px; border: 1px solid rgba(255,255,255,0.15);"
+                   placeholder="YYYY-MM-DD - YYYY-MM-DD">
+          </div>
+          <div class="btn-group btn-group-sm" role="group" aria-label="Qeydiyyat rejimi">
+            <input type="radio" class="btn-check" name="regionMode" id="regionModeDaily" autocomplete="off" checked>
+            <label class="btn btn-outline-primary" for="regionModeDaily">Günlük</label>
+            <input type="radio" class="btn-check" name="regionMode" id="regionModeMonthly" autocomplete="off">
+            <label class="btn btn-outline-primary" for="regionModeMonthly">Aylıq</label>
+          </div>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div class="table-responsive">
-          <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="result-table">
+          <table class="table report-table table-bordered table-hover table-striped table-sm align-middle text-center" id="region-result-table">
             <thead class="table-light text-muted" style="font-size: 0.65rem;">
               <tr>
                 <th>#</th>
                 <th>Bölgə</th>
                 {% for d in all_drug %}
-                <th>{{ d.med_name }}</th>
+                <th class="drug-header"><div class="rotate-90"><span>{{ d.med_name }}</span></div></th>
                 {% endfor %}
-                <th>Günlük Qeydiyyat</th>
-                <th>Aylıq Qeydiyyat</th>
+                <th class="col-daily-total">Günlük Qeydiyyat</th>
+                <th class="col-monthly-total">Aylıq Qeydiyyat</th>
               </tr>
             </thead>
             <tbody>
              {% for region in diger_region %}
-                <tr>
+                <tr data-region="{{ region.region_name }}">
                 <td>{{ forloop.counter }}</td>
                 <td>{{ region.region_name }}</td>
 
                 {% for drug in all_drug %}
                     {% with key=region.region_name|add:"|"|add:drug.med_name %}
-                    <td>{{ region_drug_counts|get_region_drug:key }}</td>
+                    <td class="drug-cell"
+                        data-daily="{{ region_drug_counts|get_region_drug:key }}"
+                        data-monthly="{{ region_drug_counts_monthly|get_region_drug:key }}"
+                    >{{ region_drug_counts|get_region_drug:key }}</td>
                     {% endwith %}
                 {% endfor %}
 
-                <td style="font-weight: bold">{{ region_daily_totals|get_total_item:region.region_name }}</td>
-                <td style="font-weight: bold">{{ region_monthly_totals|get_total_item:region.region_name }}</td>
+                <td class="col-daily-total fw-bold">{{ region_daily_totals|get_total_item:region.region_name }}</td>
+                <td class="col-monthly-total fw-bold" data-monthly-total>{{ region_monthly_totals|get_total_item:region.region_name }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -508,7 +644,7 @@
         </div>
       </div>
       <div class="modal-footer">
-         <a href="{% url 'export_excel_ayliq_region' %}" class="btn btn-success ">
+         <a href="{% url 'export_excel_ayliq_region' %}" class="btn btn-success" id="regionExportExcel">
         <i class="bi bi-file-earmark-excel"></i> Excel
         </a>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bağla</button>
@@ -520,39 +656,58 @@
 
 
 <!-- Bakı Modal -->
-<div class="modal fade" id="bakuModal" tabindex="-1" aria-labelledby="bakuModalLabel" aria-hidden="true">
+<div class="modal fade report-modal" id="bakuModal" tabindex="-1" aria-labelledby="bakuModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered custom-modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="bakuModalLabel">Bakı Region Qeydiyyat</h5>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <h5 class="modal-title mb-0" id="bakuModalLabel">Bakı Qeydiyyat</h5>
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted" style="font-size: 0.85rem;">Tarix aralığı:</span>
+            <input type="text" id="baku-date-range" class="form-control form-control-sm bg-dark text-light"
+                   style="width: 220px; border: 1px solid rgba(255,255,255,0.15);"
+                   placeholder="YYYY-MM-DD - YYYY-MM-DD">
+          </div>
+          <div class="btn-group btn-group-sm" role="group" aria-label="Bakı qeydiyyat rejimi">
+            <input type="radio" class="btn-check" name="bakuMode" id="bakuModeDaily" autocomplete="off" checked>
+            <label class="btn btn-outline-primary" for="bakuModeDaily">Günlük</label>
+            <input type="radio" class="btn-check" name="bakuMode" id="bakuModeMonthly" autocomplete="off">
+            <label class="btn btn-outline-primary" for="bakuModeMonthly">Aylıq</label>
+          </div>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div class="table-responsive">
-          <table class="table table-bordered table-hover table-striped table-sm align-middle text-center" id="baku-result-table">
+          <table class="table report-table table-bordered table-hover table-striped table-sm align-middle text-center" id="baku-result-table">
             <thead class="table-light text-muted" style="font-size: 0.65rem;">
               <tr>
                 <th>#</th>
                 <th>Bölgə</th>
                 {% for d in all_drug %}
-                <th>{{ d.med_name }}</th>
+                <th class="drug-header"><div class="rotate-90"><span>{{ d.med_name }}</span></div></th>
                 {% endfor %}
-                <th>Aylıq Qeydiyyat</th>
+                <th class="baku-col-daily-total">Günlük Qeydiyyat</th>
+                <th class="baku-col-monthly-total">Aylıq Qeydiyyat</th>
               </tr>
             </thead>
             <tbody>
               {% for region in baki_region %}
-                <tr>
+                <tr data-region="{{ region.region_name }}">
                   <td>{{ forloop.counter }}</td>
                   <td>{{ region.region_name }}</td>
 
                   {% for drug in all_drug %}
                     {% with key=region.region_name|add:"|"|add:drug.med_name %}
-                      <td>{{ baki_region_drug_counts|get_region_drug:key }}</td>
+                      <td class="baku-drug-cell"
+                          data-daily="{{ baki_region_drug_counts_daily|get_region_drug:key }}"
+                          data-monthly="{{ baki_region_drug_counts_monthly|get_region_drug:key }}"
+                      >{{ baki_region_drug_counts_daily|get_region_drug:key }}</td>
                     {% endwith %}
                   {% endfor %}
 
-                  <td style="font-weight: bold">{{ baki_region_monthly_totals|get_total_item:region.region_name }}</td>
+                  <td class="baku-col-daily-total fw-bold">{{ baki_region_daily_totals|get_total_item:region.region_name }}</td>
+                  <td class="baku-col-monthly-total fw-bold" data-monthly-total>{{ baki_region_monthly_totals|get_total_item:region.region_name }}</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -560,7 +715,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <a href="{% url 'export_excel_ayliq_baki' %}" class="btn btn-success">
+        <a href="{% url 'export_excel_ayliq_baki' %}" class="btn btn-success" id="bakuExportExcel">
           <i class="bi bi-file-earmark-excel"></i> Excel
         </a>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bağla</button>
@@ -857,5 +1012,328 @@
     })();
 
   })();
+</script>
+
+<script>
+(function(){
+  // Template expressions inside style="" can confuse CSS linters.
+  // Apply widths from data-width instead.
+  document.querySelectorAll(".progress-fill[data-width]").forEach((el) => {
+    const w = (el.getAttribute("data-width") || "").trim();
+    if (w) el.style.width = w;
+  });
+})();
+</script>
+
+<script>
+(function(){
+  function applyRegionMode(mode){
+    const table = document.getElementById("region-result-table");
+    if(!table) return;
+
+    // 1) Orta hissə (dərman sütunları)
+    table.querySelectorAll("td.drug-cell").forEach(td => {
+      const daily = td.getAttribute("data-daily") ?? "0";
+      const monthly = td.getAttribute("data-monthly") ?? "0";
+      td.textContent = (mode === "monthly") ? monthly : daily;
+    });
+
+    // 2) Son sütunlar (toplamlar)
+    table.querySelectorAll(".col-daily-total").forEach(el => {
+      el.style.display = (mode === "monthly") ? "none" : "";
+    });
+    table.querySelectorAll(".col-monthly-total").forEach(el => {
+      // Günlük rejimdə də Aylıq toplam görünməlidir
+      el.style.display = "";
+    });
+  }
+
+  function init(){
+    const daily = document.getElementById("regionModeDaily");
+    const monthly = document.getElementById("regionModeMonthly");
+    const dateRangeInput = document.getElementById("region-date-range");
+    const exportBtn = document.getElementById("regionExportExcel");
+    if(!daily || !monthly) return;
+
+    function setDailyEnabled(enabled){
+      daily.disabled = !enabled;
+      const dailyLabel = document.querySelector('label[for="regionModeDaily"]');
+      if (dailyLabel) {
+        dailyLabel.classList.toggle("disabled", !enabled);
+        dailyLabel.style.opacity = enabled ? "" : "0.6";
+        dailyLabel.style.cursor = enabled ? "" : "not-allowed";
+      }
+    }
+
+    function isDateRangeActive(){
+      return !!(dateRangeInput && String(dateRangeInput.value || "").trim());
+    }
+
+    function syncModeLock(){
+      if (isDateRangeActive()) {
+        // tarix intervalı aktivdirsə Günlük seçimi bloklanır
+        setDailyEnabled(false);
+        monthly.checked = true;
+        applyRegionMode("monthly");
+      } else {
+        setDailyEnabled(true);
+      }
+    }
+
+    // default: Günlük görünüş, aylıq sütunu gizlə
+    applyRegionMode("daily");
+    syncModeLock();
+
+    daily.addEventListener("change", () => applyRegionMode("daily"));
+    monthly.addEventListener("change", () => applyRegionMode("monthly"));
+
+    if (dateRangeInput && typeof $ !== 'undefined' && $.fn.daterangepicker && typeof moment !== 'undefined') {
+      $(dateRangeInput).daterangepicker({
+        locale: {
+          format: 'YYYY-MM-DD',
+          separator: ' - ',
+          applyLabel: 'Təsdiqlə',
+          cancelLabel: 'Ləğv et',
+          fromLabel: 'Başlanğıc',
+          toLabel: 'Son',
+          customRangeLabel: 'Xüsusi',
+          weekLabel: 'Həftə',
+          daysOfWeek: ['Bz', 'Be', 'Ça', 'Ç', 'Ca', 'C', 'Ş'],
+          monthNames: ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'],
+          firstDay: 1
+        },
+        autoUpdateInput: false,
+        startDate: moment().startOf('month'),
+        endDate: moment().endOf('month'),
+        opens: 'center',
+        drops: 'down'
+      });
+
+      $(dateRangeInput).on('apply.daterangepicker', async function(ev, picker){
+        const dr = picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD');
+        this.value = dr;
+        // interval seçilən kimi Günlük bloklansın
+        syncModeLock();
+        try{
+          const res = await fetch(`/region-modal-monthly-data/?date_range=${encodeURIComponent(dr)}`, { headers: { 'Accept': 'application/json' }});
+          const data = await res.json();
+          if(!data.ok) throw new Error(data.error || 'Xəta');
+
+          // region -> payload
+          const regionPayload = {};
+          for (const r of (data.regions || [])) regionPayload[r.region] = r;
+
+          document.querySelectorAll('#region-result-table tbody tr[data-region]').forEach(tr => {
+            const rn = tr.getAttribute('data-region');
+            const payload = regionPayload[rn];
+            if(!payload) return;
+            tr.querySelectorAll('td.drug-cell').forEach(td => {
+              const headerIdx = td.cellIndex;
+              // dərman adını thead-dan oxu
+              const th = document.querySelector(`#region-result-table thead tr th:nth-child(${headerIdx+1})`);
+              const drugName = th ? th.textContent.trim() : null;
+              if(!drugName) return;
+              const v = payload.drugs && (payload.drugs[drugName] ?? payload.drugs[drugName.toString()]);
+              if(typeof v !== 'undefined') td.setAttribute('data-monthly', v);
+            });
+            const totalEl = tr.querySelector('[data-monthly-total]');
+            if(totalEl) totalEl.textContent = payload.total ?? totalEl.textContent;
+          });
+
+          // əgər modal aylıq rejimdədirsə, dərhal ekrana tətbiq et
+          if (monthly.checked) applyRegionMode("monthly");
+        } catch(e){
+          console.error(e);
+          alert("Tarix aralığı üzrə məlumat yüklənmədi: " + (e && e.message ? e.message : "Xəta"));
+        }
+      });
+
+      $(dateRangeInput).on('cancel.daterangepicker', function(){
+        // istifadəçi ləğv edəndə intervalı təmizlə və Günlük aktivləşsin
+        this.value = "";
+        syncModeLock();
+      });
+    }
+
+    if (dateRangeInput) {
+      dateRangeInput.addEventListener("input", syncModeLock);
+      dateRangeInput.addEventListener("change", syncModeLock);
+    }
+
+    if (exportBtn) {
+      if (!exportBtn.dataset.baseHref) {
+        exportBtn.dataset.baseHref = exportBtn.getAttribute("href") || "{% url 'export_excel_ayliq_region' %}";
+      }
+      exportBtn.addEventListener("click", function(e){
+        e.preventDefault();
+        const base = this.dataset.baseHref || "{% url 'export_excel_ayliq_region' %}";
+        const dr = dateRangeInput ? String(dateRangeInput.value || "").trim() : "";
+        const mode = (monthly.checked || dr) ? "monthly" : "daily";
+        const params = new URLSearchParams();
+        params.set("mode", mode);
+        if (dr) params.set("date_range", dr);
+        const url = base + "?" + params.toString();
+        window.location.href = url;
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+<script>
+(function(){
+  function applyBakuMode(mode){
+    const table = document.getElementById("baku-result-table");
+    if(!table) return;
+
+    table.querySelectorAll("td.baku-drug-cell").forEach(td => {
+      const daily = td.getAttribute("data-daily") ?? "0";
+      const monthly = td.getAttribute("data-monthly") ?? "0";
+      td.textContent = (mode === "monthly") ? monthly : daily;
+    });
+
+    table.querySelectorAll(".baku-col-daily-total").forEach(el => {
+      el.style.display = (mode === "monthly") ? "none" : "";
+    });
+    table.querySelectorAll(".baku-col-monthly-total").forEach(el => {
+      // Günlük rejimdə də aylıq toplam görünsün
+      el.style.display = "";
+    });
+  }
+
+  function init(){
+    const daily = document.getElementById("bakuModeDaily");
+    const monthly = document.getElementById("bakuModeMonthly");
+    const dateRangeInput = document.getElementById("baku-date-range");
+    const exportBtn = document.getElementById("bakuExportExcel");
+    if(!daily || !monthly) return;
+
+    function setDailyEnabled(enabled){
+      daily.disabled = !enabled;
+      const dailyLabel = document.querySelector('label[for="bakuModeDaily"]');
+      if (dailyLabel) {
+        dailyLabel.classList.toggle("disabled", !enabled);
+        dailyLabel.style.opacity = enabled ? "" : "0.6";
+        dailyLabel.style.cursor = enabled ? "" : "not-allowed";
+      }
+    }
+
+    function isDateRangeActive(){
+      return !!(dateRangeInput && String(dateRangeInput.value || "").trim());
+    }
+
+    function syncModeLock(){
+      if (isDateRangeActive()) {
+        setDailyEnabled(false);
+        monthly.checked = true;
+        applyBakuMode("monthly");
+      } else {
+        setDailyEnabled(true);
+      }
+    }
+
+    applyBakuMode("daily");
+    syncModeLock();
+
+    daily.addEventListener("change", () => applyBakuMode("daily"));
+    monthly.addEventListener("change", () => applyBakuMode("monthly"));
+
+    if (dateRangeInput && typeof $ !== 'undefined' && $.fn.daterangepicker && typeof moment !== 'undefined') {
+      $(dateRangeInput).daterangepicker({
+        locale: {
+          format: 'YYYY-MM-DD',
+          separator: ' - ',
+          applyLabel: 'Təsdiqlə',
+          cancelLabel: 'Ləğv et',
+          fromLabel: 'Başlanğıc',
+          toLabel: 'Son',
+          customRangeLabel: 'Xüsusi',
+          weekLabel: 'Həftə',
+          daysOfWeek: ['Bz', 'Be', 'Ça', 'Ç', 'Ca', 'C', 'Ş'],
+          monthNames: ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'],
+          firstDay: 1
+        },
+        autoUpdateInput: false,
+        startDate: moment().startOf('month'),
+        endDate: moment().endOf('month'),
+        opens: 'center',
+        drops: 'down'
+      });
+
+      $(dateRangeInput).on('apply.daterangepicker', async function(ev, picker){
+        const dr = picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD');
+        this.value = dr;
+        syncModeLock();
+        try{
+          const res = await fetch(`/baku-modal-monthly-data/?date_range=${encodeURIComponent(dr)}`, { headers: { 'Accept': 'application/json' }});
+          const data = await res.json();
+          if(!data.ok) throw new Error(data.error || 'Xəta');
+
+          const regionPayload = {};
+          for (const r of (data.regions || [])) regionPayload[r.region] = r;
+
+          document.querySelectorAll('#baku-result-table tbody tr[data-region]').forEach(tr => {
+            const rn = tr.getAttribute('data-region');
+            const payload = regionPayload[rn];
+            if(!payload) return;
+            tr.querySelectorAll('td.baku-drug-cell').forEach(td => {
+              const headerIdx = td.cellIndex;
+              const th = document.querySelector(`#baku-result-table thead tr th:nth-child(${headerIdx+1})`);
+              const drugName = th ? th.textContent.trim() : null;
+              if(!drugName) return;
+              const v = payload.drugs && payload.drugs[drugName];
+              if(typeof v !== 'undefined') td.setAttribute('data-monthly', v);
+            });
+            const totalEl = tr.querySelector('[data-monthly-total]');
+            if(totalEl) totalEl.textContent = payload.total ?? totalEl.textContent;
+          });
+
+          if (monthly.checked) applyBakuMode("monthly");
+        } catch(e){
+          console.error(e);
+          alert("Tarix aralığı üzrə məlumat yüklənmədi: " + (e && e.message ? e.message : "Xəta"));
+        }
+      });
+
+      $(dateRangeInput).on('cancel.daterangepicker', function(){
+        this.value = "";
+        syncModeLock();
+      });
+    }
+
+    if (dateRangeInput) {
+      dateRangeInput.addEventListener("input", syncModeLock);
+      dateRangeInput.addEventListener("change", syncModeLock);
+    }
+
+    if (exportBtn) {
+      if (!exportBtn.dataset.baseHref) {
+        exportBtn.dataset.baseHref = exportBtn.getAttribute("href") || "{% url 'export_excel_ayliq_baki' %}";
+      }
+      exportBtn.addEventListener("click", function(e){
+        e.preventDefault();
+        const base = this.dataset.baseHref || "{% url 'export_excel_ayliq_baki' %}";
+        const dr = dateRangeInput ? String(dateRangeInput.value || "").trim() : "";
+        const mode = (monthly.checked || dr) ? "monthly" : "daily";
+        const params = new URLSearchParams();
+        params.set("mode", mode);
+        if (dr) params.set("date_range", dr);
+        window.location.href = base + "?" + params.toString();
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
 </script>
 {% endblock content %}

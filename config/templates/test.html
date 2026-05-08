@@ -7,6 +7,33 @@
     color: #f9fafb;
     font-family: "Inter", sans-serif;
   }
+  .region-toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:center;
+    justify-content:space-between;
+    padding: 14px 14px;
+    border: 1px solid rgba(148,163,184,0.14);
+    background: rgba(2,6,23,0.45);
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .region-toolbar .form-control,
+  .region-toolbar .form-select{
+    background: rgba(2,6,23,0.35);
+    border: 1px solid rgba(148,163,184,0.18);
+    color: #e5e7eb;
+    min-height: 40px;
+  }
+  .region-toolbar .form-control::placeholder{ color: rgba(226,232,240,0.55); }
+  .region-meta{
+    color:#94a3b8;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
   /* Bölgə Kartları Ümumi Stil */
   .region-cards {
     display: grid;
@@ -55,6 +82,11 @@
     color: #f4e7fb;
     transition: color 0.3s;
   }
+  .region-card .region-sub{
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: rgba(148,163,184,0.95);
+  }
 
   .region-card:hover a {
     color: #0199ffff;
@@ -77,16 +109,77 @@
   }
 </style>
 
-<h2 style="margin-bottom:25px;">Bölgələr</h2>
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2" style="margin-bottom:12px;">
+  <h2 style="margin:0;">Bölgələr</h2>
+  <div class="region-meta"><span id="regionCount">0</span> nəticə</div>
+</div>
+
+<div class="region-toolbar" style="margin-bottom:16px;">
+  <div style="flex:1; min-width: 260px;">
+    <input id="regionSearch" type="text" class="form-control" placeholder="Bölgə axtar...">
+  </div>
+  <div style="width: 220px; min-width: 200px;">
+    <select id="regionTypeFilter" class="form-select">
+      <option value="">Hamısı</option>
+      <option value="Şəhər">Şəhər</option>
+      <option value="Bölgə">Bölgə</option>
+    </select>
+  </div>
+</div>
+
 <div class="region-cards">
   {% for region in reg %}
-    <div class="region-card">
+    <div class="region-card region-item"
+         data-name="{{ region.region_name|default:''|lower }}"
+         data-type="{{ region.region_type|default:'' }}">
       <div class="region-icon">
         <i class="bi bi-pin-map"></i>
       </div>
       <a href="{% url 'region_report' region.id %}">{{ region.region_name }}</a>
+      {% if region.region_type %}
+        <div class="region-sub">{{ region.region_type }}</div>
+      {% endif %}
     </div>
   {% endfor %}
 </div>
+
+<script>
+(function(){
+  const search = document.getElementById("regionSearch");
+  const typeFilter = document.getElementById("regionTypeFilter");
+  const items = Array.from(document.querySelectorAll(".region-item"));
+  const countEl = document.getElementById("regionCount");
+
+  function normalize(s){
+    return (s || "")
+      .toString()
+      .trim()
+      .toLowerCase();
+  }
+
+  function apply(){
+    const q = normalize(search?.value);
+    const t = (typeFilter?.value || "").trim();
+    let visible = 0;
+
+    for (const el of items){
+      const name = normalize(el.getAttribute("data-name"));
+      const type = (el.getAttribute("data-type") || "").trim();
+      const okName = !q || name.includes(q);
+      const okType = !t || type === t;
+      const show = okName && okType;
+      el.style.display = show ? "" : "none";
+      if (show) visible++;
+    }
+    if (countEl) countEl.textContent = String(visible);
+  }
+
+  if (search) search.addEventListener("input", apply);
+  if (typeFilter) typeFilter.addEventListener("change", apply);
+  apply();
+  // UX: focus search on load for faster finding
+  try { search?.focus(); } catch(e) {}
+})();
+</script>
 
 {% endblock content %}

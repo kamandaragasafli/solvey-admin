@@ -1,0 +1,568 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+  :root{
+    --sai-bg0:#070a12; --sai-bg1:#0b1220;
+    --sai-card:rgba(255,255,255,.06);
+    --sai-border:rgba(255,255,255,.10);
+    --sai-text:rgba(255,255,255,.92);
+    --sai-muted:rgba(255,255,255,.62);
+    --sai-accent:#4f8cff;
+    --sai-accent2:#7c4dff;
+    --sai-good:#21c17a;
+    --sai-bad:#ff4d6d;
+  }
+  .sai-wrap{
+    padding: 18px;
+    border-radius: 18px;
+    background:
+      radial-gradient(900px 420px at 15% 0%, rgba(79,140,255,.22), transparent 55%),
+      radial-gradient(700px 320px at 85% 10%, rgba(124,77,255,.18), transparent 55%),
+      linear-gradient(180deg, var(--sai-bg0), var(--sai-bg1));
+    border: 1px solid rgba(255,255,255,.06);
+    box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    color: var(--sai-text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  }
+  .sai-top{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; flex-wrap:wrap; margin-bottom: 12px;
+  }
+  .sai-brand{ display:flex; align-items:center; gap:10px; }
+  .sai-logo{
+    width:38px; height:38px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(79,140,255,.95), rgba(124,77,255,.85));
+    display:grid; place-items:center;
+    box-shadow: 0 10px 24px rgba(79,140,255,.20);
+  }
+  .sai-logo img{
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 18px rgba(0,0,0,.22));
+  }
+  .sai-title{ margin:0; font-weight:700; letter-spacing:.2px; }
+  .sai-sub{ margin:0; font-size:12.5px; color: var(--sai-muted); }
+  .sai-status{ display:flex; align-items:center; gap:8px; font-size:12px; color: var(--sai-muted); margin-left: 6px; }
+  .sai-dot{ width:8px; height:8px; border-radius:99px; background: var(--sai-good); box-shadow: 0 0 0 4px rgba(33,193,122,.12); }
+
+  .sai-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .sai-btn{
+    border: 1px solid var(--sai-border);
+    background: rgba(255,255,255,.06);
+    color: var(--sai-text);
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    display:inline-flex; align-items:center; gap:8px;
+    transition: transform .08s ease, background .12s ease, border-color .12s ease;
+  }
+  .sai-btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.18); }
+  .sai-btn-primary{
+    background: linear-gradient(135deg, rgba(79,140,255,.98), rgba(124,77,255,.82));
+    border-color: rgba(79,140,255,.55);
+  }
+  .sai-btn-primary:hover{ background: linear-gradient(135deg, rgba(79,140,255,1), rgba(124,77,255,.88)); }
+
+  .sai-card{
+    background: var(--sai-card);
+    border: 1px solid var(--sai-border);
+    border-radius: 18px;
+    overflow:hidden;
+    backdrop-filter: blur(10px);
+  }
+  .sai-card-h{
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  }
+  .sai-card-t{ font-weight:700; font-size: 13.5px; display:flex; align-items:center; gap:10px; }
+  .sai-pill{
+    font-size: 11px; color: var(--sai-muted);
+    padding: 4px 8px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.04);
+    white-space: nowrap;
+  }
+
+  .sai-chat{
+    height: calc(100vh - 240px);
+    min-height: 520px;
+    display:flex; flex-direction:column;
+  }
+  .sai-scroll{
+    flex:1;
+    overflow:auto;
+    padding: 14px;
+  }
+  .sai-empty{
+    min-height: 360px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap: 10px;
+    text-align:center;
+    color: var(--sai-muted);
+  }
+  .sai-empty .sai-empty-title{
+    color: var(--sai-text);
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .sai-empty .sai-empty-sub{
+    font-size: 13px;
+    margin: 0;
+  }
+  .sai-msg{ display:flex; gap:10px; margin-bottom: 12px; align-items:flex-end; }
+  .sai-avatar{
+    width:34px; height:34px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+    display:grid; place-items:center;
+    flex: 0 0 auto;
+  }
+  .sai-avatar img{
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 14px rgba(0,0,0,.22));
+  }
+  .sai-bubble{
+    max-width: 78%;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.06);
+    color: var(--sai-text);
+    font-size: 14.5px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.35;
+    font-family: inherit;
+  }
+  .sai-msg.user{ justify-content:flex-end; }
+  .sai-msg.user .sai-avatar{ display:none; }
+  .sai-msg.user .sai-bubble{
+    background: linear-gradient(135deg, rgba(79,140,255,.98), rgba(79,140,255,.68));
+    border-color: rgba(79,140,255,.40);
+    min-width: 180px; /* qısa mesajlarda "balaca" görünməsin */
+    text-align: left;
+  }
+  .sai-meta{ margin-top: 4px; font-size: 11px; color: var(--sai-muted); }
+
+  .sai-composer{
+    padding: 12px 14px;
+    border-top: 1px solid rgba(255,255,255,.08);
+    background: rgba(0,0,0,.08);
+  }
+  .sai-input{
+    display:flex; gap:10px; align-items:center;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.06);
+    border-radius: 16px;
+    padding: 10px 12px;
+  }
+  .sai-input input{
+    border:0; outline:0; width:100%;
+    background: transparent; color: var(--sai-text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .sai-input input::placeholder{ color: rgba(255,255,255,.55); }
+  .sai-send{
+    border:0; outline:0;
+    width: 42px; height: 42px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(79,140,255,.98), rgba(124,77,255,.82));
+    color: white;
+    display:grid; place-items:center;
+    box-shadow: 0 10px 24px rgba(79,140,255,.22);
+  }
+  .sai-send:disabled{ opacity:.55; box-shadow:none; }
+  .sai-toolsbar{
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+    margin-bottom: 10px;
+  }
+  .sai-toolbtn{
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+    color: var(--sai-text);
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px;
+  }
+  .sai-toolbtn.active{ background: rgba(79,140,255,.18); border-color: rgba(79,140,255,.40); }
+
+  .sai-toolpanel{
+    display:none;
+    padding: 10px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(0,0,0,.18);
+    margin-bottom: 10px;
+  }
+  .sai-toolpanel.active{ display:block; }
+  .sai-field{
+    width:100%;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.06);
+    color: var(--sai-text);
+    border-radius: 14px;
+    padding: 10px 12px;
+    outline: none;
+    font-size: 13.5px;
+    margin-bottom: 8px;
+  }
+  .sai-field::placeholder{ color: rgba(255,255,255,.55); }
+  .sai-help{ font-size: 12px; color: var(--sai-muted); margin: 4px 0 0; }
+  @media (max-width: 700px){
+    .sai-bubble{ max-width: 92%; font-size: 14px; }
+    .sai-msg.user .sai-bubble{ min-width: 140px; }
+  }
+</style>
+
+<div class="container-fluid" style="padding: 14px 16px 22px;">
+  <div class="sai-wrap">
+    <div class="sai-top">
+      <div class="sai-brand">
+        <div class="sai-logo">
+          <img src="{% static 'img/robot.png' %}" alt="AI Bot" />
+        </div>
+        <div>
+          <p class="sai-title">Solvey AI Assistant</p>
+      
+        </div>
+        <div class="sai-status">
+          <span class="sai-dot"></span>
+          <span>Online</span>
+        </div>
+      </div>
+
+      <div class="sai-actions">
+       
+        <button class="sai-btn" type="button" id="clearChatBtn">
+          <i class="bi bi-eraser"></i> Chat-i təmizlə
+        </button>
+      </div>
+    </div>
+
+    <div class="sai-card sai-chat">
+      <div class="sai-card-h">
+        <div class="sai-card-t"><i class="bi bi-stars"></i> Chat</div>
+       
+      </div>
+
+      <div class="sai-scroll" id="chatScroll">
+        <div id="saiEmptyState" class="sai-empty">
+          <dotlottie-wc
+            src="https://lottie.host/57e48384-49a4-421c-87f6-51c7bd8d2235/qlspv3EOJ2.lottie"
+            style="width: 400px; height: 400px"
+            autoplay
+            loop
+          ></dotlottie-wc>
+         
+        </div>
+      </div>
+
+      <div class="sai-composer">
+        <div class="sai-toolsbar" aria-label="Tools">
+          <button class="sai-toolbtn active" type="button" data-tool="chat"><i class="bi bi-chat-left-text"></i> Chat</button>
+          <button class="sai-toolbtn" type="button" data-tool="file"><i class="bi bi-file-earmark-text"></i> Fayl</button>
+          <button class="sai-toolbtn" type="button" data-tool="web"><i class="bi bi-search"></i> Veb</button>
+          <button class="sai-toolbtn" type="button" data-tool="approve"><i class="bi bi-check2-circle"></i> Təsdiq</button>
+        
+        </div>
+
+        <div id="tool-file" class="sai-toolpanel">
+          <input id="fileInput" type="file" class="sai-field" />
+          <input id="fileQuestion" class="sai-field" placeholder="Sual (opsional): fayldan nə istəyirsən?" />
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="sai-btn sai-btn-primary" type="button" id="analyzeBtn"><i class="bi bi-magic"></i> Analiz et</button>
+           
+          </div>
+        </div>
+
+        <div id="tool-web" class="sai-toolpanel">
+          <input id="webQuery" class="sai-field" placeholder="Məs: WHO diabetes statistics 2026" />
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="sai-btn sai-btn-primary" type="button" id="webSearchBtn"><i class="bi bi-search"></i> Axtar</button>
+          </div>
+        </div>
+
+        <div id="tool-approve" class="sai-toolpanel">
+          <input id="actionId" class="sai-field" placeholder="Action ID (məs: a3f7b2c1)" />
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="sai-btn" style="border-color: rgba(33,193,122,.35); background: rgba(33,193,122,.10);" type="button" id="confirmBtn">
+              <i class="bi bi-check-lg"></i> Bəli
+            </button>
+            <button class="sai-btn" style="border-color: rgba(255,77,109,.35); background: rgba(255,77,109,.10);" type="button" id="cancelBtn">
+              <i class="bi bi-x-lg"></i> Xeyr
+            </button>
+            
+          </div>
+        </div>
+
+        <div class="sai-input">
+          <i class="bi bi-pencil-square" style="color: rgba(255,255,255,.65)"></i>
+          <input id="chatMessage" placeholder="Mesaj yaz..." autocomplete="off" />
+          <button class="sai-send" id="chatSendBtn" type="button" aria-label="Göndər">
+            <i class="bi bi-send-fill"></i>
+          </button>
+        </div>
+        <div class="sai-help mt-2"><i class="bi bi-shield-check"></i> Powered by OpenAI • son 10 mesaj kontekstə əlavə olunur</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.9.10/dist/dotlottie-wc.js" type="module"></script>
+<script>
+(function(){
+  const openWidgetBtn = document.getElementById('openWidgetBtn');
+  const clearChatBtn = document.getElementById('clearChatBtn');
+
+  const chatMessage = document.getElementById('chatMessage');
+  const chatSendBtn = document.getElementById('chatSendBtn');
+  const chatScroll = document.getElementById('chatScroll');
+  const emptyState = document.getElementById('saiEmptyState');
+
+  const fileInput = document.getElementById('fileInput');
+  const fileQuestion = document.getElementById('fileQuestion');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+
+  const webQuery = document.getElementById('webQuery');
+  const webSearchBtn = document.getElementById('webSearchBtn');
+
+  const actionIdEl = document.getElementById('actionId');
+  const confirmBtn = document.getElementById('confirmBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+
+  const toolPanels = {
+    file: document.getElementById('tool-file'),
+    web: document.getElementById('tool-web'),
+    approve: document.getElementById('tool-approve'),
+  };
+
+  let activeTool = 'chat';
+  let history = [];
+  const MAX_HISTORY = 10;
+
+  function setBusy(btn, busy){
+    if(!btn) return;
+    btn.disabled = !!busy;
+  }
+
+  async function postJSON(url, body){
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {})
+    });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch(e) { data = { raw: text }; }
+    if(!res.ok){
+      const msg = data && (data.error || data.reply) ? (data.error || data.reply) : `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  function addChatBubble(role, text){
+    if(emptyState) emptyState.style.display = 'none';
+
+    const wrap = document.createElement('div');
+    wrap.className = `sai-msg ${role === 'user' ? 'user' : 'assistant'}`;
+
+    if(role !== 'user'){
+      const av = document.createElement('div');
+      av.className = 'sai-avatar';
+      av.innerHTML = `<img src="{% static 'img/robot.png' %}" alt="AI Bot" />`;
+      wrap.appendChild(av);
+    }
+
+    const content = document.createElement('div');
+    const bubble = document.createElement('div');
+    bubble.className = 'sai-bubble';
+    bubble.textContent = text || '';
+    content.appendChild(bubble);
+
+    const meta = document.createElement('div');
+    meta.className = 'sai-meta';
+    meta.textContent = role === 'user' ? 'Sən' : 'AI Assistant';
+    content.appendChild(meta);
+
+    wrap.appendChild(content);
+    chatScroll.appendChild(wrap);
+    chatScroll.scrollTop = chatScroll.scrollHeight;
+  }
+
+  function toolText(type, data){
+    if(!data) return 'Cavab boşdur.';
+    if (data.success === false) return data.error || 'Xəta baş verdi.';
+    if(type === 'file'){
+      if (data.analysis) return data.analysis;
+      if (data.raw_text_preview) return data.raw_text_preview;
+      return 'Fayl analiz edildi.';
+    }
+    if(type === 'web'){
+      if (data.summary) return data.summary;
+      if (Array.isArray(data.results) && data.results.length){
+        return data.results.slice(0, 3).map((r, i) => `${i+1}. ${r.title}\n${r.link}`).join('\\n\\n');
+      }
+      return 'Axtarış tamamlandı.';
+    }
+    if(type === 'confirm'){
+      if (data.result && data.result.message) return data.result.message;
+      if (data.message) return data.message;
+      return 'Əməliyyat təsdiqləndi.';
+    }
+    if(type === 'cancel'){
+      if (data.message) return data.message;
+      return 'Əməliyyat ləğv edildi.';
+    }
+    return typeof data === 'string' ? data : (data.reply || '');
+  }
+
+  function fileToBase64(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result || '';
+        const commaIndex = String(result).indexOf(',');
+        resolve(commaIndex >= 0 ? String(result).slice(commaIndex + 1) : String(result));
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function setActiveTool(tool){
+    activeTool = tool;
+    document.querySelectorAll('.sai-toolbtn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.sai-toolpanel').forEach(p => p.classList.remove('active'));
+    document.querySelector(`.sai-toolbtn[data-tool="${tool}"]`)?.classList.add('active');
+    if(toolPanels[tool]) toolPanels[tool].classList.add('active');
+  }
+
+  document.querySelectorAll('.sai-toolbtn').forEach(btn => {
+    btn.addEventListener('click', () => setActiveTool(btn.getAttribute('data-tool')));
+  });
+
+  openWidgetBtn?.addEventListener('click', () => {
+    const avatarBtn = document.getElementById('avatarBtn');
+    if (avatarBtn) avatarBtn.click();
+  });
+
+  clearChatBtn?.addEventListener('click', () => {
+    chatScroll.innerHTML = '';
+    if (emptyState) {
+      emptyState.style.display = '';
+      chatScroll.appendChild(emptyState);
+    }
+    history = [];
+  });
+
+  async function sendChat(){
+    const msg = (chatMessage.value || '').trim();
+    if(!msg) return;
+    setBusy(chatSendBtn, true);
+    try{
+      addChatBubble('user', msg);
+      const payload = { message: msg, history };
+      const data = await postJSON('/api/openai/chat/', payload);
+      history.push({ role: 'user', content: msg });
+      history.push({ role: 'assistant', content: data.reply || '' });
+      if(history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
+      addChatBubble('assistant', data.reply || '');
+      chatMessage.value = '';
+    }catch(err){
+      addChatBubble('assistant', `Xəta: ${String(err.message || err)}`);
+    }finally{
+      setBusy(chatSendBtn, false);
+    }
+  }
+
+  chatSendBtn?.addEventListener('click', sendChat);
+  chatMessage?.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      sendChat();
+    }
+  });
+
+  analyzeBtn?.addEventListener('click', async () => {
+    const file = fileInput.files && fileInput.files[0];
+    if(!file) return;
+    setBusy(analyzeBtn, true);
+    try{
+      const q = (fileQuestion.value || '').trim();
+      addChatBubble('user', `Fayl analizi: ${file.name}${q ? `\\nSual: ${q}` : ''}`);
+      const b64 = await fileToBase64(file);
+      const data = await postJSON('/api/ai/analyze-file/', { file_content_b64: b64, file_name: file.name, question: q });
+      addChatBubble('assistant', toolText('file', data));
+      setActiveTool('chat');
+    }catch(err){
+      addChatBubble('assistant', `Xəta: ${String(err.message || err)}`);
+    }finally{
+      setBusy(analyzeBtn, false);
+    }
+  });
+
+  webSearchBtn?.addEventListener('click', async () => {
+    const q = (webQuery.value || '').trim();
+    if(!q) return;
+    setBusy(webSearchBtn, true);
+    try{
+      addChatBubble('user', `Veb axtarış: ${q}`);
+      const data = await postJSON('/api/ai/web-search/', { query: q, num_results: 5 });
+      addChatBubble('assistant', toolText('web', data));
+      setActiveTool('chat');
+    }catch(err){
+      addChatBubble('assistant', `Xəta: ${String(err.message || err)}`);
+    }finally{
+      setBusy(webSearchBtn, false);
+    }
+  });
+
+  confirmBtn?.addEventListener('click', async () => {
+    const action_id = (actionIdEl.value || '').trim();
+    if(!action_id) return;
+    setBusy(confirmBtn, true);
+    try{
+      addChatBubble('user', `Təsdiq: bəli #${action_id}`);
+      const data = await postJSON('/api/ai/confirm-action/', { action_id });
+      addChatBubble('assistant', toolText('confirm', data));
+      setActiveTool('chat');
+    }catch(err){
+      addChatBubble('assistant', `Xəta: ${String(err.message || err)}`);
+    }finally{
+      setBusy(confirmBtn, false);
+    }
+  });
+
+  cancelBtn?.addEventListener('click', async () => {
+    const action_id = (actionIdEl.value || '').trim();
+    if(!action_id) return;
+    setBusy(cancelBtn, true);
+    try{
+      addChatBubble('user', `Təsdiq: xeyr #${action_id}`);
+      const data = await postJSON('/api/ai/cancel-action/', { action_id });
+      addChatBubble('assistant', toolText('cancel', data));
+      setActiveTool('chat');
+    }catch(err){
+      addChatBubble('assistant', `Xəta: ${String(err.message || err)}`);
+    }finally{
+      setBusy(cancelBtn, false);
+    }
+  });
+})();
+</script>
+{% endblock content %}
+

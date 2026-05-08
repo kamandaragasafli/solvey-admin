@@ -23,5 +23,12 @@ urlpatterns = [
     ),
     path('export-excel-bakı/', views.export_excel_ayliq_baki, name='export_excel_ayliq_baki'),
     path('api/openai/chat/', views.openai_chat, name='openai_chat'),
+    path('ai-assistant/', views.ai_assistant_page, name='ai-assistant'),
+    path('api/ai/analyze-file/', views.ai_analyze_file_api, name='ai_analyze_file_api'),
+    path('api/ai/web-search/', views.ai_web_search_api, name='ai_web_search_api'),
+    path('api/ai/confirm-action/', views.ai_confirm_action_api, name='ai_confirm_action_api'),
+    path('api/ai/cancel-action/', views.ai_cancel_action_api, name='ai_cancel_action_api'),
+    path('region-modal-monthly-data/', views.region_modal_monthly_data, name='region-modal-monthly-data'),
+    path('baku-modal-monthly-data/', views.baku_modal_monthly_data, name='baku-modal-monthly-data'),
 
 ]

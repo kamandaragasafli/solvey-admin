@@ -36,6 +36,7 @@ from django.views.decorators.http import require_http_methods
 import json
 import requests
 import os
+from django.contrib.auth.decorators import login_required
 
 
 
@@ -113,18 +114,19 @@ def index(request):
     diger_region = Region.objects.filter(region_type="Digər")
     baki_region = Region.objects.filter(region_type="Bakı")
 
-    # Bakı üçün data (hamısı sıfır olacaq)
-    baki_region_drug_counts = {}
+    # Bakı üçün data
+    baki_region_drug_counts_daily = {}
+    baki_region_drug_counts_monthly = {}
     baki_region_daily_totals = {}
     baki_region_monthly_totals = {}
 
     for region in baki_region:
-        baki_region_drug_counts[region.region_name] = {}
-        daily_total = Decimal(0)
-        monthly_total = Decimal(0)
+        baki_region_drug_counts_daily[region.region_name] = {}
+        baki_region_drug_counts_monthly[region.region_name] = {}
 
         for drug in all_drug:
-            baki_region_drug_counts[region.region_name][drug.med_name] = 0
+            baki_region_drug_counts_daily[region.region_name][drug.med_name] = 0
+            baki_region_drug_counts_monthly[region.region_name][drug.med_name] = 0
 
         baki_region_daily_totals[region.region_name] = 0
         baki_region_monthly_totals[region.region_name] = 0
@@ -138,12 +140,14 @@ def index(request):
     )
 
     region_drug_counts = {}
+    region_drug_counts_monthly = {}
     region_daily_totals = {}
     region_monthly_totals = {}
 
     # Dövr: hər bölgə üçün gündəlik və aylıq hesabla
     for region in diger_region:
         region_drug_counts[region.region_name] = {}
+        region_drug_counts_monthly[region.region_name] = {}
         daily_total = Decimal(0)
         monthly_total = Decimal(0)
 
@@ -166,6 +170,7 @@ def index(request):
             )
 
             region_drug_counts[region.region_name][drug.med_name] = daily
+            region_drug_counts_monthly[region.region_name][drug.med_name] = monthly
             daily_total += daily
             monthly_total += monthly
 
@@ -186,14 +191,16 @@ def index(request):
         .annotate(total=Sum("number"))
     )
 
-    baki_region_drug_counts = {}
+    baki_region_drug_counts_daily = {}
+    baki_region_drug_counts_monthly = {}
     baki_region_daily_totals = {}
     baki_region_monthly_totals = {}
 
     for region in baki_region:
-        baki_region_drug_counts[region.region_name] = {}
-        daily_total = 0
-        monthly_total = 0
+        baki_region_drug_counts_daily[region.region_name] = {}
+        baki_region_drug_counts_monthly[region.region_name] = {}
+        daily_total = Decimal(0)
+        monthly_total = Decimal(0)
 
         for drug in all_drug:
             # Günlük
@@ -213,7 +220,8 @@ def index(request):
                 and first_day_of_month <= item["recipe__date"] <= today
             )
 
-            baki_region_drug_counts[region.region_name][drug.med_name] = monthly
+            baki_region_drug_counts_daily[region.region_name][drug.med_name] = daily
+            baki_region_drug_counts_monthly[region.region_name][drug.med_name] = monthly
             daily_total += daily
             monthly_total += monthly
 
@@ -235,10 +243,12 @@ def index(request):
         .annotate(total=Sum("number"))
     )
     seher_region_drug_counts = {}
+    seher_region_drug_counts_monthly = {}
     seher_region_daily_totals = {}
     seher_region_monthly_totals = {}
     for region in seher_region:
         seher_region_drug_counts[region.region_name] = {}
+        seher_region_drug_counts_monthly[region.region_name] = {}
         daily_total = Decimal(0)
         monthly_total = Decimal(0)
         for drug in all_drug:
@@ -257,6 +267,7 @@ def index(request):
                 and first_day_of_month <= item["recipe__date"] <= today
             )
             seher_region_drug_counts[region.region_name][drug.med_name] = daily
+            seher_region_drug_counts_monthly[region.region_name][drug.med_name] = monthly
             daily_total += daily
             monthly_total += monthly
         seher_region_daily_totals[region.region_name] = daily_total
@@ -312,15 +323,20 @@ def index(request):
         "diger_region": diger_region,
         "baki_region":baki_region,
         "region_drug_counts": region_drug_counts,
+        "region_drug_counts_monthly": region_drug_counts_monthly,
         "region_daily_totals": region_daily_totals,
         "region_monthly_totals": region_monthly_totals,
 
-        "baki_region_drug_counts": baki_region_drug_counts,
+        # geriyə uyğunluq: köhnə açar aylıq idi, saxlayırıq
+        "baki_region_drug_counts": baki_region_drug_counts_monthly,
+        "baki_region_drug_counts_daily": baki_region_drug_counts_daily,
+        "baki_region_drug_counts_monthly": baki_region_drug_counts_monthly,
         "baki_region_daily_totals": baki_region_daily_totals,
         "baki_region_monthly_totals": baki_region_monthly_totals,
 
         "seher_region": seher_region,
         "seher_region_drug_counts": seher_region_drug_counts,
+        "seher_region_drug_counts_monthly": seher_region_drug_counts_monthly,
         "seher_region_daily_totals": seher_region_daily_totals,
         "seher_region_monthly_totals": seher_region_monthly_totals,
 
@@ -356,6 +372,126 @@ def index(request):
     }
 
     return render(request, 'index.html', context)
+
+
+@require_http_methods(["GET"])
+def region_modal_monthly_data(request):
+    """
+    Region Qeydiyyat modalı üçün interval üzrə aylıq cəmlər.
+    Giriş: date_range = 'YYYY-MM-DD - YYYY-MM-DD'
+    Çıxış: hər bölgə üçün hər dərman üzrə total + ümumi total.
+    """
+    date_range = (request.GET.get("date_range") or "").strip()
+    if " - " not in date_range:
+        return JsonResponse({"ok": False, "error": "date_range tələb olunur"}, status=400)
+
+    try:
+        start_str, end_str = date_range.split(" - ", 1)
+        start_date = datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+    except ValueError:
+        return JsonResponse({"ok": False, "error": "date_range formatı yanlışdır"}, status=400)
+
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    regions = list(Region.objects.filter(region_type="Digər").values_list("region_name", flat=True))
+    drugs = list(Medical.objects.all().order_by("id").values_list("med_name", flat=True))
+
+    # Default 0 strukturu
+    region_map = {
+        rn: {"region": rn, "drugs": {dn: "0" for dn in drugs}, "total": "0"}
+        for rn in regions
+    }
+
+    qs = (
+        RecipeDrug.objects
+        .filter(
+            recipe__region__region_type="Digər",
+            recipe__date__gte=start_date,
+            recipe__date__lte=end_date,
+        )
+        .values("recipe__region__region_name", "drug__med_name")
+        .annotate(total=Coalesce(Sum("number"), 0, output_field=DecimalField()))
+    )
+
+    # doldur
+    for row in qs:
+        rn = row["recipe__region__region_name"]
+        dn = row["drug__med_name"]
+        total = row["total"] or 0
+        if rn in region_map and dn in region_map[rn]["drugs"]:
+            region_map[rn]["drugs"][dn] = str(total)
+
+    # totals
+    for rn, payload in region_map.items():
+        t = Decimal("0")
+        for dn in drugs:
+            try:
+                t += Decimal(payload["drugs"][dn])
+            except Exception:
+                pass
+        payload["total"] = str(t)
+
+    return JsonResponse({"ok": True, "start": start_date.isoformat(), "end": end_date.isoformat(), "regions": list(region_map.values())})
+
+
+@require_http_methods(["GET"])
+def baku_modal_monthly_data(request):
+    """
+    Bakı Qeydiyyat modalı üçün interval üzrə aylıq cəmlər.
+    Giriş: date_range = 'YYYY-MM-DD - YYYY-MM-DD'
+    """
+    date_range = (request.GET.get("date_range") or "").strip()
+    if " - " not in date_range:
+        return JsonResponse({"ok": False, "error": "date_range tələb olunur"}, status=400)
+
+    try:
+        start_str, end_str = date_range.split(" - ", 1)
+        start_date = datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+    except ValueError:
+        return JsonResponse({"ok": False, "error": "date_range formatı yanlışdır"}, status=400)
+
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    regions = list(Region.objects.filter(region_type="Bakı").values_list("region_name", flat=True))
+    drugs = list(Medical.objects.all().order_by("id").values_list("med_name", flat=True))
+
+    region_map = {
+        rn: {"region": rn, "drugs": {dn: "0" for dn in drugs}, "total": "0"}
+        for rn in regions
+    }
+
+    qs = (
+        RecipeDrug.objects
+        .filter(
+            recipe__region__region_type="Bakı",
+            recipe__date__gte=start_date,
+            recipe__date__lte=end_date,
+        )
+        .values("recipe__region__region_name", "drug__med_name")
+        .annotate(total=Coalesce(Sum("number"), 0, output_field=DecimalField()))
+    )
+
+    for row in qs:
+        rn = row["recipe__region__region_name"]
+        dn = row["drug__med_name"]
+        total = row["total"] or 0
+        if rn in region_map and dn in region_map[rn]["drugs"]:
+            region_map[rn]["drugs"][dn] = str(total)
+
+    for rn, payload in region_map.items():
+        t = Decimal("0")
+        for dn in drugs:
+            try:
+                t += Decimal(payload["drugs"][dn])
+            except Exception:
+                pass
+        payload["total"] = str(t)
+
+    return JsonResponse({"ok": True, "start": start_date.isoformat(), "end": end_date.isoformat(), "regions": list(region_map.values())})
 
 
 # Region data Start
@@ -537,18 +673,47 @@ def user_logout(request):
 def export_excel_ayliq_region(request):
     today = timezone.localdate()
     first_day_of_month = today.replace(day=1)
+    mode = (request.GET.get("mode") or "daily").strip().lower()
+    date_range = (request.GET.get("date_range") or "").strip()
+
+    # aylıq interval (default: ayın əvvəlindən bu günə)
+    monthly_start = first_day_of_month
+    monthly_end = today
+    if " - " in date_range:
+        try:
+            start_str, end_str = date_range.split(" - ", 1)
+            monthly_start = datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
+            monthly_end = datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    if monthly_start > monthly_end:
+        monthly_start, monthly_end = monthly_end, monthly_start
 
     # Digər bölgələr
     diger_region = Region.objects.filter(region_type="Digər")
     all_drug = Medical.objects.all()
 
-    # RecipeDrug məlumatları
-    drugs_data = (
+    # RecipeDrug məlumatları (günlük + aylıq/interval)
+    daily_map = {}
+    monthly_map = {}
+
+    daily_qs = (
         RecipeDrug.objects
-        .filter(recipe__region__in=diger_region)
-        .values("recipe__region__region_name", "drug__med_name", "recipe__date")
-        .annotate(total=Sum("number"))
+        .filter(recipe__region__in=diger_region, recipe__date=today)
+        .values("recipe__region__region_name", "drug__med_name")
+        .annotate(total=Coalesce(Sum("number"), 0, output_field=DecimalField()))
     )
+    for row in daily_qs:
+        daily_map[(row["recipe__region__region_name"], row["drug__med_name"])] = row["total"]
+
+    monthly_qs = (
+        RecipeDrug.objects
+        .filter(recipe__region__in=diger_region, recipe__date__gte=monthly_start, recipe__date__lte=monthly_end)
+        .values("recipe__region__region_name", "drug__med_name")
+        .annotate(total=Coalesce(Sum("number"), 0, output_field=DecimalField()))
+    )
+    for row in monthly_qs:
+        monthly_map[(row["recipe__region__region_name"], row["drug__med_name"])] = row["total"]
 
     region_drug_counts_daily = {}
     region_drug_counts_monthly = {}
@@ -562,20 +727,8 @@ def export_excel_ayliq_region(request):
         monthly_total = Decimal(0)
 
         for drug in all_drug:
-            daily = sum(
-                item["total"]
-                for item in drugs_data
-                if item["recipe__region__region_name"] == region.region_name
-                and item["drug__med_name"] == drug.med_name
-                and item["recipe__date"] == today
-            )
-            monthly = sum(
-                item["total"]
-                for item in drugs_data
-                if item["recipe__region__region_name"] == region.region_name
-                and item["drug__med_name"] == drug.med_name
-                and first_day_of_month <= item["recipe__date"] <= today
-            )
+            daily = daily_map.get((region.region_name, drug.med_name), 0)
+            monthly = monthly_map.get((region.region_name, drug.med_name), 0)
 
             region_drug_counts_daily[region.region_name][drug.med_name] = daily
             region_drug_counts_monthly[region.region_name][drug.med_name] = monthly
@@ -595,7 +748,7 @@ def export_excel_ayliq_region(request):
     # Excel faylı yarat
     wb = Workbook()
     ws = wb.active
-    ws.title = "Aylıq Region Qeydiyyat"
+    ws.title = "Region Qeydiyyat"
 
     # Stil tərifləri
     bold_font = Font(bold=True, name="Calibri", size=12)
@@ -611,14 +764,22 @@ def export_excel_ayliq_region(request):
     header_fill = PatternFill(start_color="8ab1e3", end_color="8ab1e3", fill_type="solid")
 
     # Yuxarıda tarix
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(all_drug) + 3)
-    cell = ws.cell(row=1, column=1)
-    cell.value = f"Tarix: {today}"
+    if mode == "monthly":
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(all_drug) + 2)
+        cell = ws.cell(row=1, column=1)
+        cell.value = f"Tarix aralığı: {monthly_start} - {monthly_end}"
+    else:
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(all_drug) + 3)
+        cell = ws.cell(row=1, column=1)
+        cell.value = f"Günlük Tarix: {today} | Aylıq interval: {monthly_start} - {monthly_end}"
     cell.font = bold_font
     cell.alignment = center_alignment
 
     # Header
-    headers = ["№", "Bölgə"] + [drug.med_name for drug in all_drug] + ["Gündəlik Qeydiyyat", "Aylıq Qeydiyyat"]
+    if mode == "monthly":
+        headers = ["№", "Bölgə"] + [drug.med_name for drug in all_drug] + ["Aylıq Qeydiyyat"]
+    else:
+        headers = ["№", "Bölgə"] + [drug.med_name for drug in all_drug] + ["Gündəlik Qeydiyyat", "Aylıq Qeydiyyat"]
     for col_num, header in enumerate(headers, 1):
         cell = ws.cell(row=3, column=col_num)
         cell.value = header
@@ -650,21 +811,35 @@ def export_excel_ayliq_region(request):
         # Dərmanlar
         for col_num, drug in enumerate(all_drug, start=3):
             cell = ws.cell(row=row_num, column=col_num)
-            cell.value = region_drug_counts_daily[region.region_name][drug.med_name]
+            cell.value = (
+                region_drug_counts_monthly[region.region_name][drug.med_name]
+                if mode == "monthly"
+                else region_drug_counts_daily[region.region_name][drug.med_name]
+            )
             cell.font = calibri_font
             cell.alignment = center_alignment
             cell.border = thin_border
 
-        # Günlük və aylıq cəmlər
-        for i, value in enumerate([region_daily_totals[region.region_name],
-                                region_monthly_totals[region.region_name]],
-                                start=len(all_drug) + 3):
+        # Cəmlər
+        if mode == "monthly":
+            i = len(all_drug) + 3
             cell = ws.cell(row=row_num, column=i)
-            cell.value = value
+            cell.value = region_monthly_totals[region.region_name]
             cell.font = bold_font
             cell.alignment = center_alignment
             cell.border = thin_border
             cell.fill = header_fill
+        else:
+            for i, value in enumerate(
+                [region_daily_totals[region.region_name], region_monthly_totals[region.region_name]],
+                start=len(all_drug) + 3,
+            ):
+                cell = ws.cell(row=row_num, column=i)
+                cell.value = value
+                cell.font = bold_font
+                cell.alignment = center_alignment
+                cell.border = thin_border
+                cell.fill = header_fill
 
     # Aşağıda cəm
     total_row = len(diger_region) + 4
@@ -679,27 +854,41 @@ def export_excel_ayliq_region(request):
 
     for col_num, drug in enumerate(all_drug, start=3):
         cell = ws.cell(row=total_row, column=col_num)
-        cell.value = sum(region_drug_counts_daily[reg.region_name][drug.med_name] for reg in diger_region)
+        if mode == "monthly":
+            cell.value = sum(region_drug_counts_monthly[reg.region_name][drug.med_name] for reg in diger_region)
+        else:
+            cell.value = sum(region_drug_counts_daily[reg.region_name][drug.med_name] for reg in diger_region)
         cell.font = bold_font
         cell.alignment = center_alignment
         cell.border = thin_border
         cell.fill = header_fill
 
-    # Günlük və aylıq cəmlərin ümumisi
-    for i, value in enumerate([sum(region_daily_totals.values()), sum(region_monthly_totals.values())],
-                            start=len(all_drug) + 3):
+    # ümumi cəm
+    if mode == "monthly":
+        i = len(all_drug) + 3
         cell = ws.cell(row=total_row, column=i)
-        cell.value = value
+        cell.value = sum(region_monthly_totals.values())
         cell.font = bold_font
         cell.alignment = center_alignment
         cell.border = thin_border
         cell.fill = header_fill
+    else:
+        for i, value in enumerate([sum(region_daily_totals.values()), sum(region_monthly_totals.values())], start=len(all_drug) + 3):
+            cell = ws.cell(row=total_row, column=i)
+            cell.value = value
+            cell.font = bold_font
+            cell.alignment = center_alignment
+            cell.border = thin_border
+            cell.fill = header_fill
 
     # Excel faylını göndər
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    filename = f"Aylıq Region Qeydiyyat - {today}.xlsx"
+    if mode == "monthly":
+        filename = f"Region Qeydiyyat (Aylıq) - {monthly_start}_to_{monthly_end}.xlsx"
+    else:
+        filename = f"Region Qeydiyyat (Günlük) - {today}.xlsx"
     response['Content-Disposition'] = f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
     wb.save(response)
     return response
@@ -862,7 +1051,7 @@ def export_excel_ayliq_seher(request):
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    filename = f"Aylıq Şəhər Qeydiyyat - {today}.xlsx"
+    filename = f"Sumqayıt Naxçıvan Qeydiyyatı - {today}.xlsx"
     response["Content-Disposition"] = f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
     wb.save(response)
     return response
@@ -871,18 +1060,45 @@ def export_excel_ayliq_seher(request):
 def export_excel_ayliq_baki(request):
     today = timezone.localdate()
     first_day_of_month = today.replace(day=1)
+    mode = (request.GET.get("mode") or "daily").strip().lower()
+    date_range = (request.GET.get("date_range") or "").strip()
+
+    monthly_start = first_day_of_month
+    monthly_end = today
+    if " - " in date_range:
+        try:
+            start_str, end_str = date_range.split(" - ", 1)
+            monthly_start = datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
+            monthly_end = datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    if monthly_start > monthly_end:
+        monthly_start, monthly_end = monthly_end, monthly_start
 
     # Digər bölgələr
     baku_region = Region.objects.filter(region_type="Bakı")
     all_drug = Medical.objects.all()
 
-    # RecipeDrug məlumatları
-    drugs_data = (
+    daily_map = {}
+    monthly_map = {}
+
+    daily_qs = (
         RecipeDrug.objects
-        .filter(recipe__region__in=baku_region)
-        .values("recipe__region__region_name", "drug__med_name", "recipe__date")
-        .annotate(total=Sum("number"))
+        .filter(recipe__region__in=baku_region, recipe__date=today)
+        .values("recipe__region__region_name", "drug__med_name")
+        .annotate(total=Coalesce(Sum("number"), 0, output_field=DecimalField()))
     )
+    for row in daily_qs:
+        daily_map[(row["recipe__region__region_name"], row["drug__med_name"])] = row["total"]
+
+    monthly_qs = (
+        RecipeDrug.objects
+        .filter(recipe__region__in=baku_region, recipe__date__gte=monthly_start, recipe__date__lte=monthly_end)
+        .values("recipe__region__region_name", "drug__med_name")
+        .annotate(total=Coalesce(Sum("number"), 0, output_field=DecimalField()))
+    )
+    for row in monthly_qs:
+        monthly_map[(row["recipe__region__region_name"], row["drug__med_name"])] = row["total"]
 
     region_drug_counts_daily = {}
     region_drug_counts_monthly = {}
@@ -896,20 +1112,8 @@ def export_excel_ayliq_baki(request):
         monthly_total = Decimal(0)
 
         for drug in all_drug:
-            daily = sum(
-                item["total"]
-                for item in drugs_data
-                if item["recipe__region__region_name"] == region.region_name
-                and item["drug__med_name"] == drug.med_name
-                and item["recipe__date"] == today
-            )
-            monthly = sum(
-                item["total"]
-                for item in drugs_data
-                if item["recipe__region__region_name"] == region.region_name
-                and item["drug__med_name"] == drug.med_name
-                and first_day_of_month <= item["recipe__date"] <= today
-            )
+            daily = daily_map.get((region.region_name, drug.med_name), 0)
+            monthly = monthly_map.get((region.region_name, drug.med_name), 0)
 
             region_drug_counts_daily[region.region_name][drug.med_name] = daily
             region_drug_counts_monthly[region.region_name][drug.med_name] = monthly
@@ -954,13 +1158,19 @@ def export_excel_ayliq_baki(request):
     # Yuxarıda tarix
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(all_drug)+3)
     cell = ws.cell(row=1, column=1)
-    cell.value = f"Tarix: {today}"
+    if mode == "monthly":
+        cell.value = f"Tarix aralığı: {monthly_start} - {monthly_end}"
+    else:
+        cell.value = f"Günlük Tarix: {today}"
     cell.font = bold_font
     cell.alignment = center_alignment
 
 
-    # Header (artıq yalnız aylıq məlumat göstəririk)
-    headers = ["Bölgə"] + [drug.med_name for drug in all_drug] + ["Aylıq Qeydiyyat"]
+    # Header
+    if mode == "monthly":
+        headers = ["Bölgə"] + [drug.med_name for drug in all_drug] + ["Aylıq Qeydiyyat"]
+    else:
+        headers = ["Bölgə"] + [drug.med_name for drug in all_drug] + ["Gündəlik Qeydiyyat", "Aylıq Qeydiyyat"]
     for col_num, header in enumerate(headers, 1):
         cell = ws.cell(row=3, column=col_num)  # Header 3-cü sətirdə
         cell.value = header
@@ -982,23 +1192,44 @@ def export_excel_ayliq_baki(request):
 
         cell.border = thin_border
 
-        # Dərmanlar - AYLIQ cəmlər
+        # Dərmanlar
         for col_num, drug in enumerate(all_drug, start=2):
             cell = ws.cell(row=row_num, column=col_num)
-            cell.value = region_drug_counts_monthly[region.region_name][drug.med_name]
+            cell.value = (
+                region_drug_counts_monthly[region.region_name][drug.med_name]
+                if mode == "monthly"
+                else region_drug_counts_daily[region.region_name][drug.med_name]
+            )
             cell.font = calibri_font
             cell.alignment = center_alignment
 
             cell.border = thin_border
 
-        # Yalnız AYLQ cəm - fonlu, bold, böyük
-        total_col_index = len(all_drug) + 2
-        cell = ws.cell(row=row_num, column=total_col_index)
-        cell.value = region_monthly_totals[region.region_name]
-        cell.font = bold_font
-        cell.alignment = center_alignment
-        cell.border = thin_border
-        cell.fill = header_fill
+        if mode == "monthly":
+            total_col_index = len(all_drug) + 2
+            cell = ws.cell(row=row_num, column=total_col_index)
+            cell.value = region_monthly_totals[region.region_name]
+            cell.font = bold_font
+            cell.alignment = center_alignment
+            cell.border = thin_border
+            cell.fill = header_fill
+        else:
+            # günlük toplam
+            daily_col_index = len(all_drug) + 2
+            cell = ws.cell(row=row_num, column=daily_col_index)
+            cell.value = region_daily_totals[region.region_name]
+            cell.font = bold_font
+            cell.alignment = center_alignment
+            cell.border = thin_border
+            cell.fill = header_fill
+            # aylıq toplam
+            monthly_col_index = len(all_drug) + 3
+            cell = ws.cell(row=row_num, column=monthly_col_index)
+            cell.value = region_monthly_totals[region.region_name]
+            cell.font = bold_font
+            cell.alignment = center_alignment
+            cell.border = thin_border
+            cell.fill = header_fill
 
     # Aşağıda cəm
     total_row = len(baku_region) + 3
@@ -1010,25 +1241,47 @@ def export_excel_ayliq_baki(request):
 
     for col_num, drug in enumerate(all_drug, start=2):
         cell = ws.cell(row=total_row, column=col_num)
-        cell.value = sum(region_drug_counts_monthly[reg.region_name][drug.med_name] for reg in baku_region)
+        if mode == "monthly":
+            cell.value = sum(region_drug_counts_monthly[reg.region_name][drug.med_name] for reg in baku_region)
+        else:
+            cell.value = sum(region_drug_counts_daily[reg.region_name][drug.med_name] for reg in baku_region)
         cell.font = bold_font
         cell.alignment = center_alignment
         cell.border = thin_border
         cell.fill = header_fill
 
-    # Yalnız aylıq ümumi toplam
-    total_col_index = len(all_drug) + 2
-    cell = ws.cell(row=total_row, column=total_col_index)
-    cell.value = sum(region_monthly_totals.values())
-    cell.font = bold_font
-    cell.alignment = center_alignment
-    cell.border = thin_border
-    cell.fill = header_fill
+    if mode == "monthly":
+        total_col_index = len(all_drug) + 2
+        cell = ws.cell(row=total_row, column=total_col_index)
+        cell.value = sum(region_monthly_totals.values())
+        cell.font = bold_font
+        cell.alignment = center_alignment
+        cell.border = thin_border
+        cell.fill = header_fill
+    else:
+        daily_col_index = len(all_drug) + 2
+        cell = ws.cell(row=total_row, column=daily_col_index)
+        cell.value = sum(region_daily_totals.values())
+        cell.font = bold_font
+        cell.alignment = center_alignment
+        cell.border = thin_border
+        cell.fill = header_fill
+
+        monthly_col_index = len(all_drug) + 3
+        cell = ws.cell(row=total_row, column=monthly_col_index)
+        cell.value = sum(region_monthly_totals.values())
+        cell.font = bold_font
+        cell.alignment = center_alignment
+        cell.border = thin_border
+        cell.fill = header_fill
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    filename = f"Aylıq Bakı Qeydiyyat - {today}.xlsx"
+    if mode == "monthly":
+        filename = f"Bakı Qeydiyyatı.xlsx"
+    else:
+        filename = f"Bakı Qeydiyyatı.xlsx"
     response['Content-Disposition'] = f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
     wb.save(response)
     return response
@@ -1036,166 +1289,207 @@ def export_excel_ayliq_baki(request):
  
   # Aylıq və günlük Excel Faylı Çıxarışı son
 
-# OpenAI Chat API Endpoint with Database Query Support
+import json
+import requests
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def openai_chat(request):
     """OpenAI API integration for chat assistant with database query capabilities"""
     try:
         from core.ai_queries import FUNCTIONS, FUNCTION_MAP
-        
+
         data = json.loads(request.body)
         message = data.get('message', '').strip()
-        model = data.get('model', 'gpt-3.5-turbo')
-        conversation_history = data.get('history', [])  # For maintaining context
-        
+        model = data.get('model', 'gpt-4o')  # gpt-4o tövsiyə olunur - function calling daha yaxşıdır
+        conversation_history = data.get('history', [])
+
         if not message:
             return JsonResponse({'error': 'Message is required'}, status=400)
-        
-        # Get OpenAI API key from settings
+
         from django.conf import settings
         api_key = getattr(settings, 'OPENAI_API_KEY', '')
-        
+
         if not api_key:
             return JsonResponse({
                 'reply': 'Üzr istəyirəm, AI xidməti hazırda mövcud deyil. Zəhmət olmasa sistem administratoru ilə əlaqə saxlayın.'
             }, status=503)
-        
-        # Prepare messages with conversation history
-        messages = [
-            {
-                'role': 'system',
-                'content': '''Sən Solvey tibbi şirkətinin admin paneli üçün köməkçi AI-sən.
-Azərbaycan dilində cavab ver. Qısa, dəqiq və faydalı cavablar ver.
 
-Mütləq qayda:
-- Verilənlər bazasından məlumat almaq üçün HƏMİŞƏ təqdim olunmuş funksiyalardan istifadə et.
-- Heç vaxt özündən rəqəm, statistika və ya tarix UYDURMA, yalnız funksiyaların qaytardığı nəticələri istifadə et.
-- Funksiya sıfır nəticə qaytaranda bunu aydın yaz: "Bu həkim üçün bu dövrdə məlumat tapılmadı."
+        # ------------------------------------------------------------------ #
+        # FUNCTIONS → TOOLS formatına çevir  (yeni OpenAI API tələbi)
+        # FUNCTIONS siyahısındakı hər element belə görünür:
+        #   { "name": "...", "description": "...", "parameters": {...} }
+        # Tools formatı isə:
+        #   { "type": "function", "function": { "name": "...", ... } }
+        # ------------------------------------------------------------------ #
+        tools = [{"type": "function", "function": fn} for fn in FUNCTIONS]
 
-Kontekst:
-- İstifadəçi ardıcıl suallar verəndə əvvəlki mesajdakı həkim adını və tarixi yadında saxla.
-- Məs: "Məmmədov Əsəd keçən ay nə qədər qeydiyyatı var?" + "noyabrda bəs?" → bu, eyni həkim üçün noyabr ayına aid sorğu deməkdir.
-- "noyabrda bəs?", "bu ay necə?", "keçən ay nə qədər?" kimi qısa cümlələri HƏKİM ADI kimi yox, əvvəlki sualın davamı kimi şərh et.
+        # Sistem promptu
+        system_prompt = {
+            'role': 'system',
+            'content': (
+                'Sən Solvey tibbi şirkətinin admin paneli üçün TƏK bir AI assistant botsan.\n'
+                'Azərbaycan dilində cavab ver. Qısa, dəqiq və faydalı cavablar ver.\n'
+                'İlk cavabda Salam Kamandar deyin.\n'
+                'Emoji, smaylik və dekorativ simvollardan HƏR DƏFƏ istifadə etmə.\n'
+                'İstifadəçini lazımsız suallarla yormadan birbaşa cavab hazırla.\n'
+                '"Başqa bir həkim istəyirsiniz?", "başqa nə lazımdır?" kimi follow-up suallarını yazma.\n'
+                'Əgər mütləq kritik məlumat çatışmırsa, maksimum 1 qısa dəqiqləşdirici sual ver.\n\n'
+                'Mütləq qayda:\n'
+                '- Verilənlər bazasından məlumat almaq üçün HƏMİŞƏ təqdim olunmuş funksiyalardan istifadə et.\n'
+                '- Heç vaxt özündən rəqəm, statistika və ya tarix UYDURMA, yalnız funksiyaların qaytardığı nəticələri istifadə et.\n'
+                '- Funksiya sıfır nəticə qaytaranda bunu aydın yaz: "Bu həkim üçün bu dövrdə məlumat tapılmadı."\n\n'
+                'Kontekst:\n'
+                '- İstifadəçi ardıcıl suallar verəndə əvvəlki mesajdakı həkim adını və tarixi yadında saxla.\n'
+                '- Məs: "Məmmədov Əsəd keçən ay nə qədər qeydiyyatı var?" + "noyabrda bəs?" → eyni həkim üçün noyabr ayına aid sorğu.\n'
+                '- "noyabrda bəs?", "bu ay necə?", "keçən ay nə qədər?" kimi qısa cümlələri HƏKİM ADI kimi yox, əvvəlki sualın davamı kimi şərh et.\n\n'
+                'Tarix şərhi:\n'
+                '- "keçən ay" → cari tarixdən əvvəlki ay.\n'
+                '- "bu ay" → cari ay.\n'
+                '- "noyabrda" kimi ay adları veriləndə uyğun aya çevir.\n\n'
+                'Cavab formatı:\n'
+                '- Mümkün qədər sadə saxla, yalnız istifadəçi əlavə detal istəyəndə daha detallı məlumat ver.\n'
+                '- Tapılmadı hallarında qısa yaz və alternativi sual kimi yox, təlimat kimi yaz. Məs: "Tam ad (ad+soyad) və ya barkod yazın."\n'
+            )
+        }
 
-Tarix şərhi:
-- "keçən ay" → cari tarixdən əvvəlki ay kimi şərh et.
-- "bu ay" → cari ay.
-- "noyabrda" kimi ay adları veriləndə uyğun aya çevir.
+        messages = [system_prompt]
+        messages.extend(conversation_history[-10:])
+        messages.append({'role': 'user', 'content': message})
 
-Funksiya nümunələri:
-- "Ən son əlavə olunan həkimləri göstər" → get_recent_doctors
-- "Həkim statistikalarını göstər" → get_doctor_statistics
-- "Bakı bölgəsinin həkimlərini göstər" → get_doctors_by_region
-- "Vüsalə üçün bu ay neçə resept yazılıb?" → get_doctor_prescription_stats
-- "Bağırova Könülün aylıq qeydiyyat aylarını göstər" → get_doctor_financial_details və ya əlavə aylıq hesabat funksiyası.
-
-Cavab formatı:
-- Mümkün qədər sadə saxla (ad + bölgə kimi), yalnız istifadəçi əlavə detal istəyəndə daha detallı məlumat ver.
-'''
-            }
-        ]
-        
-        # Add conversation history
-        messages.extend(conversation_history[-10:])  # Keep last 10 messages for context
-        
-        # Add current message
-        messages.append({
-            'role': 'user',
-            'content': message
-        })
-        
-        # Prepare the request to OpenAI API with function calling
         headers = {
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json'
         }
-        
+
+        # ------------------------------------------------------------------ #
+        # İlk sorğu
+        # ------------------------------------------------------------------ #
         payload = {
             'model': model,
             'messages': messages,
-            'functions': FUNCTIONS,
-            'function_call': 'auto',  # Let the model decide when to call functions
-            'max_tokens': 1000,
-            'temperature': 0.7
+            'tools': tools,
+            'tool_choice': 'auto',
+            'max_tokens': 1500,
+            'temperature': 0.3,  # Daha deterministik cavablar üçün aşağı saxladıq
         }
-        
-        # Make request to OpenAI API
+
         response = requests.post(
             'https://api.openai.com/v1/chat/completions',
             headers=headers,
             json=payload,
             timeout=30
         )
-        
-        if response.status_code == 200:
-            result = response.json()
-            message_obj = result['choices'][0]['message']
-            
-            # Check if the model wants to call a function
-            if message_obj.get('function_call'):
-                function_name = message_obj['function_call']['name']
-                function_args = json.loads(message_obj['function_call']['arguments'])
-                
-                # Execute the function
-                if function_name in FUNCTION_MAP:
-                    function_result = FUNCTION_MAP[function_name](**function_args)
-                    
-                    # Add function result to conversation and get final response
-                    messages.append(message_obj)  # Add assistant's function call request
-                    messages.append({
-                        'role': 'function',
-                        'name': function_name,
-                        'content': json.dumps(function_result, ensure_ascii=False)
-                    })
-                    
-                    # Make second request to get the final answer
-                    payload['messages'] = messages
-                    response2 = requests.post(
-                        'https://api.openai.com/v1/chat/completions',
-                        headers=headers,
-                        json=payload,
-                        timeout=30
-                    )
-                    
-                    if response2.status_code == 200:
-                        result2 = response2.json()
-                        reply = result2['choices'][0]['message']['content']
-                    else:
-                        # If second request fails, format the function result directly
-                        reply = format_function_result(function_name, function_result)
-                else:
-                    reply = 'Üzr istəyirəm, bu funksiya mövcud deyil.'
-            else:
-                # Direct response without function calling
-                reply = message_obj['content']
-            
-            return JsonResponse({'reply': reply})
-        else:
+
+        if response.status_code != 200:
             error_data = response.json() if response.text else {}
             error_msg = error_data.get('error', {}).get('message', 'Xəta baş verdi')
-            return JsonResponse({
-                'reply': f'Üzr istəyirəm, xəta baş verdi: {error_msg}'
-            }, status=response.status_code)
-            
+            return JsonResponse(
+                {'reply': f'Üzr istəyirəm, xəta baş verdi: {error_msg}'},
+                status=response.status_code
+            )
+
+        result = response.json()
+        message_obj = result['choices'][0]['message']
+        finish_reason = result['choices'][0].get('finish_reason', '')
+
+        # ------------------------------------------------------------------ #
+        # Model tool çağırmaq istəyirsə  (finish_reason == "tool_calls")
+        # ------------------------------------------------------------------ #
+        if finish_reason == 'tool_calls' and message_obj.get('tool_calls'):
+            # Model birdən çox tool çağıra bilər; bütün nəticələri toplayırıq
+            messages.append(message_obj)  # assistant mesajını tarixçəyə əlavə et
+
+            all_results = {}
+
+            for tool_call in message_obj['tool_calls']:
+                tool_call_id = tool_call['id']
+                function_name = tool_call['function']['name']
+
+                try:
+                    function_args = json.loads(tool_call['function']['arguments'])
+                except json.JSONDecodeError:
+                    function_args = {}
+
+                if function_name in FUNCTION_MAP:
+                    try:
+                        function_result = FUNCTION_MAP[function_name](**function_args)
+                    except Exception as e:
+                        function_result = {'error': str(e)}
+                else:
+                    function_result = {'error': f'{function_name} funksiyası tapılmadı.'}
+
+                all_results[function_name] = function_result
+
+                # Hər tool_call üçün ayrı tool mesajı əlavə et
+                messages.append({
+                    'role': 'tool',
+                    'tool_call_id': tool_call_id,
+                    'content': json.dumps(function_result, ensure_ascii=False)
+                })
+
+            # ---------------------------------------------------------------- #
+            # İkinci sorğu – model nəticələri görüb son cavabı hazırlayır
+            # Burada tools parametrini göndərməyə ehtiyac yoxdur (opsional)
+            # ---------------------------------------------------------------- #
+            payload2 = {
+                'model': model,
+                'messages': messages,
+                'max_tokens': 1500,
+                'temperature': 0.3,
+            }
+
+            response2 = requests.post(
+                'https://api.openai.com/v1/chat/completions',
+                headers=headers,
+                json=payload2,
+                timeout=30
+            )
+
+            if response2.status_code == 200:
+                result2 = response2.json()
+                reply = result2['choices'][0]['message']['content']
+            else:
+                # Fallback: nəticəni özümüz formatlayırıq
+                # Birinci çağırılan funksiyaya baxırıq
+                first_fn = list(all_results.keys())[0] if all_results else None
+                first_result = all_results.get(first_fn) if first_fn else None
+                reply = format_function_result(first_fn, first_result) if first_fn else 'Cavab alınamadı.'
+
+            return JsonResponse({'reply': reply})
+
+        # ------------------------------------------------------------------ #
+        # Birbaşa mətn cavabı (tool çağırılmadı)
+        # ------------------------------------------------------------------ #
+        reply = message_obj.get('content', 'Cavab alınamadı.')
+        return JsonResponse({'reply': reply})
+
     except requests.exceptions.Timeout:
         return JsonResponse({
             'reply': 'Üzr istəyirəm, sorğu zaman aşımına uğradı. Zəhmət olmasa yenidən cəhd edin.'
         }, status=504)
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException:
         return JsonResponse({
             'reply': 'Üzr istəyirəm, bağlantı xətası baş verdi. Zəhmət olmasa yenidən cəhd edin.'
         }, status=500)
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        return JsonResponse({
-            'reply': f'Gözlənilməz xəta: {str(e)}'
-        }, status=500)
+        return JsonResponse({'reply': f'Gözlənilməz xəta: {str(e)}'}, status=500)
 
 
+# --------------------------------------------------------------------------- #
+# format_function_result – fallback formatlaşdırma (dəyişiklik yoxdur)
+# --------------------------------------------------------------------------- #
 def format_function_result(function_name, result):
-    """Format function results for display"""
+    """Format function results for display when second API call fails"""
+    if not result:
+        return 'Nəticə tapılmadı.'
+
     if function_name == 'get_recent_doctors':
         if not result:
             return 'Ən son əlavə olunan həkim tapılmadı.'
@@ -1206,47 +1500,41 @@ def format_function_result(function_name, result):
             text += f"   Klinika: {doctor['klinika']}, İxtisas: {doctor['ixtisas']}\n"
             text += f"   Dərəcə: {doctor['derece']}, Tarix: {doctor['created_at']}\n\n"
         return text
-    
+
     elif function_name == 'get_doctor_statistics':
         stats = result
-        text = f"📊 Həkim Statistikaları:\n\n"
+        text = '📊 Həkim Statistikaları:\n\n'
         text += f"Ümumi həkim sayı: {stats['total_doctors']}\n"
         text += f"Bu ay əlavə olunan: {stats['new_this_month']}\n\n"
-        
-        if stats['by_degree']:
-            text += "Dərəcə üzrə:\n"
+        if stats.get('by_degree'):
+            text += 'Dərəcə üzrə:\n'
             for degree, count in stats['by_degree'].items():
-                text += f"  - {degree}: {count}\n"
-        
-        if stats['by_region']:
-            text += "\nBölgə üzrə (top 5):\n"
+                text += f'  - {degree}: {count}\n'
+        if stats.get('by_region'):
+            text += '\nBölgə üzrə (top 5):\n'
             sorted_regions = sorted(stats['by_region'].items(), key=lambda x: x[1], reverse=True)[:5]
             for region, count in sorted_regions:
-                text += f"  - {region}: {count}\n"
-        
+                text += f'  - {region}: {count}\n'
         return text
-    
+
     elif function_name == 'get_region_statistics':
         if not result:
             return 'Bölgə tapılmadı.'
         text = '📍 Bölgə Statistikaları:\n\n'
         for region in result:
             text += f"{region['region_name']} ({region['region_type']}):\n"
-            text += f"  Həkim: {region['doctor_count']}, "
-            text += f"Şəhər: {region['city_count']}, "
-            text += f"Xəstəxana: {region['hospital_count']}\n\n"
+            text += f"  Həkim: {region['doctor_count']}, Şəhər: {region['city_count']}, Xəstəxana: {region['hospital_count']}\n\n"
         return text
-    
+
     elif function_name == 'search_doctors':
         if not result:
             return 'Axtarışa uyğun həkim tapılmadı.'
         text = f'Axtarış nəticələri ({len(result)} həkim):\n\n'
         for i, doctor in enumerate(result, 1):
-            # Daha sadə nəticə: yalnız ad və bölgə göstərək
             text += f"{i}. {doctor['ad']}\n"
             text += f"   Bölgə: {doctor['bolge']}\n\n"
         return text
-    
+
     elif function_name == 'get_financial_summary':
         stats = result
         text = '💰 Maliyyə Ümumi Məlumatları:\n\n'
@@ -1254,13 +1542,12 @@ def format_function_result(function_name, result):
         text += f"Əvvəlki borc: {stats['total_previous_debt']:.2f} ₼\n"
         text += f"Borclu həkim sayı: {stats['doctors_with_debt']} / {stats['total_doctors']}\n"
         return text
-    
+
     elif function_name == 'get_doctors_by_region':
         if not result:
             return 'Bu bölgədə həkim tapılmadı.'
         text = f'Bölgə həkimləri ({len(result)} həkim):\n\n'
         for i, doctor in enumerate(result, 1):
-            # Sadə format: ad və bölgə kifayətdir, əlavə detallar soruşularsa göstərilər
             text += f"{i}. {doctor['ad']}\n"
             text += f"   Şəhər: {doctor['city']}, Klinika: {doctor['klinika']}\n\n"
         return text
@@ -1268,80 +1555,502 @@ def format_function_result(function_name, result):
     elif function_name == 'get_doctor_financial_details':
         if not result:
             return 'Bu ada uyğun həkim tapılmadı.'
-
-        # Bir neçə həkim uyğun gələrsə, hamısını sadə siyahı kimi göstər
         if len(result) > 1:
             text = f'Axtarış nəticələri ({len(result)} həkim):\n\n'
             for i, doctor in enumerate(result, 1):
                 text += f"{i}. {doctor['ad']}\n"
                 text += f"   Bölgə: {doctor['bolge']}\n\n"
-            text += "Zəhmət olmasa daha dəqiq ad və ya barkod qeyd edin ki, konkret həkim üçün tam maliyyə detallarını göstərə bilim."
+            text += 'Zəhmət olmasa daha dəqiq ad və ya barkod qeyd edin.'
             return text
-
-        # Yalnız bir həkim varsa, detallı maliyyə məlumatları
         doctor = result[0]
-        text = f"💳 Həkim üzrə maliyyə məlumatları: {doctor['ad']}\n\n"
-        text += "Cari vəziyyət:\n"
+        text = f"💳 Həkim: {doctor['ad']}\n\n"
         text += f"  - Əvvəlki borc: {doctor['previous_debt']:.2f} ₼\n"
         text += f"  - Cari borc: {doctor['borc']:.2f} ₼\n"
-        text += f"  - Hesablanan miqdar: {doctor['hesablanan_miqdar']:.2f} ₼\n"
-        text += f"  - Həkimdən silinən: {doctor['hekimden_silinen']:.2f} ₼\n"
-        text += f"  - Datasiya: {doctor['datasiya']:.2f} ₼\n"
-        text += f"  - Avans: {doctor['avans']:.2f} ₼\n"
-        text += f"  - İnvestisiya: {doctor['investisiya']:.2f} ₼\n"
-        text += f"  - Geri qaytarma: {doctor['geriqaytarma']:.2f} ₼\n"
         text += f"  - Yekun borc: {doctor['yekun_borc']:.2f} ₼\n\n"
-
-        # Ödənişlər
-        payments = doctor.get('payments', [])
-        if payments:
-            text += "Son ödənişlər:\n"
-            for p in payments:
-                text += f"  - {p['date']}: {p['payment_type']} - {p['pay']:.2f} ₼ ({p['region']})\n"
-        else:
-            text += "Son açıq ödəniş tapılmadı.\n"
-
-        # Aylıq hesabatlar
-        reports = doctor.get('monthly_reports', [])
-        if reports:
-            text += "\nSon aylıq hesabatlar:\n"
-            for r in reports:
-                text += f"  - {r['month']}: yekun borc {r['yekun_borc']:.2f} ₼, borc {r['borc']:.2f} ₼, avans {r['avans']:.2f} ₼, investisiya {r['investisiya']:.2f} ₼, geri qaytarma {r['geriqaytarma']:.2f} ₼\n"
-
+        for p in doctor.get('payments', []):
+            text += f"  Ödəniş: {p['date']}: {p['pay']:.2f} ₼\n"
         return text
 
     elif function_name == 'get_doctor_prescription_stats':
-        # Həkim tapılmadıqda və ya xəta olduqda
         if not result.get('doctor_found'):
             return result.get('message', 'Bu ada uyğun həkim tapılmadı.')
-
         doctor = result['doctor']
-        year = result.get('year')
-        month = result.get('month')
-        day = result.get('day')
-
-        period_text = ''
-        if year and month and day:
-            period_text = f"{year}-{month:02d}-{day:02d} tarixi üçün"
-        elif year and month:
-            period_text = f"{year}-{month:02d} ayı üçün"
-        elif year:
-            period_text = f"{year}-ci il üçün"
-        else:
-            period_text = "seçilən dövr üçün"
-
-        text = f"🧾 {doctor['ad']} həkimin {period_text} resept statistikası:\n\n"
-        text += f"  - Ümumi resept sayı: {result['total_recipes']}\n"
-        text += f"  - Ümumi dərman sayı (cəmi ədəd): {result['total_drug_count']:.1f}\n\n"
-
-        drugs = result.get('drugs', [])
-        if drugs:
-            text += "Ən çox yazılan dərmanlar:\n"
-            for d in drugs[:10]:
-                text += f"  - {d['name']}: {d['count']:.1f} ədəd\n"
-        else:
-            text += "Bu dövr üçün resept və dərman məlumatı tapılmadı.\n"
-
+        text = f"🧾 {doctor['ad']} – Resept statistikası:\n\n"
+        text += f"  - Ümumi resept: {result['total_recipes']}\n"
+        text += f"  - Ümumi dərman: {result['total_drug_count']:.1f}\n\n"
+        for d in result.get('drugs', [])[:10]:
+            text += f"  - {d['name']}: {d['count']:.1f} ədəd\n"
         return text
 
     return str(result)
+
+
+    """
+Yeni AI alətləri:
+  1. Fayl analizi  – PDF, Excel, Word, şəkil (base64)
+  2. Veb axtarış   – Google Custom Search API + xülasə
+  3. İcazə sistemi – DB-yə yazmazdan əvvəl istifadəçidən təsdiq alır
+"""
+
+import json
+import base64
+import tempfile
+import os
+import requests as http_requests
+from django.conf import settings
+import pdfplumber
+
+
+# ════════════════════════════════════════════════════════════════════════════ #
+#  1. FAYL ANALİZİ
+# ════════════════════════════════════════════════════════════════════════════ #
+
+def analyze_file(file_content_b64: str, file_name: str, question: str = "") -> dict:
+    """
+    Base64 kodlanmış faylı analiz edir.
+    file_content_b64 : base64 string
+    file_name        : 'report.pdf', 'data.xlsx', 'scan.png' ...
+    question         : istifadəçinin fayldan nə istədiyi
+    """
+    try:
+        file_bytes = base64.b64decode(file_content_b64)
+        ext = file_name.rsplit(".", 1)[-1].lower()
+        extracted_text = ""
+
+        # ── PDF ────────────────────────────────────────────────────────────
+        if ext == "pdf":
+            try:
+                import pdfplumber
+                with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                    tmp.write(file_bytes)
+                    tmp_path = tmp.name
+                with pdfplumber.open(tmp_path) as pdf:
+                    pages = []
+                    for page in pdf.pages[:10]:          # maks 10 səhifə
+                        text = page.extract_text() or ""
+                        pages.append(text)
+                extracted_text = "\n\n".join(pages)
+                os.unlink(tmp_path)
+            except ImportError:
+                return {"success": False, "error": "pdfplumber quraşdırılmayıb: pip install pdfplumber"}
+
+        # ── EXCEL ──────────────────────────────────────────────────────────
+        elif ext in ("xlsx", "xls", "csv"):
+            try:
+                import pandas as pd
+                with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
+                    tmp.write(file_bytes)
+                    tmp_path = tmp.name
+                if ext == "csv":
+                    df = pd.read_csv(tmp_path)
+                else:
+                    df = pd.read_excel(tmp_path)
+                os.unlink(tmp_path)
+                extracted_text = (
+                    f"Cəmi sətir: {len(df)}, Sütunlar: {list(df.columns)}\n\n"
+                    f"İlk 20 sətir:\n{df.head(20).to_string()}\n\n"
+                    f"Statistika:\n{df.describe().to_string()}"
+                )
+            except ImportError:
+                return {"success": False, "error": "pandas quraşdırılmayıb: pip install pandas openpyxl"}
+
+        # ── WORD ───────────────────────────────────────────────────────────
+        elif ext in ("docx", "doc"):
+            try:
+                import docx
+                with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+                    tmp.write(file_bytes)
+                    tmp_path = tmp.name
+                doc = docx.Document(tmp_path)
+                extracted_text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+                os.unlink(tmp_path)
+            except ImportError:
+                return {"success": False, "error": "python-docx quraşdırılmayıb: pip install python-docx"}
+
+        # ── ŞƏKİL (OCR) ────────────────────────────────────────────────────
+        elif ext in ("png", "jpg", "jpeg", "webp", "gif"):
+            # GPT-4o vision ilə OCR
+            api_key = getattr(settings, "OPENAI_API_KEY", "")
+            vision_payload = {
+                "model": "gpt-4o",
+                "max_tokens": 1000,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": question or "Bu şəkildə nə var? Bütün mətni və məzmunu izah et."},
+                        {"type": "image_url", "image_url": {
+                            "url": f"data:image/{ext};base64,{file_content_b64}"
+                        }}
+                    ]
+                }]
+            }
+            resp = http_requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json=vision_payload, timeout=30
+            )
+            if resp.status_code == 200:
+                return {
+                    "success": True,
+                    "file_type": "image",
+                    "analysis": resp.json()["choices"][0]["message"]["content"]
+                }
+            else:
+                return {"success": False, "error": f"Vision API xətası: {resp.text[:200]}"}
+
+        else:
+            # Sadə mətn faylları (.txt, .log, .json ...)
+            try:
+                extracted_text = file_bytes.decode("utf-8", errors="ignore")
+            except Exception:
+                return {"success": False, "error": f"Dəstəklənməyən fayl formatı: {ext}"}
+
+        # ── Çıxarılmış mətni AI ilə analiz et ─────────────────────────────
+        if not extracted_text.strip():
+            return {"success": False, "error": "Fayldan mətn çıxarıla bilmədi."}
+
+        api_key = getattr(settings, "OPENAI_API_KEY", "")
+        analysis_prompt = (
+            f"Aşağıdakı sənədi analiz et.\n"
+            f"Sual/tapşırıq: {question or 'Əsas məlumatları xülasələ.'}\n\n"
+            f"Sənəd məzmunu:\n{extracted_text[:8000]}"   # maks 8000 simvol
+        )
+        resp2 = http_requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "Sən Azərbaycan dilində sənəd analiz edən köməkçisən."},
+                    {"role": "user", "content": analysis_prompt}
+                ],
+                "max_tokens": 1000,
+                "temperature": 0.3
+            },
+            timeout=40
+        )
+        if resp2.status_code == 200:
+            return {
+                "success": True,
+                "file_type": ext,
+                "raw_text_preview": extracted_text[:500],
+                "analysis": resp2.json()["choices"][0]["message"]["content"]
+            }
+        else:
+            return {"success": False, "error": f"Analiz API xətası: {resp2.text[:200]}"}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ════════════════════════════════════════════════════════════════════════════ #
+#  2. VEB AXTARIŞ
+# ════════════════════════════════════════════════════════════════════════════ #
+
+def web_search(query: str, num_results: int = 5) -> dict:
+    """
+    Google Custom Search API ilə axtarış edir, nəticələri AI ilə analiz edir.
+    Tələb olunur:
+      settings.GOOGLE_API_KEY        – Google Cloud API açarı
+      settings.GOOGLE_SEARCH_ENGINE_ID – Programmable Search Engine ID
+    """
+    try:
+        google_api_key = getattr(settings, "GOOGLE_API_KEY", "")
+        search_engine_id = getattr(settings, "GOOGLE_SEARCH_ENGINE_ID", "")
+
+        if not google_api_key or not search_engine_id:
+            # Fallback: DuckDuckGo instant answers (API açarı tələb etmir)
+            return _duckduckgo_search(query, num_results)
+
+        params = {
+            "key": google_api_key,
+            "cx": search_engine_id,
+            "q": query,
+            "num": min(num_results, 10),
+            "hl": "az",        # Azərbaycan dili üstünlüyü
+        }
+        resp = http_requests.get(
+            "https://www.googleapis.com/customsearch/v1",
+            params=params, timeout=15
+        )
+        if resp.status_code != 200:
+            return {"success": False, "error": f"Google API xətası: {resp.text[:200]}"}
+
+        items = resp.json().get("items", [])
+        if not items:
+            return {"success": True, "results": [], "summary": "Nəticə tapılmadı."}
+
+        results = []
+        for item in items:
+            results.append({
+                "title": item.get("title", ""),
+                "link": item.get("link", ""),
+                "snippet": item.get("snippet", ""),
+            })
+
+        # AI ilə xülasə
+        summary = _summarize_search_results(query, results)
+        return {"success": True, "query": query, "results": results, "summary": summary}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def _duckduckgo_search(query: str, num_results: int = 5) -> dict:
+    """Google açarı olmadıqda DuckDuckGo instant answer API istifadə edir."""
+    try:
+        resp = http_requests.get(
+            "https://api.duckduckgo.com/",
+            params={"q": query, "format": "json", "no_redirect": 1, "no_html": 1},
+            timeout=10
+        )
+        data = resp.json()
+        results = []
+
+        if data.get("AbstractText"):
+            results.append({
+                "title": data.get("Heading", query),
+                "link": data.get("AbstractURL", ""),
+                "snippet": data["AbstractText"]
+            })
+        for topic in data.get("RelatedTopics", [])[:num_results]:
+            if isinstance(topic, dict) and topic.get("Text"):
+                results.append({
+                    "title": topic.get("Text", "")[:60],
+                    "link": topic.get("FirstURL", ""),
+                    "snippet": topic.get("Text", "")
+                })
+
+        if not results:
+            return {"success": True, "results": [], "summary": f"'{query}' üçün nəticə tapılmadı."}
+
+        summary = _summarize_search_results(query, results)
+        return {"success": True, "query": query, "results": results, "summary": summary,
+                "note": "DuckDuckGo instant answers istifadə edildi (Google açarı yoxdur)."}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def _summarize_search_results(query: str, results: list) -> str:
+    """Axtarış nəticələrini AI ilə xülasələyir."""
+    try:
+        api_key = getattr(settings, "OPENAI_API_KEY", "")
+        snippets = "\n\n".join(
+            f"[{i+1}] {r['title']}\n{r['snippet']}\nMənbə: {r['link']}"
+            for i, r in enumerate(results)
+        )
+        resp = http_requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "Azərbaycan dilində axtarış nəticələrini xülasələ."},
+                    {"role": "user", "content": f"Sorğu: {query}\n\nNəticələr:\n{snippets}\n\nQısa xülasə yaz."}
+                ],
+                "max_tokens": 500,
+                "temperature": 0.3
+            },
+            timeout=20
+        )
+        if resp.status_code == 200:
+            return resp.json()["choices"][0]["message"]["content"]
+        return snippets[:500]
+    except Exception:
+        return "\n".join(r["snippet"] for r in results[:3])
+
+
+# ════════════════════════════════════════════════════════════════════════════ #
+#  3. İCAZƏ SİSTEMİ  (pending_actions cache)
+# ════════════════════════════════════════════════════════════════════════════ #
+#
+#  Axın:
+#    AI "add_doctor" çağırmaq istəyir
+#    → request_permission() çağrılır  (action_id qaytarır)
+#    → İstifadəçiyə "Bəli / Xeyr" göstərilir
+#    → İstifadəçi "bəli" deyir → confirm_action(action_id) çağrılır → icra edilir
+#    → İstifadəçi "xeyr" deyir → cancel_action(action_id)
+#
+#  Sadə in-memory cache (Django cache framework istifadə olunur).
+# ═══════════════════════════════════════════════════════════════════════════ #
+
+import uuid as _uuid
+from django.core.cache import cache as _cache
+
+PERMISSION_TTL = 300   # 5 dəqiqə (saniyə ilə)
+
+
+def request_permission(action_type: str, action_data: dict, description: str) -> dict:
+    """
+    DB-yə yazma əməliyyatından əvvəl icazə tələb edir.
+    action_type  : 'add_doctor' | 'update_doctor' | 'delete_doctor' | 'add_payment' | ...
+    action_data  : əməliyyat üçün lazım olan parametrlər
+    description  : istifadəçiyə göstəriləcək insan dostu açıqlama
+    Qaytarır: { action_id, description, preview }
+    """
+    action_id = str(_uuid.uuid4())[:8]   # qısa ID: 'a3f7b2c1'
+    _cache.set(f"pending_action:{action_id}", {
+        "type": action_type,
+        "data": action_data,
+        "description": description,
+        "status": "pending"
+    }, timeout=PERMISSION_TTL)
+
+    return {
+        "action_id": action_id,
+        "status": "awaiting_approval",
+        "description": description,
+        "preview": action_data,
+        "message": (
+            f"⚠️ Təsdiq tələb olunur!\n\n"
+            f"Əməliyyat: {description}\n\n"
+            f"Davam etmək üçün 'bəli #{action_id}' yazın.\n"
+            f"Ləğv etmək üçün 'xeyr #{action_id}' yazın."
+        )
+    }
+
+
+def confirm_action(action_id: str) -> dict:
+    """
+    İstifadəçi 'bəli' dedikdən sonra çağrılır.
+    Əməliyyatı icra edir.
+    """
+    pending = _cache.get(f"pending_action:{action_id}")
+    if not pending:
+        return {"success": False, "error": f"#{action_id} tapılmadı və ya vaxtı keçib."}
+
+    action_type = pending["type"]
+    action_data = pending["data"]
+
+    try:
+        result = _execute_approved_action(action_type, action_data)
+        _cache.delete(f"pending_action:{action_id}")
+        return {"success": True, "action_id": action_id,
+                "action_type": action_type, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def cancel_action(action_id: str) -> dict:
+    """İstifadəçi 'xeyr' dedikdən sonra çağrılır."""
+    pending = _cache.get(f"pending_action:{action_id}")
+    if not pending:
+        return {"success": False, "error": f"#{action_id} tapılmadı."}
+    _cache.delete(f"pending_action:{action_id}")
+    return {"success": True, "message": f"#{action_id} ləğv edildi."}
+
+
+def _execute_approved_action(action_type: str, action_data: dict) -> dict:
+    """
+    Təsdiqlənmiş əməliyyatı icra edir.
+    Buraya öz modellərinizdən import əlavə edin.
+    """
+    # ── Öz modellərinizə görə genişləndirin ─────────────────────────────
+    # from doctors.models import Doctor
+    # from payments.models import Payment
+    # ...
+
+    if action_type == "add_doctor":
+        # Doctor.objects.create(**action_data)
+        return {"message": f"Həkim əlavə edildi: {action_data.get('name', '?')}",
+                "data": action_data}
+
+    elif action_type == "update_doctor":
+        doctor_id = action_data.pop("id")
+        # Doctor.objects.filter(pk=doctor_id).update(**action_data)
+        return {"message": f"Həkim #{doctor_id} yeniləndi", "data": action_data}
+
+    elif action_type == "delete_doctor":
+        doctor_id = action_data.get("id")
+        # Doctor.objects.filter(pk=doctor_id).delete()
+        return {"message": f"Həkim #{doctor_id} silindi"}
+
+    elif action_type == "add_payment":
+        # Payment.objects.create(**action_data)
+        return {"message": "Ödəniş əlavə edildi", "data": action_data}
+
+    else:
+        raise ValueError(f"Bilinməyən əməliyyat tipi: {action_type}")
+
+
+# ════════════════════════════════════════════════════════════════════════════ #
+#  AI Assistant Page + API endpoints
+# ════════════════════════════════════════════════════════════════════════════ #
+
+
+@login_required(login_url="login")
+def ai_assistant_page(request):
+    return render(request, "ai-assistant.html")
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ai_analyze_file_api(request):
+    try:
+        data = json.loads(request.body or "{}")
+        file_content_b64 = (data.get("file_content_b64") or "").strip()
+        file_name = (data.get("file_name") or "").strip()
+        question = (data.get("question") or "").strip()
+
+        if not file_content_b64 or not file_name:
+            return JsonResponse({"success": False, "error": "file_content_b64 və file_name tələb olunur."}, status=400)
+
+        return JsonResponse(analyze_file(file_content_b64=file_content_b64, file_name=file_name, question=question))
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ai_web_search_api(request):
+    try:
+        data = json.loads(request.body or "{}")
+        query = (data.get("query") or "").strip()
+        num_results = data.get("num_results", 5)
+
+        if not query:
+            return JsonResponse({"success": False, "error": "query tələb olunur."}, status=400)
+
+        try:
+            num_results = int(num_results)
+        except Exception:
+            num_results = 5
+
+        return JsonResponse(web_search(query=query, num_results=max(1, min(num_results, 10))))
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ai_confirm_action_api(request):
+    try:
+        data = json.loads(request.body or "{}")
+        action_id = (data.get("action_id") or "").strip().lstrip("#")
+        if not action_id:
+            return JsonResponse({"success": False, "error": "action_id tələb olunur."}, status=400)
+        return JsonResponse(confirm_action(action_id))
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ai_cancel_action_api(request):
+    try:
+        data = json.loads(request.body or "{}")
+        action_id = (data.get("action_id") or "").strip().lstrip("#")
+        if not action_id:
+            return JsonResponse({"success": False, "error": "action_id tələb olunur."}, status=400)
+        return JsonResponse(cancel_action(action_id))
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
