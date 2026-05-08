@@ -650,16 +650,30 @@ def region_sales_data_baku(request):
 
 def user_login(request):
     if request.method == "POST":
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        from django.contrib.auth import get_user_model
+
+        username = (request.POST.get('username') or '').strip()
+        password = request.POST.get('password') or ''
+
         user = authenticate(request, username=username, password=password)
+
+        # Username böyük/kiçik hərfə görə fərqlənə bilər (mobil/klaviatura/autofill).
+        # Django default backend username-i case-sensitive yoxlayır.
+        if user is None and username:
+            User = get_user_model()
+            matched = User.objects.filter(username__iexact=username).only("username", "is_active").first()
+            if matched:
+                user = authenticate(request, username=matched.username, password=password)
         
         if user is not None:
+            if hasattr(user, "is_active") and not user.is_active:
+                messages.error(request, "Bu hesab deaktiv edilib.")
+                return render(request, 'login.html')
             login(request, user)
             return redirect('/admin')  # Superuser admin panelə
         else:
-            error = "İstifadəçi adı və ya şifrə yanlışdır"
-            return render(request, 'login.html', {'error': error})
+            messages.error(request, "İstifadəçi adı və ya şifrə yanlışdır.")
+            return render(request, 'login.html')
     
     return render(request, 'login.html')
 
