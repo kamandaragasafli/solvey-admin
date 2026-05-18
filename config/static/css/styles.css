@@ -46,6 +46,12 @@ body {
   transition: all 0.3s ease;
 }
 
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+  background-color: #030b1a;
+}
+
 .dashboard-container {
   min-height: 100vh;
 }
@@ -323,6 +329,39 @@ body {
 
 }
 
+/* Mobile sidebar toggle + overlay */
+.sidebar-toggle{
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  cursor: pointer;
+}
+.sidebar-toggle i{ font-size: 1.4rem; }
+
+#sidebarOverlay{
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 90; /* below .sidebar(100), above page */
+  backdrop-filter: blur(2px);
+}
+#sidebarOverlay.visible{ display:block; }
+
+.top-actions{
+  display:flex;
+  gap: 12px;
+  align-items:center;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+}
+
 /* ======= Responsive Layout for Base Template ======= */
 @media (max-width: 992px) {
   .sidebar {
@@ -339,12 +378,25 @@ body {
   .content {
     margin-left: 0;
     padding: 20px 16px;
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
   }
 
   .top-bar {
     flex-wrap: wrap;
     justify-content: space-between;
     padding: 0.75rem 1rem;
+    gap: 10px;
+  }
+
+  /* Top-bar layout: menu left, profile right, actions below */
+  .sidebar-toggle{
+    order: 0;
+  }
+  .user-profile{
+    order: 1;
+    margin-right: auto;
   }
 
   .top-bar a {
@@ -357,6 +409,16 @@ body {
     margin-top: 8px;
     margin-right: 0;
   }
+
+  .sidebar-toggle{
+    display: inline-flex;
+  }
+
+  .top-actions{
+    width: 100%;
+    order: 2;
+    gap: 10px;
+  }
 }
 
 @media (max-width: 576px) {
@@ -368,6 +430,44 @@ body {
     width: 100% !important;
     margin: 0 !important;
   }
+
+  /* Mobile top-bar: make buttons clean and full-width */
+  .top-bar{
+    padding: 10px;
+    border-radius: 14px;
+  }
+  .top-actions{
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .top-bar a{
+    margin: 0 !important; /* override desktop margin:10px */
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .user-profile .user-name{
+    display: none;
+  }
+}
+
+/* Ensure mobile top-bar ordering overrides later base rules */
+@media (max-width: 992px) {
+  .top-bar {
+    justify-content: flex-start !important;
+  }
+  .sidebar-toggle {
+    margin-right: auto;
+  }
+  .user-profile {
+    margin-left: auto;
+  }
 }
 
 .top-bar {
@@ -378,6 +478,10 @@ body {
   margin-bottom: 20px;
   background-color: #1f2937;
   border-radius: 16px;
+}
+
+.top-bar{
+  padding: 10px 12px;
 }
 
 .top-bar a {

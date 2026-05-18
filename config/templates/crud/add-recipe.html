@@ -1,13 +1,51 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+  /* Mobile responsive: stack left/right sections */
+  @media (max-width: 992px) {
+    .add-recipe-card {
+      flex-direction: column !important;
+      width: 100% !important;
+      margin: 0 !important;
+    }
+    .add-recipe-left,
+    .add-recipe-right {
+      width: 100% !important;
+    }
+    .add-recipe-right {
+      margin: 12px 0 0 0 !important;
+    }
+  }
+
+  /* Make drug names smaller/denser */
+  .drug-name-btn{
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.2;
+    padding: 8px 10px !important;
+  }
+  /* Desktop/web: keep drug names larger */
+  @media (min-width: 992px){
+    .drug-name-btn{
+      font-size: 1rem;
+      padding: 10px 12px !important;
+    }
+  }
+  @media (max-width: 576px){
+    .drug-name-btn{
+      font-size: 0.78rem;
+      padding: 8px 10px !important;
+    }
+  }
+</style>
 
 <form method="POST" action="{% url 'create_recipe' %}">
   {% csrf_token %}
-  <div class="card shadow-sm d-flex flex-row" style="width: 80%; margin: auto; background-color: #1f2937; color: #f9fafb; border-radius: 14px;">
+  <div class="card shadow-sm d-flex flex-row add-recipe-card" style="width: 80%; margin: auto; background-color: #1f2937; color: #f9fafb; border-radius: 14px;">
     
     <!-- Sol bölmə -->
-    <div style="width: 70%; padding: 20px;">
+    <div class="add-recipe-left" style="width: 70%; padding: 20px;">
       <div class="card-body">
 
         <!-- Başlıq -->
@@ -60,8 +98,8 @@
           <label class="form-label fw-bold">Dərmanlar</label>
           {% for d in drugs %}
             <div class="d-flex mb-3 justify-content-start align-items-center">
-              <button type="button" class="fs-6 fw-bold me-3"
-                style="width: 60%; background-color: #374151; border-radius: 10px; border: none; padding: 10px; color: #f9fafb; text-align: left;"
+              <button type="button" class="me-3 drug-name-btn"
+                style="width: 50%; background-color: #374151; border-radius: 10px; border: none; padding: 10px; color: #f9fafb; text-align: left;"
                 disabled>
                 {{ d.med_full_name }}
               </button>
@@ -80,7 +118,7 @@
             <button type="submit" class="btn" style="background-color: #1975ffff; color: #f9fafb;">
               <i class="fa-solid fa-floppy-disk me-1"></i> Yadda Saxla
             </button>
-            <button type="reset" class="btn" style="background-color: #e9042e; color: #f9fafb;">
+            <button type="reset" class="btn" style="background-color: rgb(231, 255, 15); color: #3c3c3c;">
               <i class="fa-solid fa-rotate-right me-1"></i> Sıfırla
             </button>
             <input type="text" id="total-count" class="form-control text-end" readonly value="0" style="width: 100px; background-color: #273549; color: #f9fafb; border: none;" />
@@ -92,7 +130,7 @@
 
     <!-- Sağ bölmə: Ən Son Qeydiyyat -->
 <!-- Sağ bölmə: Ən Son Qeydiyyat -->
-<div class="card mb-4" style="background-color: #273549; color: #f9fafb; width: 30%; margin: 20px; display: flex; flex-direction: column;">
+<div class="card mb-4 add-recipe-right" style="background-color: #273549; color: #f9fafb; width: 30%; margin: 20px; display: flex; flex-direction: column;">
   <div class="card-body" style="flex: 1 1 auto; display: flex; flex-direction: column;">
     <div class="d-flex align-items-center mb-3">
       <i class="fa-solid fa-clipboard-list fa-lg me-2" style="color: #0084ffff;"></i>
@@ -359,7 +397,13 @@
         li.setAttribute("role", "option");
         li.dataset.id = doc.id;
         li.dataset.ad = doc.ad;
-        li.textContent = doc.ad;
+        const ixtisas = (doc.ixtisas || "").trim();
+        li.innerHTML = ixtisas
+          ? `<div style="display:flex; flex-direction:column; gap:2px;">
+               <span style="font-weight:600;">${doc.ad}</span>
+               <span style="font-size:0.78rem; color:#9ca3af;">${ixtisas}</span>
+             </div>`
+          : `<span style="font-weight:600;">${doc.ad}</span>`;
         li.addEventListener("mousedown", function (e) {
           e.preventDefault();
           cancelBlurHide();

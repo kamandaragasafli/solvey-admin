@@ -81,6 +81,21 @@ def doctors_list(request):
     }
     return render(request, "doctors.html", context)
 
+# views.py
+
+def hekim_api(request):
+    secret = request.GET.get('key','')
+    if secret != 'SolveyApi2024':
+        return JsonResponse({'error':'forbidden'}, status=403)
+    
+    data = list(Doctors.objects.filter(is_active=True).select_related(
+        'bolge','city','klinika'
+    ).values(
+        'id','ad','ixtisas','kategoriya','derece','cinsiyyet',
+        'bolge__region_name','city__city_name','klinika__hospital_name'
+    ))
+    return JsonResponse(data, safe=False)
+
 
 def doctors_export_excel(request):
     """Export doctors list to Excel with filters applied"""
@@ -1388,6 +1403,7 @@ def ajax_doctors_by_region(request):
             {
                 "id": doctor.id,
                 "ad": doctor.ad,
+                "ixtisas": doctor.get_ixtisas_display() if hasattr(doctor, "get_ixtisas_display") else getattr(doctor, "ixtisas", ""),
                 "previous_debt": float(doctor.previous_debt) if doctor.previous_debt else 0.0,
                 "avans": float(avans),
                 "investisiya": float(investisiya),

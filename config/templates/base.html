@@ -28,8 +28,8 @@
 /* AI Chat Button */
 .ai-chat-btn {
     position: relative;
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: var(--ai-gradient);
     border: none;
@@ -50,7 +50,7 @@
 .ai-chat-icon-wrapper {
     position: relative;
     color: white;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     z-index: 2;
 }
 
@@ -380,7 +380,7 @@
 
 </head>
 <body>
-<div class="sidebar">
+<div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="logo-container">
                 <div class="logo-text">
@@ -525,29 +525,31 @@
  {% if request.user.is_superuser %}
 <div class="content">
   <div class="top-bar">
-        <a href="{% url 'test' %}"style="background-color: rgba(0, 132, 255, 1)">
-  <i class="bx bx-file-blank"></i> Komissiya Hesabatı
-</a>
+        <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Menyu" aria-controls="sidebar" aria-expanded="false">
+          <i class="bi bi-list"></i>
+        </button>
+
+        <div class="top-actions">
+          <a href="{% url 'test' %}" style="background-color: rgba(0, 132, 255, 1)">
+            <i class="bx bx-file-blank"></i> Komissiya Hesabatı
+          </a>
 {% endif %}
 
+          <a href="{% url 'create_recipe' %}" style="background-color: rgba(0, 132, 255, 1)">
+            <i class="bx bx-plus-circle"></i> Qeydiyyat Əlavə et
+          </a>
 
-<a href="{% url 'create_recipe' %}"style="background-color: rgba(0, 132, 255, 1)">
-  <i class="bx bx-plus-circle"></i> Qeydiyyat Əlavə et
-</a>
+          <a href="{% url 'add-sell' %}" style="background-color: rgba(0, 132, 255, 1)">
+            <i class="bx bx-cart-alt"></i> Dərman Satışı Əlavə et
+          </a>
 
-<a href="{% url 'add-sell' %}"style="background-color: rgba(0, 132, 255, 1)">
-  <i class="bx bx-cart-alt"></i> Dərman Satışı Əlavə et
-</a>
+          <a href="{% url 'add-pay-dr' %}" style="background-color: rgba(0, 132, 255, 1)">
+            <i class="bx bx-dollar-circle"></i> Həkimə Ödəniş Əlavə et
+          </a>
+        </div>
 
-<a href="{% url 'add-pay-dr' %}"style="background-color: rgba(0, 132, 255, 1)">
-  <i class="bx bx-dollar-circle"></i> Həkimə Ödəniş Əlavə et
-</a>
-
-        
-
-
-                    <!-- User Profile -->
-                    <div class="user-profile">
+        <!-- User Profile -->
+        <div class="user-profile">
                         <div class="user-avatar">
                             <i class="bi bi-person-circle"></i>
                         </div>
@@ -563,7 +565,7 @@
                          <a href="{% url 'login' %}" class="text-dark"><img src="{% static 'img/man.png' %}" class="fs-5"></a>
                     {% endif %}
                    
-                    </div>
+        </div>
 
   </div>
 
@@ -661,6 +663,27 @@ const closeBtn = document.getElementById('closeBtn');
 const sendBtn = document.getElementById('sendBtn');
 const msgInput = document.getElementById('msgInput');
 const chatBody = document.getElementById('chatBody');
+
+// Sidebar toggle (mobile)
+const sidebar = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+let sidebarOverlay = document.getElementById('sidebarOverlay');
+if (!sidebarOverlay) {
+  sidebarOverlay = document.createElement('div');
+  sidebarOverlay.id = 'sidebarOverlay';
+  document.body.appendChild(sidebarOverlay);
+}
+function setSidebarOpen(open) {
+  if (!sidebar) return;
+  sidebar.classList.toggle('open', open);
+  sidebarOverlay.classList.toggle('visible', open);
+  if (sidebarToggle) sidebarToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+sidebarToggle?.addEventListener('click', () => setSidebarOpen(!sidebar.classList.contains('open')));
+sidebarOverlay?.addEventListener('click', () => setSidebarOpen(false));
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') setSidebarOpen(false);
+});
 
 // Keep a short conversation history for context
 // Format matches OpenAI-style chat roles (user/assistant)

@@ -43,6 +43,9 @@ urlpatterns = [
     path('regs/<int:region_id>', views.region_report, name='region_report'),
     path('regs/<int:region_id>/data/', views.region_report_data_ajax, name='region_report_data'),
 
+    # urls.py
+    path('api/hekimler/', views.hekim_api, name='hekim_api'),
+
 
 
 
