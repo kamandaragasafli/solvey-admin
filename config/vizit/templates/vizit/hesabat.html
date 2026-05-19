@@ -1,0 +1,179 @@
+{% extends 'vizit/base.html' %}
+
+{% block title %}Hesabat — Solvey Pharma{% endblock %}
+
+{% block content %}
+<div class="card no-print">
+    <div class="card-title">🔍 Filtr</div>
+    <form method="get" action="{% url 'vizit:hesabat' %}">
+        <div class="grid-3">
+            {% if user_rol == 'rehber' %}
+            <div>
+                <label>Bölgə</label>
+                <select name="bolge_id" id="f_bolge">
+                    <option value="">Hamısı</option>
+                    {% for b in bolgeler %}
+                    <option value="{{ b.id }}"{% if filter_bolge == b.id|stringformat:"s" %} selected{% endif %}>{{ b.region_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div>
+                <label>Rayon</label>
+                <select name="rayon_id" id="f_rayon">
+                    <option value="">Hamısı</option>
+                    {% for r in rayonlar %}
+                    <option value="{{ r.id }}"{% if filter_rayon == r.id|stringformat:"s" %} selected{% endif %}>{{ r.get_city_name_display }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Münasibət</label>
+                <select name="munasibat">
+                    <option value="">Hamısı</option>
+                    {% for m in munasibatler %}
+                    <option value="{{ m }}"{% if filter_munasibat == m %} selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if user_rol != 'rehber' %}
+            <input type="hidden" name="bolge_id" value="{{ user_bolge_id }}">
+            {% endif %}
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:14px;align-items:flex-end;flex-wrap:wrap;">
+            <div>
+                <label>Başlanğıc</label>
+                <input type="date" name="tarix_bas" value="{{ filter_tarix_bas }}">
+            </div>
+            <div>
+                <label>Son</label>
+                <input type="date" name="tarix_son" value="{{ filter_tarix_son }}">
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button type="submit" class="btn btn-primary">🔍 Filtrlə</button>
+                <a href="{% url 'vizit:hesabat' %}" class="btn btn-outline">↺ Sıfırla</a>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:8px;">
+                <button type="button" onclick="window.print()" class="btn btn-outline">🖨️ Çap et</button>
+                <a href="{% url 'vizit:export_excel' %}?{{ excel_url_params }}" class="btn btn-success">📥 Excel</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="grid-3" style="margin-bottom:22px;">
+    <div class="stat-card">
+        <div class="stat-number">{{ total_vizit }}</div>
+        <div class="stat-label">Ümumi Vizit</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ vizitler|length }}</div>
+        <div class="stat-label">Nəticə</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ prep_stat|length }}</div>
+        <div class="stat-label">Aktiv Preparat</div>
+    </div>
+</div>
+
+{% if prep_stat %}
+<div class="card">
+    <div class="card-title">💊 Ən çox istifadə olunan preparatlar</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;">
+        {% for ps in prep_stat %}
+        <div style="background:#f0f7ff;border:1px solid #d6eaf8;border-radius:8px;padding:8px 16px;font-size:14px;">
+            <strong>{{ ps.ad }}</strong> — {{ ps.c }} dəfə
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-title">📋 Vizit Siyahısı ({{ vizitler|length }} vizit)</div>
+
+    {% if not vizitler %}
+    <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <p>Seçilmiş filtrə uyğun vizit tapılmadı.</p>
+    </div>
+    {% else %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tarix</th>
+                    <th>Vaxt</th>
+                    {% if user_rol != 'numayende' %}<th>Nümayəndə</th>{% endif %}
+                    <th>Bölgə</th>
+                    <th>Rayon</th>
+                    <th>Həkim</th>
+                    <th>İxtisas</th>
+                    <th>Kat.</th>
+                    <th>Münasibət</th>
+                    <th>Preparatlar</th>
+                    <th>Qeyd</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vizitler %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td><strong>{{ v.tarix|date:"d.m.Y" }}</strong></td>
+                    <td>{{ v.vaxt|time:"H:i" }}</td>
+                    {% if user_rol != 'numayende' %}
+                    <td>{{ v.istifadeci.ad }}</td>
+                    {% endif %}
+                    <td>{{ v.bolge.region_name }}</td>
+                    <td>{% if v.rayon %}{{ v.rayon.get_city_name_display }}{% else %}—{% endif %}</td>
+                    <td>{{ v.hekim.ad }}</td>
+                    <td><span title="{{ v.hekim.get_ixtisas_display }}">{{ v.hekim.ixtisas }}</span></td>
+                    <td>{{ v.hekim.kategoriya }}</td>
+                    <td><span class="badge badge-warning">{{ v.munasibat }}</span></td>
+                    <td style="font-size:12px;color:#27ae60;">
+                        {% for vp in v.preparatlar.all %}
+                        {{ vp.preparat.med_name }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td style="font-size:12px;">{{ v.qeyd|default:"" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const RAYONLAR_URL = "{% url 'vizit:api_rayonlar' %}";
+
+document.addEventListener('DOMContentLoaded', function () {
+    const bolgeSelect = document.getElementById('f_bolge');
+    const rayonSelect = document.getElementById('f_rayon');
+    if (!bolgeSelect || !rayonSelect) return;
+
+    bolgeSelect.addEventListener('change', function () {
+        const bolgeId = this.value;
+        if (!bolgeId) {
+            rayonSelect.innerHTML = '<option value="">Hamısı</option>';
+            return;
+        }
+        fetch(`${RAYONLAR_URL}?bolge_id=${bolgeId}`)
+            .then(r => r.json())
+            .then(data => {
+                rayonSelect.innerHTML = '<option value="">Hamısı</option>';
+                data.rayonlar.forEach(r => {
+                    rayonSelect.add(new Option(r.ad, r.id));
+                });
+            });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends 'vizit/base.html' %}
+
+{% block title %}Admin Panel{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom:20px;font-size:22px;color:var(--primary);">⚙️ Admin Panel</h1>
+
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert {% if '❌' in message.message %}alert-error{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+    <a href="{% url 'vizit:admin_panel' %}?tab=istifadeciler" class="btn {% if tab == 'istifadeciler' %}btn-primary{% else %}btn-outline{% endif %}">👤 İstifadəçilər</a>
+    <a href="{% url 'vizit:admin_panel' %}?tab=hekimler" class="btn {% if tab == 'hekimler' %}btn-primary{% else %}btn-outline{% endif %}">🩺 Həkimlər</a>
+</div>
+
+{% if tab == 'istifadeciler' %}
+<div class="card">
+    <div class="card-title">➕ Yeni İstifadəçi</div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="grid-3" style="gap:12px;">
+            <div><label>Login</label><input type="text" name="login" required placeholder="İstifadəçi adı"></div>
+            <div><label>Şifrə</label><input type="text" name="sifre" required placeholder="Şifrə"></div>
+            <div><label>Ad</label><input type="text" name="ad" required placeholder="Tam adı"></div>
+            <div>
+                <label>Rol</label>
+                <select name="rol">
+                    <option value="numayende">Tibbi Nümayəndə</option>
+                    <option value="menecer">Menecer</option>
+                    <option value="rehber">Rəhbər</option>
+                </select>
+            </div>
+            <div>
+                <label>Bölgə (Nümayəndə/Menecer üçün)</label>
+                <select name="bolge_id">
+                    <option value="">Seçin...</option>
+                    {% for b in bolgeler %}
+                    <option value="{{ b.id }}">{{ b.region_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div style="margin-top:14px;"><button type="submit" name="add_user" class="btn btn-primary">➕ Əlavə et</button></div>
+    </form>
+</div>
+<div class="card">
+    <div class="card-title">👤 Mövcud İstifadəçilər ({{ istifadeciler|length }})</div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>#</th><th>Login</th><th>Ad</th><th>Rol</th><th>Bölgə</th><th>Aktiv</th><th>Sil</th></tr></thead>
+            <tbody>
+            {% for u in istifadeciler %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ u.login }}</strong></td>
+                <td>{{ u.ad }}</td>
+                <td><span class="badge role-badge role-{{ u.rol }}">{{ u.get_rol_display }}</span></td>
+                <td>{% if u.bolge %}{{ u.bolge.region_name }}{% else %}—{% endif %}</td>
+                <td>{% if u.aktiv %}✅{% else %}❌{% endif %}</td>
+                <td><a href="{% url 'vizit:admin_panel' %}?tab=istifadeciler&amp;del_user={{ u.id }}" onclick="return confirm('Silinsin?')" style="color:red;">🗑️</a></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% elif tab == 'hekimler' %}
+<div class="card">
+    <div class="card-title">➕ Yeni Həkim</div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="grid-3" style="gap:12px;">
+            <div><label>Ad, Soyad</label><input type="text" name="ad_soyad" required placeholder="Həkimin adı soyadı"></div>
+            <div>
+                <label>Rayon</label>
+                <select name="rayon_id" required>
+                    <option value="">Seçin...</option>
+                    {% for r in rayonlar %}
+                    <option value="{{ r.id }}">{{ r.region.region_name }} → {{ r.get_city_name_display }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>İxtisas</label>
+                <select name="ixtisas_id">
+                    <option value="">Seçilməyib</option>
+                    {% for ix in ixtisaslar %}
+                    <option value="{{ ix.id }}">{{ ix.kod }} — {{ ix.ad }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Kateqoriya</label>
+                <select name="kateqoriya_id">
+                    <option value="">Seçilməyib</option>
+                    {% for k in kateqoriyalar %}
+                    <option value="{{ k.id }}">{{ k.ad }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div style="margin-top:14px;"><button type="submit" name="add_hekim" class="btn btn-primary">➕ Həkim əlavə et</button></div>
+    </form>
+</div>
+<div class="card">
+    <div class="card-title">🩺 Həkimlər ({{ hekimler|length }})</div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>#</th><th>Ad, Soyad</th><th>Rayon</th><th>İxtisas</th><th>Kat.</th></tr></thead>
+            <tbody>
+            {% for h in hekimler %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ h.ad }}</td>
+                <td>{{ h.rayon_ad }}</td>
+                <td>{{ h.ix_kod }}</td>
+                <td>{{ h.kat }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

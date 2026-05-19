@@ -1,0 +1,60 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:x="urn:schemas-microsoft-com:office:excel"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 9pt; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { border: 1px solid #999; padding: 3px 5px; white-space: nowrap; }
+  .title-row td { font-weight: bold; font-size: 11pt; background: #1a5276; color: white; }
+  .header-row td { font-weight: bold; background: #2980b9; color: white; font-size: 9pt; text-align: center; }
+  .check { text-align: center; color: #27ae60; font-weight: bold; }
+  .num { text-align: center; }
+  tr:nth-child(odd) td { background-color: #f7fbff; }
+  .header-row td, .title-row td { background: inherit; }
+</style>
+</head>
+<body>
+<table>
+  <tr class="title-row">
+    <td colspan="{{ colspan_count }}">Solvey Pharma — Vizit Hesabatı | {{ rol_basliq }} | Tarix: {{ tarix_aralig }}</td>
+  </tr>
+  <tr class="header-row">
+    <td>#</td>
+    <td>Həkimin adı, soyadı</td>
+    <td>İxtisas</td>
+    <td>Kategoriya</td>
+    <td>Rayon</td>
+    <td>Münasibət</td>
+    {% for p_ad in prep_sira %}
+    <td>{{ p_ad }}</td>
+    {% endfor %}
+  </tr>
+
+  {% if not vizitler %}
+  <tr>
+    <td colspan="{{ colspan_count }}" style="text-align:center;color:#999;">Məlumat yoxdur</td>
+  </tr>
+  {% else %}
+    {% for v in vizitler %}
+    <tr>
+      <td class="num">{{ forloop.counter }}</td>
+      <td>{{ v.hekim }}</td>
+      <td>{{ v.ixtisas_kod }}</td>
+      <td>{{ v.kateqoriya }}</td>
+      <td>{{ v.rayon }}</td>
+      <td>{{ v.munasibat }}</td>
+      {% for p_ad in prep_sira %}
+        {% if p_ad in v.preps_list %}
+          <td class="check">✓</td>
+        {% else %}
+          <td></td>
+        {% endif %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  {% endif %}
+</table>
+</body>
+</html>

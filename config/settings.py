@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'regions',
     'doctors',
     'tracking',
+    'vizit',
 ]
 
 REST_FRAMEWORK = {

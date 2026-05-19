@@ -1,0 +1,242 @@
+{% load static %}
+
+<!DOCTYPE html>
+
+<html lang="az">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}Solvey Pharma{% endblock %}</title>
+
+    <link rel="icon" href="{% static 'img/solvey logo.png' %}" type="image/png">
+
+    <link rel="stylesheet" href="{% static 'vizit/css/style.css' %}">
+
+    {% block extra_css %}{% endblock %}
+
+</head>
+
+<body>
+
+<header class="site-header">
+
+    <div class="header-inner">
+
+        <a href="{% url 'vizit:index' %}" class="logo">
+
+            <img src="{% static 'img/solvey logo.png' %}" alt="Solvey Pharma" class="logo-img">
+
+            <div class="logo-text">
+
+                <strong>Solvey Pharma</strong>
+
+                <small>Vizit İdarəetmə Sistemi</small>
+
+            </div>
+
+        </a>
+
+
+
+        <button type="button" class="burger-menu" id="burgerToggle" aria-label="Menyunu aç" aria-expanded="false" aria-controls="headerRight">
+
+            <span></span>
+
+            <span></span>
+
+            <span></span>
+
+        </button>
+
+
+
+        <div class="header-right" id="headerRight">
+
+            {% if session_ad %}
+
+            <div class="mobile-user-card">
+
+                {% if session_rol %}
+
+                <span class="role-badge role-{{ session_rol }}">{{ session_rol_label }}</span>
+
+                {% endif %}
+
+                <span class="user-name">{{ session_ad }}</span>
+
+            </div>
+
+            {% endif %}
+
+
+
+            <nav class="site-nav" id="siteNav">
+
+                <a href="{% url 'vizit:index' %}"{% if request.resolver_match.url_name == 'index' %} class="active"{% endif %}>
+
+                    <span class="nav-icon">🏠</span><span>Ana Səhifə</span>
+
+                </a>
+
+                <a href="{% url 'vizit:hesabat' %}"{% if request.resolver_match.url_name == 'hesabat' %} class="active"{% endif %}>
+
+                    <span class="nav-icon">📊</span><span>Hesabat</span>
+
+                </a>
+
+                {% if session_rol == 'menecer' or session_rol == 'rehber' %}
+
+                <a href="{% url 'vizit:bolge_statistika' %}"{% if request.resolver_match.url_name == 'bolge_statistika' %} class="active"{% endif %}>
+
+                    <span class="nav-icon">📍</span><span>Bölgə Stat.</span>
+
+                </a>
+
+                {% endif %}
+
+                {% if session_rol == 'rehber' %}
+
+                <a href="{% url 'vizit:admin_panel' %}"{% if request.resolver_match.url_name == 'admin_panel' %} class="active"{% endif %}>
+
+                    <span class="nav-icon">⚙️</span><span>Admin</span>
+
+                </a>
+
+                {% endif %}
+
+            </nav>
+
+
+
+            <div class="user-info">
+
+                {% if session_rol %}
+
+                <span class="role-badge role-{{ session_rol }}">{{ session_rol_label }}</span>
+
+                <span class="user-name">{{ session_ad }}</span>
+
+                {% endif %}
+
+                <a href="{% url 'vizit:logout' %}" class="btn-logout">Çıxış</a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</header>
+
+
+
+<div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
+
+
+
+<main class="container">
+
+    {% block content %}{% endblock %}
+
+</main>
+
+
+
+<footer class="site-footer">© 2026 Solvey Pharma — Vizit sistemi</footer>
+
+
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    const burger = document.getElementById('burgerToggle');
+
+    const panel = document.getElementById('headerRight');
+
+    const backdrop = document.getElementById('drawerBackdrop');
+
+    const navLinks = document.querySelectorAll('#siteNav a');
+
+
+
+    const siteHeader = document.querySelector('.site-header');
+
+    function setOpen(open) {
+        if (!burger || !panel || !backdrop) return;
+        burger.classList.toggle('open', open);
+        panel.classList.toggle('open', open);
+        backdrop.classList.toggle('show', open);
+        if (siteHeader) siteHeader.classList.toggle('is-menu-open', open);
+        backdrop.setAttribute('aria-hidden', open ? 'false' : 'true');
+        burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+        burger.setAttribute('aria-label', open ? 'Menyunu bağla' : 'Menyunu aç');
+        document.body.style.overflow = open ? 'hidden' : '';
+    }
+
+
+
+    function closeMenu() { setOpen(false); }
+
+
+
+    if (burger && panel) {
+
+        burger.addEventListener('click', function (e) {
+
+            e.stopPropagation();
+
+            setOpen(!panel.classList.contains('open'));
+
+        });
+
+    }
+
+
+
+    if (backdrop) {
+
+        backdrop.addEventListener('click', closeMenu);
+
+    }
+
+
+
+    navLinks.forEach(function (link) {
+
+        link.addEventListener('click', closeMenu);
+
+    });
+
+
+
+    document.addEventListener('keydown', function (e) {
+
+        if (e.key === 'Escape') closeMenu();
+
+    });
+
+
+
+    window.addEventListener('resize', function () {
+
+        if (window.innerWidth > 992) closeMenu();
+
+    });
+
+});
+
+</script>
+
+
+
+{% block extra_js %}{% endblock %}
+
+</body>
+
+</html>
+

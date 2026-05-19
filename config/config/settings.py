@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'regions',
     'doctors',
     'tracking',
+    'vizit',
 ]
 
 REST_FRAMEWORK = {
@@ -79,6 +80,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'django.template.context_processors.media',
+                'vizit.context_processors.vizit_session',
             ],
         },
     },

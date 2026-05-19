@@ -1,0 +1,118 @@
+{% extends 'vizit/base.html' %}
+
+{% block title %}Bölgə Statistikası — Solvey Pharma{% endblock %}
+
+{% block content %}
+<div class="card no-print">
+    <div class="card-title">📍 Bölgə Statistikası — Filtr</div>
+    <form method="get" action="{% url 'vizit:bolge_statistika' %}">
+        <div class="grid-3">
+            <div>
+                <label>Bölgə</label>
+                <select name="bolge_id"{% if user_rol == 'menecer' %} disabled{% endif %}>
+                    <option value="">Seçin...</option>
+                    {% for b in bolgeler %}
+                    <option value="{{ b.id }}"{% if filter_bolge == b.id|stringformat:"s" %} selected{% endif %}>{{ b.region_name }}</option>
+                    {% endfor %}
+                </select>
+                {% if user_rol == 'menecer' %}
+                <input type="hidden" name="bolge_id" value="{{ user_bolge_id }}">
+                {% endif %}
+            </div>
+            <div>
+                <label>Başlanğıc tarixi</label>
+                <input type="date" name="tarix_bas" value="{{ filter_tarix_bas }}">
+            </div>
+            <div>
+                <label>Son tarix</label>
+                <input type="date" name="tarix_son" value="{{ filter_tarix_son }}">
+            </div>
+        </div>
+        <div style="margin-top:14px;">
+            <button type="submit" class="btn btn-primary">🔍 Göstər</button>
+            <a href="{% url 'vizit:bolge_statistika' %}" class="btn btn-outline">↺ Sıfırla</a>
+        </div>
+    </form>
+</div>
+
+{% if filter_bolge %}
+    {% if numayende_stat or rayon_stat %}
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-title">👤 Nümayəndə üzrə vizit sayı</div>
+            {% if numayende_stat %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nümayəndə</th>
+                            <th>Vizit</th>
+                            <th>Rayonlar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for n in numayende_stat %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td><strong>{{ n.numayende }}</strong></td>
+                            <td><strong style="font-size:18px;color:#1a5276;">{{ n.vizit_sayi }}</strong></td>
+                            <td style="font-size:13px;color:#7f8c8d;">{{ n.rayonlar }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty">
+                <div class="empty-icon">📭</div>
+                <p>Məlumat yoxdur.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <div class="card-title">📍 Rayon üzrə vizit sayı</div>
+            {% if rayon_stat %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Rayon</th>
+                            <th>Vizit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rs in rayon_stat %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ rs.rayon }}</td>
+                            <td><strong>{{ rs.c }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty">
+                <div class="empty-icon">📭</div>
+                <p>Məlumat yoxdur.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="empty">
+            <div class="empty-icon">📭</div>
+            <p>Seçilmiş dövr üçün məlumat tapılmadı.</p>
+        </div>
+    </div>
+    {% endif %}
+{% else %}
+<div class="card">
+    <div class="alert alert-info">ℹ️ Statistikanı görmək üçün bölgə seçin.</div>
+</div>
+{% endif %}
+{% endblock %}
