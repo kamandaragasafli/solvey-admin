@@ -111,8 +111,14 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'az'
-TIME_ZONE = 'UTC'
+
+# Azərbaycan (Bakı) vaxtı üçün tənzimləmə
+TIME_ZONE = 'Asia/Baku'
+
 USE_I18N = True
+
+# Verilənlər bazasında vaxtın düzgün saxlanması və 
+# yay/qış vaxtı keçidlərinin (əgər tətbiq olunarsa) idarə edilməsi üçün True qalması məsləhətdir
 USE_TZ = True
 
 STATIC_URL = '/static/'

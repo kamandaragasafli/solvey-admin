@@ -24,10 +24,12 @@
         <div class="grid-3" id="location-grid">
             <div>
                 <label>Bölgə</label>
-                <select name="bolge_id" id="bolge_id" required>
+                <select name="bolge_id" id="bolge_id" class="form-control" required>
                     <option value="">Bölgə seçin...</option>
                     {% for b in bolgeler %}
-                    <option value="{{ b.id }}" data-region-type="{{ b.region_type|default:'' }}"{% if bolgeler|length == 1 %} selected{% endif %}>{{ b.region_name }}</option>
+                        <option value="{{ b.id }}" {% if b.id|stringformat:"s" == selected_bolge_id|stringformat:"s" %}selected{% endif %}>
+                            {{ b.region_name }}
+                        </option>
                     {% endfor %}
                 </select>
             </div>
@@ -56,6 +58,7 @@
             <button type="button" class="munasibat-btn" data-val="Münasibət">Münasibət</button>
             <button type="button" class="munasibat-btn" data-val="İş planı">İş planı</button>
             <button type="button" class="munasibat-btn" data-val="Propaqanda">Propaqanda</button>
+            <button type="button" class="munasibat-btn" data-val="Razılaşma">Razılaşma</button>
         </div>
     </div>
 
@@ -160,6 +163,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const opt = new Option(h.ad_soyad, h.id);
             opt.dataset.ixtKod = h.ixtisas_kod || '';
             opt.dataset.kat = h.kateqoriya || '';
+            opt.dataset.derece = h.derece || '';
             hekimSelect.add(opt);
         });
         hekimSelect.disabled = false;
@@ -228,18 +232,26 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => fillHekimSelect(data.hekimler));
     });
 
-    hekimSelect.addEventListener('change', function () {
+        hekimSelect.addEventListener('change', function () {
         if (!this.value || !hekimInfo) return;
+        
         const opt = this.options[this.selectedIndex];
-        const parts = [];
-        if (opt.dataset.ixtKod) parts.push(`🩺 <strong>${opt.dataset.ixtKod}</strong>`);
-        if (opt.dataset.kat) parts.push(`🏷️ Kat: <strong>${opt.dataset.kat}</strong>`);
-        if (parts.length) {
-            hekimInfo.innerHTML = parts.join(' ');
-            hekimInfo.classList.remove('hidden');
-        } else {
-            hekimInfo.classList.add('hidden');
-        }
+        
+        // Məlumatları yığırıq
+        const ixtisas = opt.dataset.ixtKod || '—';
+        const kat = opt.dataset.kat || '—';
+        const derece = opt.dataset.derece || '—';
+
+        // HTML-i formalaşdırırıq
+        hekimInfo.innerHTML = `
+            <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff; margin-top: 10px;">
+                <div style="margin-bottom: 5px;">🩺 İxtisas: <strong>${ixtisas}</strong></div>
+                <div style="margin-bottom: 5px;">🏷️ Kateqoriya: <strong>${kat}</strong></div>
+                <div>🎓 Dərəcə: <strong>${derece}</strong></div>
+            </div>
+        `;
+        
+        hekimInfo.classList.remove('hidden');
     });
 
     document.querySelectorAll('.munasibat-btn').forEach(btn => {

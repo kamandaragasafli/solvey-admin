@@ -30,17 +30,18 @@
                 <select name="rol">
                     <option value="numayende">Tibbi Nümayəndə</option>
                     <option value="menecer">Menecer</option>
+                    <option value="diviziya_rehb">Diviziya Rəhbəri</option>
                     <option value="rehber">Rəhbər</option>
                 </select>
             </div>
             <div>
-                <label>Bölgə (Nümayəndə/Menecer üçün)</label>
-                <select name="bolge_id">
-                    <option value="">Seçin...</option>
+                <label>Bölgə</label>
+                <select name="bolge_ids" multiple class="form-control" style="height: 100px;">
                     {% for b in bolgeler %}
                     <option value="{{ b.id }}">{{ b.region_name }}</option>
                     {% endfor %}
                 </select>
+                <small style="color:gray;">(Ctrl/Command düyməsini sıxaraq çoxlu seçim edə bilərsiniz)</small>
             </div>
         </div>
         <div style="margin-top:14px;"><button type="submit" name="add_user" class="btn btn-primary">➕ Əlavə et</button></div>
@@ -126,4 +127,30 @@
     </div>
 </div>
 {% endif %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const rolSelect = document.querySelector('select[name="rol"]');
+        const bolgeSelect = document.querySelector('select[name="bolge_ids"]');
+    
+        if (rolSelect && bolgeSelect) {
+            bolgeSelect.addEventListener('change', function () {
+                const selectedRol = rolSelect.value;
+                const selectedOptions = Array.from(bolgeSelect.selectedOptions);
+    
+                if (selectedRol === 'menecer' && selectedOptions.length > 3) {
+                    alert('Menecer üçün yalnız 3 bölgə seçə bilərsiniz.');
+                    // Son seçiləndən başqa digərlərini ləğv etmək üçün:
+                    selectedOptions.forEach((opt, index) => {
+                        if (index > 0) opt.selected = false;
+                    });
+                } else if (selectedRol === 'diviziya_rehb' && selectedOptions.length > 5) {
+                    alert('Diviziya Rəhbəri üçün maksimum 3 bölgə seçilə bilər.');
+                    selectedOptions.forEach((opt, index) => {
+                        if (index >= 3) opt.selected = false;
+                    });
+                }
+            });
+        }
+    });
+    </script>
 {% endblock %}

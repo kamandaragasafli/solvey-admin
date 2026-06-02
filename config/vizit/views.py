@@ -9,6 +9,8 @@ from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.db import transaction
+
 
 from doctors.models import Doctors
 from medicine.models import Medical
@@ -58,23 +60,31 @@ def _klinika_tap(city):
     )
 
 
-def _bolgeler_for_user(user_rol, user_bolge_id):
-    if user_rol in (Istifadeci.ROL_NUMAYENDE, Istifadeci.ROL_MENECER) and user_bolge_id:
-        return Region.objects.filter(pk=user_bolge_id)
-    return Region.objects.order_by('region_name')
-
+def _bolgeler_for_user(user_rol, user_bolge_ids):
+    # Rəhbər və Diviziya Rəhbəri hər şeyi görür
+    if user_rol in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
+        return Region.objects.order_by('region_name')
+    
+    # Nümayəndə/Menecer üçün filter tətbiq edirik
+    return Region.objects.filter(pk__in=user_bolge_ids).order_by('region_name')
 
 def _api_bolge_icazesi(request, bolge_id):
-    """ajax.php: nümayəndə/menecer yalnız öz bölgəsinə baxa bilər."""
+    """
+    Rəhbər və Diviziya rəhbərinə hər yerə giriş icazəsi verilir.
+    Digərləri yalnız öz siyahısında olan bölgəyə baxa bilər.
+    """
     user_rol = request.session.get('rol')
-    user_bolge_id = request.session.get('bolge_id')
-    if user_rol in (Istifadeci.ROL_NUMAYENDE, Istifadeci.ROL_MENECER) and user_bolge_id:
-        try:
-            return int(bolge_id) == int(user_bolge_id)
-        except (TypeError, ValueError):
-            return False
-    return True
+    user_bolge_ids = request.session.get('bolge_ids', []) # İndi siyahı gəlir
 
+    # Rəhbər və Diviziya rəhbəri üçün tam giriş
+    if user_rol in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
+        return True
+
+    # Nümayəndə və Menecer üçün yoxlanış
+    try:
+        return int(bolge_id) in [int(b_id) for b_id in user_bolge_ids]
+    except (TypeError, ValueError):
+        return False
 
 def _api_rayon_icazesi(request, rayon_id):
     city = City.objects.filter(pk=rayon_id).values_list('region_id', flat=True).first()
@@ -206,25 +216,42 @@ def admin_panel_view(request):
     tab = request.GET.get('tab', 'istifadeciler')
 
     if request.method == 'POST':
+        # 1. İSTİFADƏÇİ ƏLAVƏ ETMƏ
         if 'add_user' in request.POST:
             login = request.POST.get('login', '').strip()
             sifre = request.POST.get('sifre', '').strip()
             ad = request.POST.get('ad', '').strip()
             rol = request.POST.get('rol', Istifadeci.ROL_NUMAYENDE)
-            bolge_id = request.POST.get('bolge_id', '')
-            bolge_id = int(bolge_id) if bolge_id else None
+            
+            # Seçilmiş bölgələri alırıq
+            bolge_ids = request.POST.getlist('bolge_ids')
+            valid_bolge_ids = [int(b_id) for b_id in bolge_ids if b_id]
+
+            # Rol əsaslı məhdudiyyətlər
+            if rol == Istifadeci.ROL_MENECER and len(valid_bolge_ids) > 3:
+                messages.error(request, '❌ Menecer rolu üçün maksimum 3 bölgə seçilə bilər.')
+                return _admin_redirect(tab)
+            elif rol == Istifadeci.ROL_DIVIZIYA_REHB and len(valid_bolge_ids) > 5:
+                messages.error(request, '❌ Diviziya Rəhbəri rolu üçün maksimum 3 bölgə seçilə bilər.')
+                return _admin_redirect(tab)
 
             if login and sifre and ad:
                 try:
-                    istifadeci = Istifadeci(login=login, ad=ad, rol=rol, bolge_id=bolge_id, aktiv=True)
+                    istifadeci = Istifadeci(login=login, ad=ad, rol=rol, aktiv=True)
                     istifadeci.set_password(sifre)
                     istifadeci.save()
-                    messages.success(request, '✅ İstifadəçi əlavə edildi.')
+                    
+                    if valid_bolge_ids:
+                        istifadeci.bolgeler.set(valid_bolge_ids)
+                    
+                    messages.success(request, '✅ İstifadəçi uğurla əlavə edildi.')
                 except IntegrityError:
                     messages.error(request, '❌ Xəta: login artıq mövcuddur.')
             else:
                 messages.error(request, '❌ Bütün sahələri doldurun.')
+            return _admin_redirect(tab)
 
+        # 2. HƏKİM ƏLAVƏ ETMƏ
         elif 'add_hekim' in request.POST:
             ad_soyad = request.POST.get('ad_soyad', '').strip()
             rayon_id = request.POST.get('rayon_id', '')
@@ -238,10 +265,7 @@ def admin_panel_view(request):
                 else:
                     klinika = _klinika_tap(city)
                     if not klinika:
-                        messages.error(
-                            request,
-                            '❌ Bu rayon/bölgə üçün xəstəxana tapılmadı. Əvvəlcə admin paneldə xəstəxana əlavə edin.',
-                        )
+                        messages.error(request, '❌ Bu rayon/bölgə üçün xəstəxana tapılmadı.')
                     else:
                         Doctors.objects.create(
                             ad=ad_soyad[:100],
@@ -255,20 +279,21 @@ def admin_panel_view(request):
                         messages.success(request, '✅ Həkim əlavə edildi.')
             else:
                 messages.error(request, '❌ Ad/soyad və rayon mütləqdir.')
+            return _admin_redirect(tab)
 
-        return _admin_redirect(tab)
-
+    # 3. İSTİFADƏÇİ SİLMƏ (GET metodu ilə)
     if 'del_user' in request.GET:
         Istifadeci.objects.filter(pk=int(request.GET['del_user'])).delete()
-        messages.success(request, '✅ Əməliyyat uğurla icra edildi (İstifadəçi silindi).')
+        messages.success(request, '✅ İstifadəçi silindi.')
         return _admin_redirect('istifadeciler')
 
+    # 4. SƏHİFƏNİ YÜKLƏMƏ
     return render(
         request,
         'vizit/admin_panel.html',
         {
             'tab': tab,
-            'istifadeciler': Istifadeci.objects.select_related('bolge').order_by('rol', 'ad'),
+            'istifadeciler': Istifadeci.objects.prefetch_related('bolgeler').order_by('rol', 'ad'),
             'bolgeler': Region.objects.order_by('region_name'),
             'rayonlar': City.objects.select_related('region').order_by('region__region_name', 'city_name'),
             'ixtisaslar': _ixtisas_secimleri(),
@@ -285,84 +310,67 @@ def admin_panel_view(request):
             ),
         },
     )
-
-
 @vizit_login_required
 def yeni_vizit_view(request):
-    user_id = request.session['istifadeci_id']
+    user_id = request.session.get('istifadeci_id')
     user_rol = request.session.get('rol')
-    user_bolge_id = request.session.get('bolge_id')
+    user_bolge_ids = request.session.get('bolge_ids', [])
     bugun = timezone.localdate()
 
+    # POST sorğusu: Viziti qeyd et
     if request.method == 'POST' and 'vizit_bagla' in request.POST:
         hekim_id = request.POST.get('hekim_id')
-        rayon_id = request.POST.get('rayon_id')
         bolge_id = request.POST.get('bolge_id')
         munasibat = request.POST.get('munasibat', '')
-        qeyd = request.POST.get('qeyd', '').strip()
         preparatlar = request.POST.getlist('preparatlar[]')
 
-        if hekim_id and bolge_id and munasibat in MUNASIBAT_SECIMLERI and preparatlar:
-            try:
-                bolge_pk = int(bolge_id)
-                hekim_pk = int(hekim_id)
-            except (TypeError, ValueError):
-                messages.error(request, '❌ Bütün sahələri düzgün doldurun.')
-                return redirect('vizit:index')
+        # Seçimi sessiyada yadda saxlayırıq ki, növbəti dəfə avtomatik seçilsin
+        if bolge_id:
+            request.session['son_bolge_id'] = bolge_id
 
-            hekim = Doctors.objects.filter(pk=hekim_pk, is_active=True).first()
-            if not hekim:
-                messages.error(request, '❌ Bütün sahələri düzgün doldurun.')
-                return redirect('vizit:index')
-
-            effective_rayon_id = None
-            if rayon_id:
-                try:
-                    effective_rayon_id = int(rayon_id)
-                except (TypeError, ValueError):
-                    pass
-            elif hekim.city_id:
-                effective_rayon_id = hekim.city_id
-
-            now = timezone.localtime()
-            vizit = Vizit.objects.create(
-                istifadeci_id=user_id,
-                hekim_id=hekim.pk,
-                rayon_id=effective_rayon_id,
-                bolge_id=bolge_pk,
-                munasibat=munasibat,
-                tarix=now.date(),
-                vaxt=now.time().replace(second=0, microsecond=0),
-                qeyd=qeyd or None,
-            )
-            VizitPreparat.objects.bulk_create(
-                [VizitPreparat(vizit=vizit, preparat_id=int(pid)) for pid in preparatlar]
-            )
-            messages.success(request, '✅ Vizit uğurla qeydə alındı!')
-        else:
+        if not hekim_id or not bolge_id or not preparatlar:
             messages.error(request, '❌ Bütün sahələri düzgün doldurun.')
+            return redirect('vizit:index')
+
+        try:
+            with transaction.atomic():
+                vizit = Vizit.objects.create(
+                    istifadeci_id=user_id,
+                    hekim_id=int(hekim_id),
+                    bolge_id=int(bolge_id),
+                    munasibat=munasibat,
+                    tarix=bugun,
+                    vaxt=timezone.localtime().time().replace(second=0, microsecond=0),
+                )
+                
+                VizitPreparat.objects.bulk_create([
+                    VizitPreparat(vizit=vizit, preparat_id=int(pid)) for pid in preparatlar
+                ])
+            
+            messages.success(request, '✅ Vizit uğurla qeydə alındı!')
+        except Exception as e:
+            messages.error(request, f'❌ Xəta baş verdi: {e}')
+        
         return redirect('vizit:index')
 
-    bugun_vizitler = (
-        Vizit.objects.filter(tarix=bugun)
-        .select_related('hekim', 'rayon', 'istifadeci')
-        .prefetch_related('preparatlar__preparat')
-        .order_by('-id')
-    )
-    if user_rol == Istifadeci.ROL_NUMAYENDE:
-        bugun_vizitler = bugun_vizitler.filter(istifadeci_id=user_id)
+    # GET sorğusu və ya Səhifənin açılması
+    # Vizitləri filtrələmək: Rəhbərlər hamını, digərləri yalnız özünü görsün
+    vizitler_query = Vizit.objects.filter(tarix=bugun)
+    
+    if user_rol not in [Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB]:
+        vizitler_query = vizitler_query.filter(istifadeci_id=user_id)
 
-    return render(
-        request,
-        'vizit/create-vizit.html',
-        {
-            'bolgeler': _bolgeler_for_user(user_rol, user_bolge_id),
-            'preparatlar_siyahisi': Medical.objects.filter(status=True).order_by('med_name'),
-            'bugun_vizitler': bugun_vizitler,
-            'user_rol': user_rol,
-            'bugun_tarix': bugun.strftime('%d.%m.%Y'),
-        },
-    )
+    # Son seçilən bölgəni sessiyadan oxuyuruq
+    selected_bolge_id = request.session.get('son_bolge_id')
+
+    return render(request, 'vizit/create-vizit.html', {
+        'bolgeler': _bolgeler_for_user(user_rol, user_bolge_ids),
+        'selected_bolge_id': int(selected_bolge_id) if selected_bolge_id else None,
+        'preparatlar_siyahisi': Medical.objects.filter(status=True).order_by('med_name'),
+        'bugun_vizitler': vizitler_query.order_by('-id'),
+        'user_rol': user_rol,
+        'bugun_tarix': bugun,
+    })
 
 
 def _rayonlar_list(request, bolge_id):
@@ -391,6 +399,7 @@ def _hekimler_list(request, bolge_id=None, rayon_id=None):
             'ad_soyad': d.ad,
             'ixtisas_kod': d.ixtisas,
             'kateqoriya': d.kategoriya,
+            'derece': d.derece,
         }
         for d in qs.order_by('ad')
     ]
@@ -432,7 +441,6 @@ def ajax_compat_view(request):
         )
     return JsonResponse([], safe=False)
 
-
 @vizit_login_required
 def hesabat_view(request):
     f = _filtered_vizit_qs(request)
@@ -440,25 +448,41 @@ def hesabat_view(request):
     user_bolge_id = f['user_bolge_id']
     vizitler_qs = f['qs']
 
-    bolgeler = _bolgeler_for_user(user_rol, user_bolge_id)
+    # --- TƏHLÜKƏSİZLİK YOXLAMASI: None xətasını aradan qaldırırıq ---
+    # Əgər user_bolge_id tək bir dəyərdirsə siyahıya çeviririk, None-dursa boş siyahı edirik
+    if user_bolge_id is None:
+        bolge_list = []
+    elif isinstance(user_bolge_id, (list, tuple)):
+        bolge_list = user_bolge_id
+    else:
+        bolge_list = [user_bolge_id]
+
+    # Bölgələri və rayonları təyin edirik
+    bolgeler = _bolgeler_for_user(user_rol, bolge_list)
+    
     rayonlar = (
         City.objects.filter(region_id=f['filter_bolge_id']).order_by('city_name')
         if f['filter_bolge_id']
         else City.objects.none()
     )
 
+    # Vizitləri sıralayırıq
     vizitler = vizitler_qs.order_by('-tarix', '-vaxt')
     total_vizit = vizitler.count()
 
-    prep_stat = [
-        {'ad': row['preparat__med_name'], 'c': row['c']}
-        for row in (
-            VizitPreparat.objects.filter(vizit__in=vizitler_qs.values('pk'))
-            .values('preparat__med_name')
-            .annotate(c=Count('id'))
-            .order_by('-c')[:8]
-        )
-    ]
+    # Preparat statistikası
+    try:
+        prep_stat = [
+            {'ad': row['preparat__med_name'], 'c': row['c']}
+            for row in (
+                VizitPreparat.objects.filter(vizit__in=vizitler_qs.values('pk'))
+                .values('preparat__med_name')
+                .annotate(c=Count('id'))
+                .order_by('-c')[:8]
+            )
+        ]
+    except Exception:
+        prep_stat = []
 
     return render(
         request,
@@ -561,31 +585,39 @@ def _bolge_stat_data(bolge_id, tarix_bas, tarix_son):
 
     return numayende_stat, rayon_stat
 
-
 @menecer_rehber_required
 def bolge_stat_view(request):
     user_rol = request.session.get('rol')
-    user_bolge_id = request.session.get('bolge_id')
+    # SESSİYADAN İD-LƏRİ SİYAHI KİMİ ALIN
+    user_bolge_ids = request.session.get('bolge_ids', []) 
+    
     today = timezone.localdate()
-
     default_tarix_bas = today.replace(day=1).isoformat()
     default_tarix_son = today.isoformat()
 
     filter_bolge = request.GET.get('bolge_id', '')
-    if not filter_bolge and user_rol == Istifadeci.ROL_MENECER and user_bolge_id:
-        filter_bolge = str(user_bolge_id)
+    
+    # Əgər menecerdirsə və filter seçilməyibsə, sessiyadakı ilk bölgəni seçirik
+    if not filter_bolge and user_rol == Istifadeci.ROL_MENECER and user_bolge_ids:
+        filter_bolge = str(user_bolge_ids[0])
 
     filter_tarix_bas = request.GET.get('tarix_bas') or default_tarix_bas
     filter_tarix_son = request.GET.get('tarix_son') or default_tarix_son
 
-    bolgeler = _bolgeler_for_user(user_rol, user_bolge_id)
+    # --- TƏHLÜKƏSİZLİK YOXLAMASI ---
+    # _bolgeler_for_user mütləq siyahı gözləyir
+    bolgeler = _bolgeler_for_user(user_rol, user_bolge_ids if isinstance(user_bolge_ids, list) else [])
 
     numayende_stat = []
     rayon_stat = []
+    
     if filter_bolge:
-        numayende_stat, rayon_stat = _bolge_stat_data(
-            int(filter_bolge), filter_tarix_bas, filter_tarix_son
-        )
+        try:
+            numayende_stat, rayon_stat = _bolge_stat_data(
+                int(filter_bolge), filter_tarix_bas, filter_tarix_son
+            )
+        except (ValueError, TypeError):
+            messages.error(request, "❌ Seçilmiş bölgə məlumatları tapılmadı.")
 
     return render(
         request,
@@ -595,9 +627,15 @@ def bolge_stat_view(request):
             'numayende_stat': numayende_stat,
             'rayon_stat': rayon_stat,
             'user_rol': user_rol,
-            'user_bolge_id': user_bolge_id,
             'filter_bolge': filter_bolge,
             'filter_tarix_bas': filter_tarix_bas,
             'filter_tarix_son': filter_tarix_son,
         },
     )
+
+@vizit_login_required
+def aptek_vizit_view(request):
+    dermanlar = Medical.objects.filter(status=True).order_by('med_name')
+    return render(request, 'vizit/aptek-vizit.html', {
+        'dermanlar': dermanlar,
+    })

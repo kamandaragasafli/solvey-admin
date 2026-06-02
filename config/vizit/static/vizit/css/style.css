@@ -24,6 +24,10 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color
 .site-nav { display: flex; gap: 4px; flex: 1; justify-content: center; }
 .site-nav a { color: rgba(255,255,255,.9); text-decoration: none; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; transition: background .2s; white-space: nowrap; }
 .site-nav a:hover, .site-nav a.active { background: rgba(255,255,255,.18); color: #fff; }
+.site-nav a .nav-icon {
+    margin-right: 10px; /* İdeal məsafə, istəyə görə 10px də edə bilərsiniz */
+    display: inline-block; /* Boşluğun düzgün işləməsi üçün */
+}
 
 .user-info { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .user-info .user-name { font-size: 13px; color: rgba(255,255,255,.9); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

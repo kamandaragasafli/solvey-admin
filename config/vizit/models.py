@@ -6,15 +6,16 @@ from doctors.models import Doctors
 from medicine.models import Medical
 from regions.models import City, Region
 
-
 class Istifadeci(models.Model):
     ROL_NUMAYENDE = 'numayende'
     ROL_MENECER = 'menecer'
+    ROL_DIVIZIYA_REHB = 'diviziya_rehb'
     ROL_REHBER = 'rehber'
 
     ROL_CHOICES = [
         (ROL_NUMAYENDE, 'Tibbi Nümayəndə'),
         (ROL_MENECER, 'Menecer'),
+        (ROL_DIVIZIYA_REHB, 'Diviziya Rəhbər'),
         (ROL_REHBER, 'Rəhbər'),
     ]
 
@@ -22,14 +23,18 @@ class Istifadeci(models.Model):
     sifre = models.CharField(max_length=255)
     ad = models.CharField(max_length=150)
     rol = models.CharField(max_length=20, choices=ROL_CHOICES, default=ROL_NUMAYENDE)
-    bolge = models.ForeignKey(
+    
+    # Köhnə ForeignKey sahəsi (Miqrasiya bitənə qədər saxlayın, sonra silə bilərsiniz)
+    # bolge = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, blank=True, db_column='bolge_id', related_name='vizit_istifadeciler')
+    
+    # YENİ: Çoxlu bölgə seçimi üçün ManyToManyField
+    bolgeler = models.ManyToManyField(
         Region,
-        on_delete=models.SET_NULL,
-        null=True,
         blank=True,
-        db_column='bolge_id',
-        related_name='vizit_istifadeciler',
+        db_table='istifadeci_bolgeleri', # Keçid cədvəlinin adı
+        related_name='vizit_istifadeciler'
     )
+    
     aktiv = models.BooleanField(default=True)
 
     class Meta:
@@ -56,12 +61,13 @@ class Istifadeci(models.Model):
             aktiv=True,
         ).first()
 
+    # Sessiyada artıq tək bir ID yox, ID-lər siyahısı saxlamaq lazım ola bilər
     def session_dict(self):
         return {
             'istifadeci_id': self.pk,
             'ad': self.ad,
             'rol': self.rol,
-            'bolge_id': self.bolge_id,
+            'bolge_ids': list(self.bolgeler.values_list('id', flat=True)), # [1, 2, 3] formasında
         }
 
 
@@ -72,6 +78,8 @@ class Vizit(models.Model):
         ('Münasibət', 'Münasibət'),
         ('İş planı', 'İş planı'),
         ('Propaqanda', 'Propaqanda'),
+        ('Razılaşma', 'Razılaşma'),
+
     ]
 
     istifadeci = models.ForeignKey(

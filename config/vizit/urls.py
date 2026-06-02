@@ -11,6 +11,7 @@ from .views import (
     logout_view,
     yeni_vizit_view,
     bolge_stat_view,
+    aptek_vizit_view,
 )
 
 app_name = 'vizit'
@@ -27,4 +28,5 @@ urlpatterns = [
     path('hesabat/', hesabat_view, name='hesabat'),
     path('export/', excel_export_view, name='export_excel'),
     path('bolge-statistika/', bolge_stat_view, name='bolge_statistika'),
+    path('aptek-vizit/', aptek_vizit_view, name='aptek_vizit'),
 ]

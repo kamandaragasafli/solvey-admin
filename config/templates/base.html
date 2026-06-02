@@ -580,20 +580,17 @@
         </button>
 
         <div class="user-profile">
-                        <div class="user-avatar">
-                            <i class="bi bi-person-circle"></i>
-                        </div>
                         <button id="avatarBtn" class="ai-chat-btn" aria-controls="sohbetPanel" aria-expanded="false" title="AI Assistant">
                             <div class="ai-chat-icon-wrapper">
                                 <i class="bi bi-robot"></i>
                                 <span class="ai-pulse"></span>
                             </div>
                         </button>
-                        {% if user.is_authenticated %}
+                        <!-- {% if user.is_authenticated %}
                         <span class="user-name">{{ user.username }}</span>
                         {% else %}
                          <a href="{% url 'login' %}" class="text-dark"><img src="{% static 'img/man.png' %}" class="fs-5"></a>
-                    {% endif %}
+                    {% endif %} -->
         </div>
     </div>
 

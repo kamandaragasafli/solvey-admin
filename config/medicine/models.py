@@ -9,6 +9,7 @@ class Medical(models.Model):
     med_price = models.DecimalField(max_digits=10, decimal_places=2)
     komissiya = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.BooleanField(default=True)
+    in_stock = models.BooleanField(default=True)
 
     
 

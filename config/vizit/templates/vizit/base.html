@@ -14,6 +14,9 @@
 
     <link rel="icon" href="{% static 'img/solvey logo.png' %}" type="image/png">
 
+    <!-- Font Awesome (Müasir İkonlar üçün) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
     <link rel="stylesheet" href="{% static 'vizit/css/style.css' %}">
 
     {% block extra_css %}{% endblock %}
@@ -78,13 +81,19 @@
 
                 <a href="{% url 'vizit:index' %}"{% if request.resolver_match.url_name == 'index' %} class="active"{% endif %}>
 
-                    <span class="nav-icon">🏠</span><span>Ana Səhifə</span>
+                    <span class="nav-icon"><i class="fa-solid fa-house"></i></span><span>Ana Səhifə</span>
 
                 </a>
 
+                <!-- <a href="{% url 'vizit:aptek_vizit' %}"{% if request.resolver_match.url_name == 'aptek_vizit' %} class="active"{% endif %}>
+
+                    <span class="nav-icon"><i class="fa-solid fa-prescription-bottle-medical"></i></span><span>Aptek vizit</span>
+
+                </a> -->
+
                 <a href="{% url 'vizit:hesabat' %}"{% if request.resolver_match.url_name == 'hesabat' %} class="active"{% endif %}>
 
-                    <span class="nav-icon">📊</span><span>Hesabat</span>
+                    <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span><span>Hesabat</span>
 
                 </a>
 
@@ -92,7 +101,7 @@
 
                 <a href="{% url 'vizit:bolge_statistika' %}"{% if request.resolver_match.url_name == 'bolge_statistika' %} class="active"{% endif %}>
 
-                    <span class="nav-icon">📍</span><span>Bölgə Stat.</span>
+                    <span class="nav-icon"><i class="fa-solid fa-map-location-dot"></i></span><span>Bölgə Stat.</span>
 
                 </a>
 
@@ -102,7 +111,7 @@
 
                 <a href="{% url 'vizit:admin_panel' %}"{% if request.resolver_match.url_name == 'admin_panel' %} class="active"{% endif %}>
 
-                    <span class="nav-icon">⚙️</span><span>Admin</span>
+                    <span class="nav-icon"><i class="fa-solid fa-sliders"></i></span><span>Admin</span>
 
                 </a>
 
@@ -122,7 +131,7 @@
 
                 {% endif %}
 
-                <a href="{% url 'vizit:logout' %}" class="btn-logout">Çıxış</a>
+                <a href="{% url 'vizit:logout' %}" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Çıxış</a>
 
             </div>
 
@@ -239,4 +248,3 @@ document.addEventListener('DOMContentLoaded', function () {
 </body>
 
 </html>
-

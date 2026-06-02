@@ -1,0 +1,138 @@
+{% extends 'vizit/base.html' %}
+
+{% block title %}Aptek Vizit — Solvey Pharma{% endblock %}
+
+{% block content %}
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert {% if '❌' in message.message %}alert-error{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<form method="post" id="vizit-form" action="">
+    {% csrf_token %}
+
+    <div class="card">
+        <div class="card-title">📍 Apteki qeyd edin</div>
+        <div class="grid-3" id="location-grid">
+            <div>
+                <label for="aptek_adi">Aptek adı</label>
+                <input type="text" name="aptek_adi" id="aptek_adi" required placeholder="Aptekin adını daxil edin...">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">📋 Preparat məlumatları (Aptek hesabatı)</div>
+        <table class="table" id="aptek-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th>Aptek</th>
+                    <th>Soruşulan Dərman</th>
+                    <th>Satış vəziyyəti</th>
+                    <th>Mövcudluq</th>
+                    <th>Pozisiya</th>
+                    <th>İşçi</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+        <button type="button" class="btn btn-outline" onclick="addRow()" style="margin-top:10px;">+ Sətir əlavə et</button>
+    </div>
+
+    <div class="card" id="preparat-section">
+        <div class="card-title">💊 Preparatlar</div>
+        <div style="display:flex; gap:10px; margin-bottom:14px;">
+            <button type="button" class="btn btn-outline" id="select-all-prep">✅ Hamısını seç</button>
+            <button type="button" class="btn btn-outline" id="clear-all-prep">❌ Sıfırla</button>
+        </div>
+        <div class="preparat-grid">
+            {% for p in dermanlar %}
+            <label class="preparat-item">
+                <input type="checkbox" name="dermanlar[]" value="{{ p.id }}">
+                <span>{{ p.med_name }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div style="margin-top: 20px; text-align: right;">
+        <button type="submit" class="btn btn-primary" style="padding: 12px 30px; font-size: 16px; cursor: pointer;">
+            💾 Viziti Tamamla
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    
+    // Münasibət düymələrinin kliklənmə məntiqi
+    const munasibatButtons = document.querySelectorAll('.munasibat-btn');
+    const munasibatInput = document.getElementById('munasibat_val');
+
+    munasibatButtons.forEach(btn => {
+        btn.addEventListener('click', function () {
+            munasibatButtons.forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            munasibatInput.value = this.dataset.val;
+        });
+    });
+
+    // Preparatların hamısını seç / sıfırla funksiyası
+    const checkboxes = document.querySelectorAll('input[name="dermanlar[]"]');
+    const selectAllBtn = document.getElementById('select-all-prep');
+    const clearAllBtn = document.getElementById('clear-all-prep');
+
+    if (selectAllBtn && clearAllBtn) {
+        selectAllBtn.addEventListener('click', () => {
+            checkboxes.forEach(cb => { cb.checked = true; });
+        });
+
+        clearAllBtn.addEventListener('click', () => {
+            checkboxes.forEach(cb => { cb.checked = false; });
+        });
+    }
+
+    // Form göndərilməzdən əvvəl kiçik yoxlama (Münasibət növü seçilibmi?)
+    const vizitForm = document.getElementById('vizit-form');
+    vizitForm.addEventListener('submit', function (e) {
+        if (!munasibatInput.value) {
+            e.preventDefault();
+            alert('Zəhmət olmasa, Münasibət Növünü seçin!');
+        }
+    });
+});
+
+
+function addRow() {
+    const tbody = document.getElementById('table-body');
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td><input type="text" name="aptek_ad[]" placeholder="Aptek adı" required></td>
+        <td>
+            <select name="derman_ad[]">
+                {% for p in dermanlar %}
+                <option value="{{ p.med_name }}">{{ p.med_name }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td><input type="text" name="satis_vaziyyeti[]" placeholder="Vəziyyət"></td>
+        <td>
+            <select name="movcudluq[]">
+                <option value="Hamısı var">Hamısı var</option>
+                <option value="Qismən var">Qismən var</option>
+                <option value="Yoxdur">Yoxdur</option>
+            </select>
+        </td>
+        <td><input type="text" name="pozisiya[]" placeholder="Rəf mövqeyi"></td>
+        <td><input type="text" name="isci_adi[]" placeholder="İşçi adı"></td>
+        <td><button type="button" onclick="this.parentElement.parentElement.remove()" class="btn-danger">x</button></td>
+    `;
+    tbody.appendChild(row);
+}
+</script>
+{% endblock %}
