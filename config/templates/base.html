@@ -8,6 +8,7 @@
 
   <!-- Bootstrap CSS -->
  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+ <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=2">
   <link rel="icon" href="{% static 'img/solvey logo.png' %}" type="image/png">
@@ -459,10 +460,6 @@
         <span>Datasiya</span>
     </a>
 
-    <a href="{% url 'razilasma' %}" class="nav-item {% if request.resolver_match.url_name == 'razilasma' %}active{% endif %}">
-        <i class="fa-solid fa-handshake"></i>
-        <span>Razılaşma</span>
-    </a>
 
     <a href="{% url 'finance_view' %}" class="nav-item {% if request.resolver_match.url_name == 'finance_view' %}active{% endif %}">
         <i class="bi bi-cash-coin"></i>
@@ -485,10 +482,6 @@
         <span>Aylıq Qeydiyyat</span>
     </a>
 
-    <a href="{% url 'create_recipe' %}" class="nav-item {% if request.resolver_match.url_name == 'create_recipe' %}active{% endif %}">
-        <i class="fa-solid fa-plus"></i>
-        <span style="font-size: 15px;">Dannı Əlavə et</span>
-    </a>
 
     <div class="prescription-divider"></div>
 
@@ -513,10 +506,10 @@
         <span>Arxiv Həkimlər</span>
     </a>
 
-    <a href="{% url 'create_real_sales' %}" class="nav-item {% if request.resolver_match.url_name == 'create_real_sales' %}active{% endif %}">
-        <i class="bi bi-cart-plus-fill"></i>
+    <!-- <a href="{% url 'create_real_sales' %}" class="nav-item {% if request.resolver_match.url_name == 'create_real_sales' %}active{% endif %}"> -->
+    <!-- <i class="bi bi-cart-plus-fill"></i>
         <span>Real Satış Əlavə et</span>
-    </a>
+    </a> -->
 
     <div class="prescription-divider"></div>
 
@@ -662,7 +655,7 @@
 </div>
 </div>
 </aside>
- {% if messages %}
+{% if messages %}
   <div class="alert-container">
     {% for message in messages %}
       <div class="custom-alert 
@@ -671,7 +664,10 @@
         {% elif message.tags == 'warning' %}warning
         {% elif message.tags == 'info' %}info
         {% endif %}">
+        
+        {# Məhz burada |safe filtrini istifadə edirik #}
         {{ message }}
+        
       </div>
     {% endfor %}
   </div>

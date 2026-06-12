@@ -6,7 +6,7 @@ from doctors import views
 urlpatterns = [
     path("list/",views.doctors_list, name ="doctors"),
     path("export-excel/", views.doctors_export_excel, name="doctors_export_excel"),
-    path("dell_al/",views.del_all, name ="dell"),
+    path("dell_al/",views.del_all, name ="dell_al"),
     path("add/",views.create_doctor, name ="add-doctor"),
     path('details/update/<int:pk>/', views.update_doctor, name='update-doctor'),
 

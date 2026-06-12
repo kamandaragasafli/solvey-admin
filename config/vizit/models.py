@@ -5,7 +5,6 @@ from django.db import models
 from doctors.models import Doctors
 from medicine.models import Medical
 from regions.models import City, Region
-
 class Istifadeci(models.Model):
     ROL_NUMAYENDE = 'numayende'
     ROL_MENECER = 'menecer'
@@ -19,19 +18,27 @@ class Istifadeci(models.Model):
         (ROL_REHBER, 'Rəhbər'),
     ]
 
+    # QRUP SEÇİMLƏRİ (Yeni)
+    QRUP_1 = 'QRUP 1'
+    QRUP_2 = 'QRUP 2'
+    QRUP_CHOICES = [
+        (QRUP_1, 'QRUP 1'),
+        (QRUP_2, 'QRUP 2'),
+    ]
+
     login = models.CharField(max_length=100, unique=True)
     sifre = models.CharField(max_length=255)
     ad = models.CharField(max_length=150)
     rol = models.CharField(max_length=20, choices=ROL_CHOICES, default=ROL_NUMAYENDE)
     
-    # Köhnə ForeignKey sahəsi (Miqrasiya bitənə qədər saxlayın, sonra silə bilərsiniz)
-    # bolge = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, blank=True, db_column='bolge_id', related_name='vizit_istifadeciler')
+    # YENİ: Qrup sahəsi əlavə edildi
+    qrup = models.CharField(max_length=20, choices=QRUP_CHOICES, null=True, blank=True, verbose_name="Qrup")
     
-    # YENİ: Çoxlu bölgə seçimi üçün ManyToManyField
+    # bolgeler ManyToManyField eynilə qalır
     bolgeler = models.ManyToManyField(
-        Region,
+        Region,  # Əgər Region eyni fayldadırsa dırnaqsız, fərqlidirsə dırnaqla yazın
         blank=True,
-        db_table='istifadeci_bolgeleri', # Keçid cədvəlinin adı
+        db_table='istifadeci_bolgeleri',
         related_name='vizit_istifadeciler'
     )
     
@@ -61,13 +68,14 @@ class Istifadeci(models.Model):
             aktiv=True,
         ).first()
 
-    # Sessiyada artıq tək bir ID yox, ID-lər siyahısı saxlamaq lazım ola bilər
+    # YENİ: Sessiyaya qrupu da əlavə edirik ki, hesablama funksiyasında istifadə edə bilək
     def session_dict(self):
         return {
             'istifadeci_id': self.pk,
             'ad': self.ad,
             'rol': self.rol,
-            'bolge_ids': list(self.bolgeler.values_list('id', flat=True)), # [1, 2, 3] formasında
+            'qrup': self.qrup,  # 'QRUP 1' və ya 'QRUP 2' (və ya None)
+            'bolge_ids': list(self.bolgeler.values_list('id', flat=True)),
         }
 
 
@@ -86,7 +94,7 @@ class Vizit(models.Model):
         Istifadeci, on_delete=models.PROTECT, db_column='istifadeci_id', related_name='vizitler'
     )
     hekim = models.ForeignKey(
-        Doctors, on_delete=models.PROTECT, db_column='hekim_id', related_name='vizitler'
+        Doctors, on_delete=models.SET_NULL, db_column='hekim_id', related_name='vizitler', null=True, blank=True
     )
     rayon = models.ForeignKey(
         City, on_delete=models.PROTECT, db_column='rayon_id', related_name='vizitler' , blank=True, null=True
@@ -94,6 +102,7 @@ class Vizit(models.Model):
     bolge = models.ForeignKey(
         Region, on_delete=models.PROTECT, db_column='bolge_id', related_name='vizitler'
     )
+    
     munasibat = models.CharField(max_length=20, choices=MUNASIBAT_CHOICES)
     tarix = models.DateField()
     vaxt = models.TimeField()
@@ -118,3 +127,34 @@ class VizitPreparat(models.Model):
 
     def __str__(self):
         return f'{self.vizit_id} — {self.preparat.med_name}'
+
+
+
+class AptekVizit(models.Model):
+    user = models.ForeignKey(Istifadeci, on_delete=models.PROTECT, db_column='user_id', related_name='aptek_vizit')
+    rayon = models.ForeignKey(City, on_delete=models.SET_NULL, db_column='rayon_id', related_name='aptek_vizit', null=True, blank=True)
+    bolge = models.ForeignKey(Region, on_delete=models.PROTECT, db_column='bolge_id', related_name='aptek_vizit')
+    aptek_ad = models.CharField(max_length=255)
+    aptek_nomre = models.CharField(max_length=255, null=True, blank=True)
+    tarix = models.DateField()
+    vaxt = models.TimeField()
+    qeyd = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'AptekVizit'
+
+    def __str__(self):
+        return f'{self.aptek_ad} — {self.user.ad}'
+
+
+
+class AptekVizitPreparat(models.Model):
+    aptek_vizit = models.ForeignKey(AptekVizit, on_delete=models.CASCADE, db_column='aptek_vizit_id', related_name='preparatlar' , null=True, blank=True)
+    preparat = models.ForeignKey(Medical, on_delete=models.PROTECT, db_column='preparat_id', related_name='aptek_vizitler')
+    sorusulub = models.BooleanField(default=False)
+    satilib = models.BooleanField(default=False)
+    movcuddur = models.BooleanField(default=True)
+    ref_vez = models.CharField(max_length=255, null=True, blank=True)
+    aptek_iscisi = models.CharField(max_length=255, null=True, blank=True)
+    qeyd = models.TextField(null=True, blank=True)

@@ -20,7 +20,7 @@
     {% csrf_token %}
 
     <div class="card">
-        <div class="card-title">📍 Bölgə, Rayon və Həkim</div>
+        <div class="card-title"><i class="fas fa-map-marker-alt"></i> Bölgə, Rayon və Həkim</div>
         <div class="grid-3" id="location-grid">
             <div>
                 <label>Bölgə</label>
@@ -50,7 +50,7 @@
     </div>
 
     <div class="card">
-        <div class="card-title">🤝 Münasibət Növü</div>
+        <div class="card-title"><i class="fas fa-handshake"></i> Münasibət Növü</div>
         <input type="hidden" name="munasibat" id="munasibat_val" required>
         <div class="munasibat-grid">
             <button type="button" class="munasibat-btn" data-val="Xatırlatma">Xatırlatma</button>
@@ -63,7 +63,7 @@
     </div>
 
     <div class="card" id="preparat-section">
-        <div class="card-title">💊 Preparatlar</div>
+        <div class="card-title"><i class="fas fa-pills"></i> Preparatlar</div>
         <div style="display:flex;gap:10px;margin-bottom:14px;">
             <button type="button" class="btn btn-outline" id="select-all-prep">✅ Hamısını seç</button>
             <button type="button" class="btn btn-outline" id="clear-all-prep">❌ Sıfırla</button>
@@ -81,22 +81,22 @@
             <textarea name="qeyd" rows="2" placeholder="Əlavə qeyd..."></textarea>
         </div>
         <div style="margin-top:20px;">
-            <button type="submit" name="vizit_bagla" class="btn btn-success btn-lg">🔒 Viziti Bağla</button>
+            <button type="submit" name="vizit_bagla" class="btn btn-success btn-lg"><i class="fas fa-lock"></i> Viziti Bağla</button>
         </div>
     </div>
 </form>
 
 <div class="card">
     <div class="card-title" style="justify-content:space-between;">
-        <span>📋 Bu gün ({{ bugun_tarix }}) — {{ bugun_vizitler|length }} vizit</span>
+        <span><i class="fas fa-calendar-alt"></i> Bu gün ({{ bugun_tarix }}) — {{ bugun_vizitler|length }} vizit</span>
         {% if bugun_vizitler %}
-        <button type="button" class="btn btn-outline no-print" onclick="window.print();">🖨️ Çap et</button>
+        <button type="button" class="btn btn-outline no-print" onclick="window.print;"><i class="fas fa-print"></i> Çap et</button>
         {% endif %}
     </div>
 
     {% if not bugun_vizitler %}
     <div class="empty">
-        <div class="empty-icon">📭</div>
+        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
         <p>Bu gün hələ vizit yoxdur.</p>
     </div>
     {% else %}
@@ -111,11 +111,11 @@
                     {% if v.hekim.kategoriya %}<span class="badge badge-kat">Kat: {{ v.hekim.kategoriya }}</span>{% endif %}
                 </div>
                 <div class="vizit-meta">
-                    {% if v.rayon %}<span>📍 {{ v.rayon.get_city_name_display }}</span>{% endif %}
-                    <span>🤝 {{ v.munasibat }}</span>
-                    <span>🕐 {{ v.vaxt|time:"H:i" }}</span>
+                    {% if v.rayon %}<span><i class="fas fa-map-marker-alt"></i> {{ v.rayon.get_city_name_display }}</span>{% endif %}
+                    <span><i class="fas fa-handshake"></i> {{ v.munasibat }}</span>
+                    <span><i class="fas fa-clock"></i> {{ v.vaxt|time:"H:i" }}</span>
                     {% if user_rol != 'numayende' %}
-                    <span>👤 {{ v.istifadeci.ad }}</span>
+                    <span><i class="fas fa-user"></i> {{ v.istifadeci.ad }}</span>
                     {% endif %}
                 </div>
                 <div class="vizit-preparatlar">Dərmanlar:
@@ -124,7 +124,7 @@
                     {% endfor %}
                 </div>
                 {% if v.qeyd %}
-                <div style="font-size:13px;margin-top:4px;">📝 {{ v.qeyd }}</div>
+                <div style="font-size:13px;margin-top:4px;"><i class="fas fa-sticky-note"></i> {{ v.qeyd }}</div>
                 {% endif %}
             </div>
         </li>
@@ -245,9 +245,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // HTML-i formalaşdırırıq
         hekimInfo.innerHTML = `
             <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff; margin-top: 10px;">
-                <div style="margin-bottom: 5px;">🩺 İxtisas: <strong>${ixtisas}</strong></div>
-                <div style="margin-bottom: 5px;">🏷️ Kateqoriya: <strong>${kat}</strong></div>
-                <div>🎓 Dərəcə: <strong>${derece}</strong></div>
+                <div style="margin-bottom: 5px;"><i class="fas fa-user-md"></i> İxtisas: <strong>${ixtisas}</strong></div>
+                <div style="margin-bottom: 5px;"><i class="fas fa-tag"></i> Kateqoriya: <strong>${kat}</strong></div>
+                <div><i class="fas fa-graduation-cap"></i> Dərəcə: <strong>${derece}</strong></div>
             </div>
         `;
         

@@ -1,0 +1,133 @@
+
+/* ── WRAP ── */
+.wrap{max-width:640px;margin:0 auto;padding:16px 12px 20px}
+
+/* ── CARD ── */
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--shad);
+  padding:18px 16px;margin-bottom:16px;border:1px solid var(--brd)}
+.card-title{font-size:15px;font-weight:700;color:var(--pr);margin-bottom:14px;
+  display:flex;align-items:center;gap:7px}
+.card-title .ico{font-size:20px}
+
+/* ── FORM ── */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+input[type=text],input[type=date],select,textarea{
+  width:100%;padding:13px 14px;border:2px solid var(--brd);border-radius:var(--r2);
+  font-size:16px;color:var(--txt);background:#fff;transition:border-color .2s;
+  -webkit-appearance:none;appearance:none}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);
+  box-shadow:0 0 0 3px rgba(26,188,156,.12)}
+select:disabled,input:disabled{background:#f5f7fa;opacity:.7;cursor:not-allowed}
+textarea{resize:none;min-height:72px}
+
+/* ── TOGGLE CHIPS (soruşulan / satılan / mövcud) ── */
+.chip-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.chip{display:flex;align-items:center;gap:6px;padding:10px 14px;
+  border:2px solid var(--brd);border-radius:30px;cursor:pointer;
+  font-size:14px;font-weight:600;color:var(--muted);transition:all .18s;
+  user-select:none;background:#fff;white-space:nowrap;min-height:44px}
+.chip:active{transform:scale(.96)}
+.chip.sel-sorusulub{border-color:#8e44ad;background:#f5eef8;color:#6c3483}
+.chip.sel-satilib{border-color:var(--ok);background:#eafaf1;color:#1e8449}
+.chip.sel-yoxdur{border-color:var(--red);background:#fdf2f2;color:#922b21}
+.chip-all{border-style:dashed;font-size:13px}
+.chip-all.sel-sorusulub{border-style:solid}
+.chip-all.sel-satilib{border-style:solid}
+
+/* ── REF TOGGLE ── */
+.ref-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.ref-btn{padding:16px 10px;border:2px solid var(--brd);border-radius:var(--r);
+  background:#fff;cursor:pointer;font-size:14px;font-weight:700;color:var(--muted);
+  text-align:center;transition:all .2s;min-height:56px;display:flex;
+  align-items:center;justify-content:center;gap:6px}
+.ref-btn:active{transform:scale(.97)}
+.ref-btn.sel{border-color:var(--teal);background:linear-gradient(135deg,#e8faf6,#d1f4ed);color:var(--teal2)}
+
+/* ── SUBMIT BTN ── */
+.btn-submit{width:100%;padding:17px;background:linear-gradient(135deg,var(--ok),#219a52);
+  color:#fff;border:none;border-radius:var(--r);font-size:17px;font-weight:800;
+  cursor:pointer;transition:opacity .2s;letter-spacing:.3px;margin-top:4px;min-height:58px}
+.btn-submit:active{opacity:.85}
+.btn-outline{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;
+  border:2px solid var(--pr);border-radius:var(--r2);background:transparent;
+  color:var(--pr);font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;
+  transition:all .2s}
+.btn-outline:active,.btn-outline:hover{background:var(--pr);color:#fff}
+.btn-primary{background:var(--pr);color:#fff;border-color:var(--pr)}
+.btn-primary:hover{background:var(--pr2);border-color:var(--pr2);color:#fff}
+.btn-success{background:var(--ok);color:#fff;border-color:var(--ok)}
+.btn-success:hover{background:#219a52;border-color:#219a52;color:#fff}
+
+/* ── ALERTS ── */
+.alert{padding:13px 16px;border-radius:var(--r2);margin-bottom:14px;font-weight:600;font-size:14px}
+.alert-ok{background:#d5f5e3;color:#1e8449;border:1px solid #a9dfbf}
+.alert-err{background:#fadbd8;color:#922b21;border:1px solid #f5c6cb}
+.alert-info{background:#d6eaf8;color:#1a5276;border:1px solid #85c1e9}
+
+/* ── VİZİT CARD (siyahı) ── */
+.vcard{background:var(--white);border-radius:var(--r);padding:14px 14px 12px;
+  margin-bottom:10px;border:1px solid var(--brd);box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.vcard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.vcard-aptek{font-size:16px;font-weight:800;color:var(--pr)}
+.vcard-time{font-size:12px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.vcard-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;
+  font-size:12px;font-weight:600}
+.tag-rayon{background:#d6eaf8;color:var(--pr)}
+.tag-ref{background:#e8faf6;color:var(--teal2)}
+.tag-user{background:#fef9e7;color:#b7770d}
+.vcard-prep{margin-top:8px;font-size:13px}
+.prep-group{margin-top:4px}
+.prep-group span{font-weight:700;font-size:12px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.4px;margin-right:4px}
+.prep-pills{display:inline-flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.pill{padding:3px 9px;border-radius:14px;font-size:12px;font-weight:600}
+.pill-sorusulub{background:#f5eef8;color:#6c3483;border:1px solid #d7bde2}
+.pill-satilib{background:#eafaf1;color:#1e8449;border:1px solid #a9dfbf}
+.pill-yoxdur{background:#fdf2f2;color:#922b21;border:1px solid #f5c6cb}
+.pill-all{background:#eaf4fb;color:#1a5276;border:1px solid #85c1e9}
+
+/* ── STAT ── */
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.stat-box{background:var(--white);border-radius:var(--r);padding:16px;text-align:center;
+  border:1px solid var(--brd);box-shadow:var(--shad)}
+.stat-num{font-size:32px;font-weight:900;color:var(--pr)}
+.stat-lbl{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:500px}
+th{background:var(--pr);color:#fff;padding:10px 11px;text-align:left;font-weight:600;font-size:12px}
+td{padding:9px 11px;border-bottom:1px solid var(--brd)}
+tr:hover td{background:#f7fafd}
+
+/* ── STEPS ── */
+.steps{display:flex;margin-bottom:18px;border-radius:10px;overflow:hidden}
+.step{flex:1;padding:8px 4px;background:#e8ecf2;text-align:center;font-size:11px;
+  font-weight:700;color:var(--muted)}
+.step.act{background:var(--pr);color:#fff}
+.step.done{background:var(--teal);color:#fff}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:40px 16px;color:var(--muted)}
+.empty-ico{font-size:48px;margin-bottom:10px}
+
+/* ── DIVIDER ── */
+.divider{border:none;border-top:1px solid var(--brd);margin:12px 0}
+
+/* ── FOOTER ── */
+.foot{text-align:center;padding:16px;color:var(--muted);font-size:12px;
+  border-top:1px solid var(--brd);background:var(--white)}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:400px){.g2{grid-template-columns:1fr}}
+
+/* ── PRINT ── */
+@media print{
+  .topbar,.foot,.no-print,.btn-submit{display:none!important}
+  body{background:#fff;padding:0}
+  .card{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
+}

@@ -157,7 +157,3 @@ admin.site.register(StopPoint, StopPointAdmin)
 admin.site.unregister(User)
 admin.site.register(User, CustomUserAdmin)
 
-# Admin panel konfiqurasiyası
-admin.site.site_header = "GPS İzləmə Sistemi Admin Paneli"
-admin.site.site_title = "GPS İzləmə Sistemi"
-admin.site.index_title = "Sistem İdarəetməsi"

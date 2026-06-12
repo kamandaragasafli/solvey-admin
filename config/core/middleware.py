@@ -1,9 +1,22 @@
+import os
+from pathlib import Path
 from django.conf import settings
 from django.shortcuts import redirect
+
 
 class LoginRequiredMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
+
+    # Bu path-lar Django auth tələb etmir (öz daxili login sistemimiz var)
+    EXEMPT_PATHS = [
+        '/login',
+        '/logout',
+        '/groups/login',
+        '/groups/logout',
+        '/groups-drugs/login',
+        '/groups-drugs/logout',
+    ]
 
     def __call__(self, request):
         # Statik və media faylları bypass et
@@ -14,9 +27,10 @@ class LoginRequiredMiddleware:
         if request.path.startswith('/vizit/'):
             return self.get_response(request)
 
-        # /login və /logout üçün trailing slash fərqi olmamalıdır (mobil brauzerlərdə tez-tez /login yazılır)
+        # Trailing slash fərqi olmamalıdır (mobil brauzerlərdə tez-tez /login yazılır)
         normalized_path = request.path.rstrip('/') or '/'
-        if not request.user.is_authenticated and normalized_path not in ['/login', '/logout']:
+
+        if not request.user.is_authenticated and normalized_path not in self.EXEMPT_PATHS:
             return redirect('/login/')
 
         return self.get_response(request)

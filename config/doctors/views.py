@@ -1416,6 +1416,8 @@ def data_list(request):
     region = Region.objects.all()
     drug = Medical.objects.all().order_by('id')
 
+    print(list(Medical.objects.all().order_by("id").values_list("med_name", flat=True)))
+
     context = {
         "region": region,
         "drug": drug

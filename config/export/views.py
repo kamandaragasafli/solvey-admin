@@ -1,3 +1,4 @@
+from django.db.models import F
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -21,6 +22,8 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 import json
+from django.db.models import F
+
 
 from .models import Backup
 
@@ -1015,123 +1018,54 @@ def import_avn_inv_from_excel(request):
 
     return render(request, "admin.html")
 
-
 def import_recipes_from_excel(request):
     if request.method == "POST":
         excel_file = request.FILES.get("excel_recipe_file")
         selected_date = request.POST.get("selected_date")
-        
-        if not excel_file:
-            messages.error(request, "Fayl seçilməyib.")
-            return redirect("admin")
-            
-        if not selected_date:
-            messages.error(request, "Tarix seçilməyib.")
-            return redirect("admin")
 
-        try:
-            # DÜZƏLİŞ: datetime.strptime yerine düzgün istifadə
-            import_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
-            
-            df = pd.read_excel(excel_file)
-            added_count = 0
-            not_found_doctors = set()
-            not_found_regions = set()
-            not_found_drugs = set()
-            ambiguous_doctors = set()
-            ambiguous_drugs = set()
+        import_date_obj = datetime.strptime(selected_date, '%Y-%m-%d').date()
+        selected_day = int(import_date_obj.day)
 
-            # Dərmanları əvvəlcədən bazadan çək:
-            # eyni normalizasiya açarına düşən çoxlu qeydlər varsa yalnız birini seçirik.
-            med_map = {}
-            for med in Medical.objects.all().order_by("id"):
-                ad = (
-                    med.med_name.strip().lower()
-                    .replace("ı", "i").replace("ə", "e").replace("ö", "o")
-                    .replace("ü", "u").replace("ş", "s").replace("ç", "c")
-                    .replace("ğ", "g")
-                )
-                if ad in med_map:
-                    ambiguous_drugs.add(med.med_name.strip())
-                    continue
-                med_map[ad] = med
+        excel_data = pd.read_excel(excel_file, sheet_name=None)
+
+        # ✅ for if-in İÇİNDƏ olmalıdır
+        for sheet_name, df in excel_data.items():
+            df.columns = df.columns.str.strip()
 
             for _, row in df.iterrows():
-                hekim_adi = _strict_excel_cell_text(row.get("Həkim", ""))
-                bolge_adi = _strict_excel_cell_text(row.get("Bölgə", ""))
-
-                if not hekim_adi or hekim_adi == ".":
+                try:
+                    raw_val = row.get("Tarix")
+                    if pd.isna(raw_val):
+                        continue
+                    row_date = int(raw_val)
+                except:
                     continue
+
+                if row_date != selected_day:
+                    continue
+
+                hekim_adi = str(row.get("Həkim Adı", "")).strip()
+                bolge_adi = sheet_name.strip()
 
                 try:
                     region = Region.objects.get(region_name__iexact=bolge_adi)
-                except Region.DoesNotExist:
-                    not_found_regions.add(bolge_adi)
-                    continue
+                    doctor = Doctors.objects.get(ad__iexact=hekim_adi, bolge=region)
 
-                doctors = Doctors.objects.filter(ad=hekim_adi, bolge=region).order_by("id")
-                if not doctors.exists():
-                    not_found_doctors.add(f"{hekim_adi} ({bolge_adi})")
-                    continue
-
-                if doctors.count() > 1:
-                    ambiguous_doctors.add(f"{hekim_adi} ({bolge_adi})")
-                doctor = doctors.first()
-
-                # Yeni: Seçilmiş tarixi istifadə et
-                recipe = Recipe.objects.create(region=region, dr=doctor, date=import_date)
-
-                for drug_name in df.columns[2:]:
-                    try:
-                        say_str = str(row[drug_name]).replace(",", ".").strip()
-                        say = float(say_str)
-                    except Exception:
-                        say = 0
-
-                    if say <= 0:
-                        continue
-
-                    drug_key = (
-                        drug_name.strip().lower()
-                        .replace("ı", "i").replace("ə", "e").replace("ö", "o")
-                        .replace("ü", "u").replace("ş", "s").replace("ç", "c")
-                        .replace("ğ", "g")
+                    recipe, created = Recipe.objects.get_or_create(
+                        region=region, dr=doctor, date=import_date_obj
                     )
 
-                    med = med_map.get(drug_key)
-                    if not med:
-                        not_found_drugs.add(drug_name.strip())
-                        continue
+                except Region.DoesNotExist:
+                    print(f"❌ Region tapılmadı: '{bolge_adi}'")
+                except Doctors.DoesNotExist:
+                    print(f"❌ Həkim tapılmadı: '{hekim_adi}' / '{bolge_adi}'")
+                except Exception as e:
+                    print(f"❌ Xəta: {e}")
 
-                    RecipeDrug.objects.create(recipe=recipe, drug=med, number=say)
-
-                added_count += 1
-
-            messages.success(request, f"{added_count} resept {import_date} tarixinə uğurla əlavə olundu.")
-            if not_found_regions:
-                messages.warning(request, f"Tapılmayan bölgələr: {', '.join(sorted(not_found_regions))}")
-            if not_found_doctors:
-                messages.warning(request, f"Tapılmayan həkimlər: {', '.join(sorted(not_found_doctors))}")
-            if not_found_drugs:
-                messages.warning(request, f"Tapılmayan dərmanlar: {', '.join(sorted(not_found_drugs))}")
-            if ambiguous_doctors:
-                messages.warning(
-                    request,
-                    "Eyni ad-soyadda bir neçə həkim tapıldı, yalnız birinə yazıldı: "
-                    + ", ".join(sorted(ambiguous_doctors))
-                )
-            if ambiguous_drugs:
-                messages.warning(
-                    request,
-                    "Bəzi dərman adları bazada təkrarlanır, eyni açar üçün yalnız bir qeyd istifadə olundu."
-                )
-
-        except Exception as e:
-            messages.error(request, f"Xəta baş verdi: {str(e)}")
-
+        # ✅ messages və redirect if-in içində, for-un xaricində
+        messages.success(request, "Yükləmə tamamlandı.")
         return redirect("admin")
 
-    return render(request, "admin.html")
 
 
 def import_sales_from_excel(request):
@@ -1438,24 +1372,19 @@ def import_region_sales_from_excel(request):
                 continue
 
             # Dərman uyğunlaşdırma: 95% oxşarlıq + "Vitomer D3" → "Vitomer" (startswith)
+
             matched_drug = None
-            best_ratio = 0.89
             excel_drug_norm = _normalize_drug_for_match(drug_name_raw)
 
             for d in drug_list:
                 sys_drug_norm = _normalize_drug_for_match(d.med_name)
+                
+                # Yalnız və yalnız adlar tam üst-üstə düşərsə tap
                 if excel_drug_norm == sys_drug_norm:
                     matched_drug = d
                     break
-                if excel_drug_norm.startswith(sys_drug_norm) or sys_drug_norm.startswith(excel_drug_norm):
-                    if len(sys_drug_norm) >= 4:
-                        matched_drug = d
-                        break
-                ratio = SequenceMatcher(None, excel_drug_norm, sys_drug_norm).ratio()
-                if ratio >= 0.85 and ratio > best_ratio:
-                    best_ratio = ratio
-                    matched_drug = d
-
+            
+            # Əgər tapılmadısa, dövrü dayandır və növbəti sətirə keç
             if not matched_drug:
                 not_matched_drugs.add(drug_name_raw)
                 continue
@@ -1467,7 +1396,7 @@ def import_region_sales_from_excel(request):
 
                 # Bölgə uyğunlaşdırma: 90% oxşarlıq + Gəncə bölgə↔GƏNCƏ, Şirvan-Salyan↔ŞİRVAN
                 matched_region = None
-                best_r = 0.84
+                best_r = 0.90
                 excel_region_norm = _normalize_region_for_match(region_name_str)
 
                 for r in region_list:
@@ -1476,7 +1405,7 @@ def import_region_sales_from_excel(request):
                         matched_region = r
                         break
                     ratio = SequenceMatcher(None, excel_region_norm, sys_region_norm).ratio()
-                    if ratio >= 0.85 and ratio > best_r:
+                    if ratio >= 0.90 and ratio > best_r:
                         best_r = ratio
                         matched_region = r
 
@@ -1513,315 +1442,104 @@ def import_region_sales_from_excel(request):
 
     return redirect("admin")
 
-
 def import_recipes_daily_from_excel(request):
-    """
-    Gündəlik Excel import (çox vərəqli fayl):
-      - Hər vərəq adı = bölgə adı
-      - Sütunlar: "Həkim Adı" | "Tarix" (yalnız gün rəqəmi) | dərman1 | dərman2 | ...
-      - Tarix sütunu formada seçilmiş tam tarixdəki günlə eyni olmalıdır; uyğunsuzluqda bütün import ləğv olunur
-      - Həkim adı bazadakı ilə simvol-simvol eyni olmalıdır
-      - Həmin tarix+bölgə+həkim üçün bazada Resept artıq varsa təkrar import xətadır (heç bir dəyişiklik yazılmır)
-      - Tarix xanası boş sətir tamamilə atlanır (əvvəlki günə miras qoyulmur); həkim boşdursa əvvəlki sətirin həkimi
-      - Eyni gündə eyni həkimin bir neçə sətirdə müxtəlif dərmanları bir reseptdə birləşir
-      - Eyni dərman sütunu bir neçə sətirdə gəlirsə məbləğlər TOPLANIR (hər sətirdə Tarix dolu olmalıdır)
-    """
     if request.method != "POST":
         return redirect("admin")
 
     excel_file = request.FILES.get("excel_recipe_file")
     selected_date = request.POST.get("selected_date")
 
-    if not excel_file:
-        messages.error(request, "Fayl seçilməyib.")
+    if not excel_file or not selected_date:
+        messages.error(request, "Fayl və ya tarix seçilməyib.")
         return redirect("admin")
 
-    if not selected_date:
-        messages.error(request, "Tarix seçilməyib (il/ay üçün lazımdır).")
-        return redirect("admin")
-
-    def _norm(s):
-        """Ad/bölgə/dərman adını müqayisə üçün sadələşdir."""
-        s = str(s).strip().lower()
-        for f, t in [("ı","i"),("ə","e"),("ö","o"),("ü","u"),("ş","s"),("ç","c"),("ğ","g")]:
-            s = s.replace(f, t)
-        return s
+    # Həkim və dərman adlarını təmizləmək üçün köməkçi funksiya
+    def _norm_name(s):
+        return str(s).strip().lower().replace("\u00A0", " ")
 
     try:
         base_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
-
-        # Bütün vərəqləri oxu
+        target_day = base_date.day
         xls = pd.read_excel(excel_file, sheet_name=None, header=0)
 
         added_count = 0
         not_found_doctors = []
-        not_found_regions = []
         not_found_drugs = set()
-        target_day = base_date.day
-        prepared = []
-        date_mismatch_sheets = []
+        
+        all_meds = {m.med_name.strip().lower(): m for m in Medical.objects.all()}
 
-        # Dərmanları əvvəlcədən yüklə
-        med_map = {}
-        for med in Medical.objects.all():
-            med_map.setdefault(_norm(med.med_name), []).append(med)
-
-        # Bölgələri əvvəlcədən yüklə
-        region_list = list(Region.objects.all())
-
-        # ── 1. Faylı oxuyub hər vərəq üçün plan hazırla (DB-yə yazılmır) ──
-        for sheet_name, df in xls.items():
-            region_raw = str(sheet_name).strip()
-            if not region_raw or region_raw == "nan":
+        for region_name, df in xls.items():
+            try:
+                region = Region.objects.get(region_name__iexact=region_name.strip())
+            except Region.DoesNotExist:
                 continue
 
-            # ── 1. Bölgəni tap ──────────────────────────────────────────────
-            sheet_norm = _norm(region_raw)
-            matched_region = None
-            best_r = 0.79
-            for r in region_list:
-                r_norm = _norm(r.region_name)
-                if r_norm == sheet_norm:
-                    matched_region = r
-                    best_r = 1.0
-                    break
-                ratio = SequenceMatcher(None, sheet_norm, r_norm).ratio()
-                if ratio > best_r:
-                    best_r = ratio
-                    matched_region = r
-
-            if not matched_region:
-                not_found_regions.append(region_raw)
-                continue
-
-            # ── 2. Sütunları tap ────────────────────────────────────────────
             df.columns = [str(c).strip() for c in df.columns]
-            hekim_col = None
-            tarix_col = None
-            for col in df.columns:
-                cn = _norm(col)
-                if hekim_col is None and ("hekim" in cn):
-                    hekim_col = col
-                elif tarix_col is None and ("tarix" in cn):
-                    tarix_col = col
+            hekim_col = next((c for c in df.columns if "hekim" in c.lower()), df.columns[0])
+            tarix_col = next((c for c in df.columns if "tarix" in c.lower()), df.columns[1])
+            drug_cols = [c for c in df.columns if c not in [hekim_col, tarix_col] and "total" not in c.lower()]
 
-            # Tapılmasa mövqeyə görə: 1-ci sütun həkim, 2-ci sütun tarix
-            if hekim_col is None and len(df.columns) >= 1:
-                hekim_col = df.columns[0]
-            if tarix_col is None and len(df.columns) >= 2:
-                tarix_col = df.columns[1]
+            # Bölgə üzrə bütün həkimləri yaddaşa al (daha sürətli axtarış üçün)
+            region_doctors = list(Doctors.objects.filter(bolge=region))
 
-            if hekim_col is None or tarix_col is None:
-                continue
-
-            # Dərman sütunları: Həkim/Tarix/Total/boş/Unnamed sütunlarını çıxart
-            drug_cols = []
-            for c in df.columns:
-                if c in (hekim_col, tarix_col):
-                    continue
-                c_str = str(c).strip()
-                c_norm = _norm(c_str)
-                if (
-                    not c_str
-                    or c_str.lower().startswith("unnamed:")
-                    or c_norm in ("total", "cem", "cəm")
-                ):
-                    continue
-                drug_cols.append(c)
-
-            # ── 3. Etibarlı sətirləri topla (Tarix boş sətir atlanır; boş həkim → əvvəlki sətirin həkimi)
-            valid_rows = []
             last_hekim = None
             for _, row in df.iterrows():
-                raw_h = row.get(hekim_col, "")
-                hekim_adi = _strict_excel_cell_text(raw_h)
-                if hekim_adi.lower() in ("nan", ".", "həkim adı", "hekim adi", "hekim"):
-                    hekim_adi = ""
+                hekim_adi = str(row.get(hekim_col, "")).strip()
+                if hekim_adi.lower() in ("nan", "hekim adi", "hekim"): hekim_adi = ""
+                if hekim_adi: last_hekim = hekim_adi
+                else: hekim_adi = last_hekim
 
-                if hekim_adi:
-                    last_hekim = hekim_adi
-                elif last_hekim:
-                    hekim_adi = last_hekim
-                else:
-                    continue
+                if not hekim_adi: continue
 
-                tv = row.get(tarix_col, "")
-                if tv is None or (isinstance(tv, float) and pd.isna(tv)):
-                    tv = ""
-                day_str = str(tv).strip()
-                if day_str.lower() in ("", "nan", "none"):
-                    day = None
-                else:
-                    day = None
-                    try:
-                        d = int(float(day_str))
-                        if 1 <= d <= 31:
-                            day = d
-                    except (ValueError, TypeError):
-                        day = None
+                try:
+                    row_day = int(float(row.get(tarix_col, 0)))
+                except: continue
+                if row_day != target_day: continue
 
-                if day is None:
-                    continue
-
-                valid_rows.append((day, row, hekim_adi))
-
-            if not valid_rows:
-                continue
-
-            rows_target_day = [(d, r, h) for d, r, h in valid_rows if d == target_day]
-            if not rows_target_day:
-                days_in_sheet = sorted({d for d, _, __ in valid_rows})
-                date_mismatch_sheets.append(
-                    f"{region_raw}: Exceldə Tarix günləri {days_in_sheet}, sistemdə seçilib {target_day}"
-                )
-                continue
-
-            prepared.append({
-                "matched_region": matched_region,
-                "region_raw": region_raw,
-                "drug_cols": drug_cols,
-                "rows_target_day": rows_target_day,
-            })
-
-        duplicate_recipes = []
-        for entry in prepared:
-            unique_doc = {}
-            for _d, _row, hekim_adi in entry["rows_target_day"]:
-                doctor = (
-                    Doctors.objects.filter(bolge=entry["matched_region"], ad=hekim_adi)
-                    .order_by("id")
-                    .first()
-                )
+                # Həkimi normallaşdırılmış adla axtar
+                normalized_input = _norm_name(hekim_adi)
+                doctor = next((d for d in region_doctors if _norm_name(d.ad) == normalized_input), None)
+                
                 if not doctor:
-                    continue
-                dn = _norm(hekim_adi)
-                unique_doc.setdefault(dn, doctor)
-            for dn, doctor in unique_doc.items():
-                if Recipe.objects.filter(
-                    dr=doctor, region=entry["matched_region"], date=base_date
-                ).exists():
-                    dup_name = doctor.ad
-                    rn = entry["matched_region"].region_name
-                    duplicate_recipes.append(f"{dup_name} — {rn} ({base_date.isoformat()})")
-
-        if date_mismatch_sheets or duplicate_recipes:
-            parts = []
-            if date_mismatch_sheets:
-                parts.append(
-                    "Tarix uyğun gəlmir: sistemdə seçilmiş tarix günü ilə cədvəldəki Tarix eyni olmalıdır. "
-                    + "; ".join(sorted(set(date_mismatch_sheets)))
-                )
-            if duplicate_recipes:
-                parts.append(
-                    "Bu tarix üçün bazada artıq resept mövcuddur (təkrar idxal bağlanır): "
-                    + "; ".join(sorted(set(duplicate_recipes)))
-                )
-            messages.error(request, "İmport edilmədi. " + " ".join(parts))
-            return redirect("admin")
-
-        # ── 2. Əməliyyatların hamısı uğursuzluqda geri qaytarılır ──
-        def _apply_sheet_entry(entry):
-            nonlocal added_count
-            matched_region = entry["matched_region"]
-            region_raw = entry["region_raw"]
-            drug_cols = entry["drug_cols"]
-            rows_target_day = entry["rows_target_day"]
-            import_date = base_date
-
-            doctor_recipes = {}
-            for _day, row, hekim_adi in rows_target_day:
-                doc_norm = _norm(hekim_adi)
-                doctor = (
-                    Doctors.objects.filter(bolge=matched_region, ad=hekim_adi)
-                    .order_by("id")
-                    .first()
-                )
-
-                if not doctor:
-                    not_found_doctors.append(f"{hekim_adi} ({region_raw})")
+                    not_found_doctors.append(f"{hekim_adi} ({region.region_name})")
                     continue
 
-                recipe = doctor_recipes.get(doc_norm)
-                if recipe is None:
-                    recipe = Recipe.objects.create(
-                        region=matched_region,
-                        dr=doctor,
-                        date=import_date,
-                    )
-                    doctor_recipes[doc_norm] = recipe
-                    added_count += 1
+                recipe, created = Recipe.objects.get_or_create(region=region, dr=doctor, date=base_date)
+                if created: added_count += 1
 
                 for drug_col in drug_cols:
                     try:
-                        raw_val = row[drug_col]
-                        if pd.isna(raw_val):
-                            say = 0.0
+                        val = str(row[drug_col]).replace(",", ".").replace(" ", "")
+                        qty = Decimal(val) if val and val != "nan" else Decimal('0')
+                    except: qty = Decimal('0')
+
+                    if qty > 0:
+                        med = all_meds.get(drug_col.strip().lower())
+                        if med:
+                            obj, created = RecipeDrug.objects.get_or_create(
+                                recipe=recipe, drug=med, defaults={'number': qty}
+                            )
+                            if not created:
+                                obj.number += qty
+                                obj.save(update_fields=['number'])
                         else:
-                            val = str(raw_val).strip().replace(" ", "").replace(",", ".")
-                            say = float(val)
-                    except Exception:
-                        say = 0.0
+                            not_found_drugs.add(drug_col)
 
-                    if say != say or say in (float("inf"), float("-inf")):
-                        say = 0.0
+        messages.success(request, f"{added_count} resept uğurla işləndi.")
 
-                    if say <= 0:
-                        continue
-
-                    drug_key = _norm(drug_col)
-                    meds = med_map.get(drug_key)
-
-                    if not meds:
-                        best_drug_ratio = 0.84
-                        best_meds = None
-                        for k, v in med_map.items():
-                            r = SequenceMatcher(None, drug_key, k).ratio()
-                            if r > best_drug_ratio:
-                                best_drug_ratio = r
-                                best_meds = v
-                        meds = best_meds
-
-                    if not meds:
-                        not_found_drugs.add(str(drug_col).strip())
-                        continue
-
-                    med_pick = sorted(meds, key=lambda m: m.id)[0]
-                    try:
-                        qty = Decimal(str(say))
-                    except InvalidOperation:
-                        continue
-                    existing_rd = RecipeDrug.objects.filter(recipe=recipe, drug=med_pick).first()
-                    if existing_rd:
-                        existing_rd.number = existing_rd.number + qty
-                        existing_rd.save(update_fields=["number"])
-                    else:
-                        RecipeDrug.objects.create(recipe=recipe, drug=med_pick, number=qty)
-
-        with transaction.atomic():
-            for entry in prepared:
-                _apply_sheet_entry(entry)
-
-        # ── Nəticə mesajları ─────────────────────────────────────────────────
-        messages.success(request, f"{added_count} resept uğurla əlavə olundu.")
-        if not_found_regions:
-            messages.warning(request, f"Tapılmayan bölgə vərəqləri: {', '.join(sorted(set(not_found_regions)))}")
-        if not_found_doctors:
-            messages.warning(
-                request,
-                f"Tapılmayan həkimlər ({len(not_found_doctors)} nəfər): "
-                f"{', '.join(sorted(set(not_found_doctors))[:20])}"
-                f"{'...' if len(not_found_doctors) > 20 else ''}"
-            )
         if not_found_drugs:
-            messages.info(request, f"Tapılmayan dərmanlar: {', '.join(sorted(not_found_drugs))}")
+            messages.warning(request, f"Tapılmayan dərmanlar: {', '.join(sorted(not_found_drugs))}")
+
+        if not_found_doctors:
+            unique_missing = sorted(set(not_found_doctors))
+            msg = f"<strong>Tapılmayan həkimlər ({len(unique_missing)} nəfər):</strong><br>" + "<br>".join(unique_missing[:20])
+            if len(unique_missing) > 20: msg += "<br>..."
+            messages.warning(request, msg)
 
     except Exception as e:
-        import traceback
-        messages.error(request, f"Xəta baş verdi: {str(e)}")
-        print(traceback.format_exc())
+        messages.error(request, f"Xəta: {str(e)}")
 
     return redirect("admin")
-
 
 def admin_recipes_delete(request, id):
     recipe = get_object_or_404(RecipeDrug, id=id)

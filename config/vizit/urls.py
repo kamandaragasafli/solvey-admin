@@ -11,7 +11,10 @@ from .views import (
     logout_view,
     yeni_vizit_view,
     bolge_stat_view,
-    aptek_vizit_view,
+    statistika,
+    yeni_aptek_vizit,
+    ajax_rayonlar,
+    export_to_excel,
 )
 
 app_name = 'vizit'
@@ -28,5 +31,8 @@ urlpatterns = [
     path('hesabat/', hesabat_view, name='hesabat'),
     path('export/', excel_export_view, name='export_excel'),
     path('bolge-statistika/', bolge_stat_view, name='bolge_statistika'),
-    path('aptek-vizit/', aptek_vizit_view, name='aptek_vizit'),
+    path('aptek-stats/', statistika, name='aptek_stats'),
+    path('yeni-aptek-vizit/', yeni_aptek_vizit, name='yeni_aptek_vizit'),
+    path('ajax/rayonlar/', ajax_rayonlar, name='ajax_rayonlar'), 
+    path('export-to-excel/', export_to_excel, name='export_to_excel'),
 ]

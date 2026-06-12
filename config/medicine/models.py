@@ -10,6 +10,7 @@ class Medical(models.Model):
     komissiya = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.BooleanField(default=True)
     in_stock = models.BooleanField(default=True)
+    position = models.IntegerField(default=0)
 
     
 

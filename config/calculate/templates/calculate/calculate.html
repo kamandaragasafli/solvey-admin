@@ -1,0 +1,343 @@
+{% extends "calculate/base.html" %}
+
+{% block content %}
+<style>
+    .qiymet-wrapper {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        padding: 24px;
+        margin: 20px auto;
+        max-width: 100%;
+    }
+
+    .table-helper-text {
+        font-size: 0.9rem;
+        color: #1e293b;
+        margin-bottom: 24px;
+        background-color: #f0fdf4;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border-left: 4px solid #10b981;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .table-responsive {
+        width: 100%;
+    }
+
+    /* Tamamilə yenilənmiş cədvəl strukturu */
+    .calc-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 0.95rem;
+    }
+
+    .calc-table th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        padding: 14px 16px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .calc-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+        vertical-align: middle;
+    }
+
+    .calc-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    /* Sütunların genişlik və düzəlişləri */
+    .col-num {
+        width: 60px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .col-name {
+        font-weight: 500;
+        color: #0f172a;
+    }
+
+    .col-price {
+        text-align: right;
+        width: 140px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .col-qty {
+        text-align: center;
+        width: 140px;
+    }
+
+    .col-total {
+        text-align: right;
+        width: 160px;
+        font-weight: 600;
+        color: #0f172a;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Giriş (Input) sahəsinin dizaynı */
+    .input-qty {
+        width: 100%;
+        max-width: 100px;
+        padding: 8px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        text-align: right;
+        font-size: 0.95rem;
+        color: #0f172a;
+        outline: none;
+        transition: all 0.2s;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .input-qty:focus {
+        border-color: #0284c7;
+        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+
+    /* Cədvəl sonluğu (Footer) */
+    .calc-table tfoot td {
+        background-color: #f8fafc;
+        border-top: 2px solid #e2e8f0;
+        padding: 16px;
+    }
+
+    .grand-total-label {
+        text-align: right;
+        font-weight: 700;
+        color: #334155;
+        font-size: 1rem;
+    }
+
+    .grand-total-value {
+        text-align: right;
+        font-weight: 700;
+        color: #0284c7;
+        font-size: 1.1rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .empty-msg {
+        padding: 32px;
+        color: #94a3b8;
+        text-align: center;
+        font-style: italic;
+    }
+
+    /* ==========================================================================
+       MOBİL RESPONSIVE DIZAYN (CƏDVƏLİ KARTA ÇEVİRİR) 📱
+       ========================================================================== */
+    @media (max-width: 768px) {
+        .qiymet-wrapper {
+            padding: 12px;
+            margin: 10px auto;
+        }
+
+        /* Başlıqları gizlədirik */
+        .calc-table thead {
+            display: none;
+        }
+
+        /* Hər sətir müstəqil bir karta çevrilir */
+        .calc-table tbody tr {
+            display: block;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        .calc-table tbody tr:hover {
+            background-color: #ffffff;
+        }
+
+        /* Hüceyrələri blok halına gətiririk və yan-yana düzürük */
+        .calc-table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #f1f5f9;
+            width: 100% !important;
+            text-align: right !important;
+        }
+
+        /* Sıra nömrəsini gizlədə bilərik və ya fərqli göstərə bilərik */
+        .col-num {
+            display: none;
+        }
+
+        /* Mobil mühitdə sol tərəfə başlıq mətni əlavə edirik (CSS content ilə) */
+        .calc-table td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: #64748b;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            text-align: left;
+        }
+
+        .calc-table td:last-child {
+            border-bottom: none;
+        }
+
+        .col-name {
+            font-size: 1.05rem;
+            color: #0284c7;
+        }
+
+        /* Giriş sahəsini mobilə uyğunlaşdırırıq */
+        .input-qty {
+            max-width: 120px;
+            padding: 6px;
+        }
+
+        /* Footer (Yekun Cəm) hissəsinin dizaynı */
+        .calc-table tfoot {
+            display: block;
+            margin-top: 16px;
+        }
+
+        .calc-table tfoot tr {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .calc-table tfoot td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100% !important;
+            padding: 0 !important;
+            border: none !important;
+            background: transparent !important;
+        }
+
+        .grand-total-label {
+            font-size: 1rem;
+        }
+
+        .grand-total-value {
+            font-size: 1.2rem;
+        }
+    }
+</style>
+
+<div class="qiymet-wrapper">
+    <div class="table-helper-text">
+        <span>💡 Qiyməti hesablamaq üçün "Ədəd" bölməsinə miqdar daxil edin.</span>
+        {% if current_user.group %}
+            <span>| 👥 Qrup: <strong>{{ current_user.group }}</strong></span>
+        {% endif %}
+    </div>
+
+    <div class="table-responsive">
+        <table class="calc-table">
+            <thead>
+                <tr>
+                    <th class="col-num">№</th>
+                    <th class="col-name">Dərmanın Adı</th>
+                    <th class="col-price">(AZN)</th>
+                    <th class="col-qty">Ədəd</th>
+                    <th class="col-total">Cəm (AZN)</th>
+                </tr>
+            </thead>
+            <tbody id="medRows">
+                {% for item in medicals %}
+                <tr data-default="{{ item.azn|default:'0' }}">
+                    <td class="col-num">{{ forloop.counter }}</td>
+                    <td class="col-name" data-label="Dərman">{{ item.med_name }}</td>
+                    <td class="col-price" data-label="Qiymət">{{ item.azn }} AZN</td>
+                    <td class="col-qty" data-label="Ədəd">
+                        <input type="number" class="input-qty" min="0" step="1" placeholder="0" oninput="hesabla(this)">
+                    </td>
+                    <td class="col-total total-field" data-label="Cəm">0.00 AZN</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-msg">Sistemdə heç bir dərman tapılmadı.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4" class="grand-total-label">Yekun Cəm:</td>
+                    <td class="grand-total-value" id="grandTotal">0.00 AZN</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<script>
+function hesabla(input) {
+    // Əgər istifadəçi mənfi ədəd yazsa, dərhal 0-a bərabər edirik
+    if (input.value < 0) {
+        input.value = 0;
+    }
+
+    const row = input.closest('tr');
+    
+    // Qiyməti nöqtə formatına salıb rəqəmə çeviririk
+    let rawPrice = row.dataset.default.replace(',', '.');
+    const defaultPrice = parseFloat(rawPrice) || 0;
+    
+    // Əgər daxil edilən dəyər boşdursa, hesablama üçün 0 qəbul edirik
+    const qty = parseInt(input.value) || 0;
+    
+    // Sətir cəmi
+    const total = defaultPrice * qty;
+    
+    // Sətir cəmini müvafiq xanaya yazdırırıq
+    row.querySelector('.total-field').childNodes.forEach(node => {
+        // data-label mətnini qorumaq üçün yalnız qiymət mətnini yeniləyirik
+        if (node.nodeType === Node.TEXT_NODE || !row.querySelector('.calc-table th')) {
+            row.querySelector('.total-field').innerHTML = (document.documentElement.clientWidth <= 768 ? '' : '') + total.toFixed(2) + ' AZN';
+        }
+    });
+    
+    // Yekun cəmi yenidən hesabla
+    cemHesabla();
+}
+
+function cemHesabla() {
+    let grand = 0;
+    document.querySelectorAll('#medRows tr').forEach(row => {
+        const totalField = row.querySelector('.total-field');
+        if (totalField) {
+            // Mətndən yalnız rəqəm hissəsini ayırırıq
+            let textValue = totalField.textContent.replace('Cəm', '').replace('AZN', '').trim();
+            const value = parseFloat(textValue) || 0;
+            grand += value;
+        }
+    });
+    document.getElementById('grandTotal').innerHTML = (document.documentElement.clientWidth <= 768 ? '<span>Yekun Cəm:</span>' : '') + grand.toFixed(2) + ' AZN';
+}
+
+// Ekran ölçüsü dəyişəndə yekun cəmin dizaynının pozulmaması üçün kiçik tənzimləmə
+window.addEventListener('resize', cemHesabla);
+</script>
+{% endblock content %}

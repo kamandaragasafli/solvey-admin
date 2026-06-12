@@ -85,18 +85,20 @@
 
                 </a>
 
-                <!-- <a href="{% url 'vizit:aptek_vizit' %}"{% if request.resolver_match.url_name == 'aptek_vizit' %} class="active"{% endif %}>
+                 <a href="{% url 'vizit:yeni_aptek_vizit' %}"{% if request.resolver_match.url_name == 'yeni_aptek_vizit' %} class="active"{% endif %}>
 
                     <span class="nav-icon"><i class="fa-solid fa-prescription-bottle-medical"></i></span><span>Aptek vizit</span>
 
-                </a> -->
+                </a> 
+                {% if session_rol == 'rehber' or session_rol == 'menecer' %}
 
                 <a href="{% url 'vizit:hesabat' %}"{% if request.resolver_match.url_name == 'hesabat' %} class="active"{% endif %}>
 
                     <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span><span>Hesabat</span>
 
                 </a>
-
+                {% endif %}
+                
                 {% if session_rol == 'menecer' or session_rol == 'rehber' %}
 
                 <a href="{% url 'vizit:bolge_statistika' %}"{% if request.resolver_match.url_name == 'bolge_statistika' %} class="active"{% endif %}>
@@ -104,6 +106,7 @@
                     <span class="nav-icon"><i class="fa-solid fa-map-location-dot"></i></span><span>Bölgə Stat.</span>
 
                 </a>
+                <a href="{% url 'vizit:aptek_stats' %}"{% if request.resolver_match.url_name == 'aptek_stats' %} class="active"{% endif %}><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span><span>Aptek Stat.</span></a>
 
                 {% endif %}
 
@@ -155,7 +158,7 @@
 
 
 
-<footer class="site-footer">© 2026 Solvey Pharma — Vizit sistemi</footer>
+
 
 
 

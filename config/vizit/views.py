@@ -10,13 +10,20 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.db import transaction
+from datetime import date
+from django.contrib.auth.decorators import login_required
 
+
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from django.http import HttpResponse
 
 from doctors.models import Doctors
 from medicine.models import Medical
 from regions.models import City, Hospital, Region
 
-from .models import Istifadeci, Vizit, VizitPreparat
+from .models import Istifadeci, Vizit, VizitPreparat, AptekVizit, AptekVizitPreparat
 from .utils import (
     menecer_rehber_required,
     rehber_required,
@@ -639,3 +646,396 @@ def aptek_vizit_view(request):
     return render(request, 'vizit/aptek-vizit.html', {
         'dermanlar': dermanlar,
     })
+
+
+@vizit_login_required
+def statistika(request):
+    
+    user_id = request.session.get('istifadeci_id')
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+    
+    bolge_id = request.GET.get('bolge_id') or (user_bolge_ids[0] if user_rol != Istifadeci.ROL_REHBER else None)
+    tarix_bas = request.GET.get('tarix_bas') or date.today().replace(day=1).isoformat()
+    tarix_son = request.GET.get('tarix_son') or date.today().isoformat()
+
+    context = {'bolge_id': bolge_id, 'tarix_bas': tarix_bas, 'tarix_son': tarix_son}
+    
+    if user_rol == Istifadeci.ROL_REHBER:
+        context['bolgeler'] = Region.objects.all().order_by('region_name')
+    
+    if bolge_id:
+        # Nümayəndə statistikası
+        context['num_stat'] = AptekVizit.objects.filter(bolge_id=bolge_id, tarix__range=[tarix_bas, tarix_son]) \
+            .values('user__ad') \
+            .annotate(c=Count('id')) \
+            .order_by('-c')
+
+        # Rayon statistikası
+        context['rayon_stat'] = AptekVizit.objects.filter(bolge_id=bolge_id, tarix__range=[tarix_bas, tarix_son]) \
+            .values('rayon__city_name') \
+            .annotate(c=Count('id')) \
+            .order_by('-c')
+
+        # Top apteklər
+        context['aptek_stat'] = AptekVizit.objects.filter(bolge_id=bolge_id, tarix__range=[tarix_bas, tarix_son]) \
+            .values('aptek_ad') \
+            .annotate(c=Count('aptek_ad')) \
+            .order_by('-c')[:10]
+
+    return render(request, 'vizit/aptek-stats.html', context)
+
+@login_required
+def ajax_rayonlar(request):
+    bolge_id = request.GET.get('bolge_id')
+    if not bolge_id:
+        return JsonResponse([], safe=False)
+    
+    rayonlar = City.objects.filter(
+        region_id=bolge_id
+    ).order_by('city_name').values('id', 'city_name')
+    
+    data = [{'id': r['id'], 'ad': r['city_name']} for r in rayonlar]
+    return JsonResponse(data, safe=False)
+
+@login_required
+def yeni_aptek_vizit(request):
+    user_id = request.session.get('istifadeci_id')
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+
+    # Bakı bölgə ID-lərini təyin et
+    baki_bolge_ids = list(
+        Region.objects.filter(region_type='Bakı')
+        .values_list('id', flat=True)
+    )
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                bolge_id      = request.POST.get('bolge_id')
+                rayon_id      = request.POST.get('rayon_id') or None
+                aptek_ad      = request.POST.get('aptek_ad', '').strip()
+                aptek_nomre   = request.POST.get('aptek_nomre', '').strip()
+                ref_veziyyeti = request.POST.get('ref_veziyyeti', '').strip()
+                aptek_iscisi  = request.POST.get('aptek_iscisi', '').strip()
+                qeyd          = request.POST.get('qeyd', '').strip()
+
+                # Validasiya
+                if not bolge_id:
+                    messages.error(request, "Bölgə seçilməyib!")
+                    return redirect('vizit:yeni_aptek_vizit')
+                
+                if not aptek_ad:
+                    messages.error(request, "Aptekin adı daxil edilməyib!")
+                    return redirect('vizit:yeni_aptek_vizit')
+                
+                if not ref_veziyyeti:
+                    messages.error(request, "Rəf vəziyyəti seçilməyib!")
+                    return redirect('vizit:yeni_aptek_vizit')
+
+                # Bakı yoxlaması
+                bolge = Region.objects.filter(id=bolge_id).first()
+                is_baki = bolge and bolge.region_type == 'Bakı'
+                
+                if not is_baki and not rayon_id:
+                    messages.error(request, "Rayon seçilməyib!")
+                    return redirect('vizit:yeni_aptek_vizit')
+                
+                if is_baki:
+                    rayon_id = None
+
+                # AptekVizit yarat
+                vizit = AptekVizit.objects.create(
+                    user_id=user_id,
+                    bolge_id=bolge_id,
+                    rayon_id=rayon_id,
+                    aptek_ad=aptek_ad,
+                    aptek_nomre=aptek_nomre or None,
+                    tarix=timezone.now().date(),
+                    vaxt=timezone.now().time(),
+                    qeyd=qeyd or None,
+                )
+
+                # Preparatları saxla
+                sorusulub_ids = request.POST.getlist('sorusulub')
+                satilib_ids   = request.POST.getlist('satilib')
+                yoxdur_ids    = request.POST.getlist('yoxdur')
+
+                all_ids = set(sorusulub_ids + satilib_ids + yoxdur_ids)
+
+                objs = []
+                for pid in all_ids:
+                    if not pid:
+                        continue
+                    objs.append(AptekVizitPreparat(
+                        aptek_vizit=vizit,
+                        preparat_id=int(pid),
+                        sorusulub=pid in sorusulub_ids,
+                        satilib=pid in satilib_ids,
+                        movcuddur=pid not in yoxdur_ids,
+                        ref_vez=ref_veziyyeti,
+                        aptek_iscisi=aptek_iscisi or None,
+                        qeyd=qeyd or None,
+                    ))
+
+                AptekVizitPreparat.objects.bulk_create(objs)
+                
+                messages.success(request, "✅ Aptek viziti uğurla qeydə alındı!")
+                return redirect('vizit:yeni_aptek_vizit')
+
+        except Exception as e:
+            messages.error(request, f"Xəta baş verdi: {str(e)}")
+            return redirect('vizit:yeni_aptek_vizit')
+
+    # ✅ GET - Bölgələri rol və user-ə görə filtrələ
+    bolgeler = _bolgeler_for_user(user_rol, user_bolge_ids)
+    
+    # ✅ Yalnız aktiv dərmanları göstər
+    preparatlar = Medical.objects.filter(status=True).order_by('med_name')
+    
+    # ✅ Bugünkü vizitləri filtrələ
+    bugun_vizitler = AptekVizit.objects.filter(
+        tarix=date.today()
+    ).select_related('rayon', 'bolge', 'user').order_by('-id')
+
+    # ✅ Rəhbər deyilsə, yalnız öz vizitlərini görsün
+    if user_rol not in [Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB]:
+        bugun_vizitler = bugun_vizitler.filter(user_id=user_id)
+
+    return render(request, 'vizit/aptek-vizit.html', {
+        'bolgeler': bolgeler,              # ✅ Filtrlənmiş bölgələr
+        'preparatlar': preparatlar,        # ✅ Aktiv dərmanlar
+        'bugun_vizitler': bugun_vizitler,  # ✅ Filtrlənmiş vizitlər
+        'today': date.today(),
+        'baki_bolge_ids': baki_bolge_ids,
+    })
+def export_to_excel(request):
+    # 1. Filtrləri qəbul edirik
+    bolge_id = request.GET.get('bolge_id')
+    tarix_bas = request.GET.get('tarix_bas') or date.today().replace(day=1).isoformat()
+    tarix_son = request.GET.get('tarix_son') or date.today().isoformat()
+    
+    # 2. Workbook yaradılması və şəbəkə xətləri
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Aptek Vizit Blanki"
+    ws.views.sheetView[0].showGridLines = True
+    
+    # Dizayn və Rəng Palitrası (Şəkildəki kimi)
+    HEADER_BLUE = "205478"     
+    MAIN_TEAL = "1ABC9C"       
+    fill_title = PatternFill(start_color=HEADER_BLUE, end_color=HEADER_BLUE, fill_type="solid")
+    fill_header = PatternFill(start_color=MAIN_TEAL, end_color=MAIN_TEAL, fill_type="solid")
+    fill_meta = PatternFill(start_color="F2F4F4", end_color="F2F4F4", fill_type="solid")
+    
+    font_title = Font(name="Segoe UI", size=14, bold=True, color="FFFFFF")
+    font_header = Font(name="Segoe UI", size=10, bold=True, color="FFFFFF")
+    font_meta = Font(name="Segoe UI", size=10, bold=True, color="000000")
+    font_data = Font(name="Segoe UI", size=10)
+    
+    # ✓ və ✗ üçün rəngli fontlar
+    font_check = Font(name="Segoe UI", size=11, bold=True, color="1B5E20") 
+    font_cross = Font(name="Segoe UI", size=11, bold=True, color="B71C1C") 
+    
+    align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    
+    thin_border = Border(
+        left=Side(style='thin', color='BDC3C7'),
+        right=Side(style='thin', color='BDC3C7'),
+        top=Side(style='thin', color='BDC3C7'),
+        bottom=Side(style='thin', color='BDC3C7')
+    )
+    
+    # 3. Filtrlərə görə Ana Vizitləri select_related ilə sürətli çəkirik
+    vizit_queryset = AptekVizit.objects.select_related('user', 'rayon', 'bolge').all()
+    if bolge_id:
+        vizit_queryset = vizit_queryset.filter(bolge_id=bolge_id)
+    if tarix_bas and tarix_son:
+        vizit_queryset = vizit_queryset.filter(tarix__range=[tarix_bas, tarix_son])
+        
+    vizitler = vizit_queryset.order_by('tarix', 'vaxt')
+    
+    # 4. ÜST BANNER (Row 1)
+    ws.merge_cells("A1:CA1")
+    ws["A1"] = f"SOLVEY PHARMA — APTEK VİZİT BLANKI | {tarix_bas} - {tarix_son}"
+    ws["A1"].font = font_title
+    ws["A1"].fill = fill_title
+    ws["A1"].alignment = Alignment(horizontal="right", vertical="center")
+    ws.row_dimensions[1].height = 35
+    
+    # 5. META MƏLUMATLAR (Row 3)
+    bolge_adi = "Bütün bölgələr"
+    if bolge_id:
+        try:
+            bolge_adi = Region.objects.get(id=bolge_id).region_name
+        except:
+            pass
+            
+    ws.merge_cells("A3:B3")
+    ws["A3"] = f"Bölgə: {bolge_adi}"
+    ws["A3"].font = font_meta
+    ws["A3"].fill = fill_meta
+    ws["A3"].border = thin_border
+    
+    ws.merge_cells("C3:E3")
+    ws["C3"] = f"Tarix: {tarix_bas} / {tarix_son}"
+    ws["C3"].font = font_meta
+    ws["C3"].fill = fill_meta
+    ws["C3"].border = thin_border
+    ws.row_dimensions[3].height = 22
+    
+    # 6. ƏSAS SOL BAŞLIQLAR (Row 4 və Row 5 Birləşir)
+    base_headers = ["#", "Aptekin adı və nömrəsi", "Rayon", "Rəfdəki vəziyyət", "Aptek işçisi", "Vaxt", "Nümayəndə"]
+    for i, h in enumerate(base_headers):
+        col = get_column_letter(i + 1)
+        ws.merge_cells(f"{col}4:{col}5")
+        ws[f"{col}4"] = h
+        ws[f"{col}4"].font = font_header
+        ws[f"{col}4"].fill = fill_header
+        ws[f"{col}4"].alignment = align_center
+        ws[f"{col}4"].border = thin_border
+        
+    # 7. DƏRMAN BAŞLIQLARI (Dinamik - Medical Modelindən)
+    preparatlar = Medical.objects.all().order_by('med_name')
+    current_col = 8 # H sütunundan başlayır (8-ci sütun)
+    
+    preparat_col_mapping = {} 
+    for p in preparatlar:
+        start_col = get_column_letter(current_col)
+        end_col = get_column_letter(current_col + 2)
+        
+        # Dərmanın Adı (Üst Sətir)
+        ws.merge_cells(f"{start_col}4:{end_col}4")
+        ws[f"{start_col}4"] = p.med_name
+        ws[f"{start_col}4"].font = font_header
+        ws[f"{start_col}4"].fill = fill_header
+        ws[f"{start_col}4"].alignment = align_center
+        
+        # Alt Başlıqlar
+        sub_headers = ["Soruşulan", "Satılıb", "Mövcud"]
+        for j, sub in enumerate(sub_headers):
+            sub_col = get_column_letter(current_col + j)
+            ws[f"{sub_col}5"] = sub
+            ws[f"{sub_col}5"].font = Font(name="Segoe UI", size=9, bold=True, color="FFFFFF")
+            ws[f"{sub_col}5"].fill = fill_header
+            ws[f"{sub_col}5"].alignment = align_center
+            
+        preparat_col_mapping[p.id] = current_col
+        current_col += 3
+        
+    ws.row_dimensions[4].height = 24
+    ws.row_dimensions[5].height = 22
+    
+    # Başlıqlara border verilməsi
+    for r in [4, 5]:
+        for c in range(1, current_col):
+            ws.cell(row=r, column=c).border = thin_border
+            
+    # 8. SƏTİRLƏRİN REAL DATA İLƏ DOLDURULMASI
+    row_num = 6
+    for idx, v in enumerate(vizitler, start=1):
+        
+        # Bu vizitə bağlı olan bütün preparat qeydlərini (`related_name='preparatlar'`) çəkirik
+        vizit_preparatlari = v.preparatlar.all()
+        
+        # Excel-dəki "Rəfdəki vəziyyət" və "Aptek işçisi" sütunları üçün dataları götürürük
+        # (Vizitə aid ilk dərmanın qeydini və ya tapılan ilk boş olmayan dəyəri götürür)
+        ref_veziyyeti_degeri = ""
+        aptek_iscisi_degeri = ""
+        for vp in vizit_preparatlari:
+            if vp.ref_vez:
+                ref_veziyyeti_degeri = vp.ref_vez
+            if vp.aptek_iscisi:
+                aptek_iscisi_degeri = vp.aptek_iscisi
+            if ref_veziyyeti_degeri and aptek_iscisi_degeri:
+                break
+
+        # Sətir məlumatlarının yazılması
+        ws.cell(row=row_num, column=1, value=idx).alignment = align_center
+        
+        aptek_tam_ad = f"{v.aptek_ad} {v.aptek_nomre or ''}".strip()
+        ws.cell(row=row_num, column=2, value=aptek_tam_ad).alignment = align_left
+        
+        rayon_ad = v.rayon.city_name if v.rayon else ""
+        ws.cell(row=row_num, column=3, value=rayon_ad).alignment = align_center
+        
+        # Sizin istədiyiniz model dəyişəni bura oturtuldu: `v.ref_vez` əvəzinə `ref_veziyyeti_degeri`
+        ws.cell(row=row_num, column=4, value=ref_veziyyeti_degeri).alignment = align_center
+        ws.cell(row=row_num, column=5, value=aptek_iscisi_degeri).alignment = align_left
+        
+        # Tarix və Vaxtın birləşdirilməsi formatı (Məs: 02.06.2026 23:40)
+        tarix_str = v.tarix.strftime("%d.%m.%Y") if v.tarix else ""
+        vaxt_str = v.vaxt.strftime("%H:%M") if v.vaxt else ""
+        vaxt_tam = f"{tarix_str} {vaxt_str}".strip()
+        ws.cell(row=row_num, column=6, value=vaxt_tam).alignment = align_center
+        
+        numayende_ad = v.user.ad if v.user else ""
+        ws.cell(row=row_num, column=7, value=numayende_ad).alignment = align_left
+        
+        # Sol tərəfə stil vermək
+        for c in range(1, 8):
+            ws.cell(row=row_num, column=c).font = font_data
+            ws.cell(row=row_num, column=c).border = thin_border
+            
+        # ── MATRİSİN (DƏRMAN STATUSLARININ) DOLDURULMASI ──
+        # Vizit preparatlarını sürətli axtarış üçün dictionary halına salırıq
+        vp_dict = {vp.preparat_id: vp for vp in vizit_preparatlari}
+        
+        for p_id, col_start in preparat_col_mapping.items():
+            s_cell = ws.cell(row=row_num, column=col_start)
+            sat_cell = ws.cell(row=row_num, column=col_start + 1)
+            m_cell = ws.cell(row=row_num, column=col_start + 2)
+            
+            # Hər üç hüceyrə üçün ilkin border və nizamlamanı veririk
+            for cell in [s_cell, sat_cell, m_cell]:
+                cell.alignment = align_center
+                cell.border = thin_border
+            
+            # Əgər bu vizitdə bu dərmana aid qeyd (sətir) varsa:
+            if p_id in vp_dict:
+                vp_obj = vp_dict[p_id]
+                
+                # 1. Soruşulubsa "✓" yaz
+                if vp_obj.sorusulub:
+                    s_cell.value = "✓"
+                    s_cell.font = font_check
+                    
+                # 2. Satılıbsa "✓" yaz
+                if vp_obj.satilib:
+                    sat_cell.value = "✓"
+                    sat_cell.font = font_check
+                    
+                # 3. Mövcuddursa "✓", yoxsa "✗" yaz
+                if vp_obj.movcuddur:
+                    m_cell.value = "✓"
+                    m_cell.font = font_check
+                else:
+                    m_cell.value = "✗"
+                    m_cell.font = font_cross
+            else:
+                # Əgər vizit zamanı bu dərman haqqında heç bir qeyd daxil edilməyibsə, 
+                # "Mövcuddur" bölməsini standart olaraq boş və ya şəkildəki kimi nəzarətsiz buraxırıq.
+                pass
+                
+        ws.row_dimensions[row_num].height = 24
+        row_num += 1
+        
+    # 9. Sütun ölçülərinin avtomatik nizamlanması
+    for col in ws.columns:
+        col_letter = get_column_letter(col[0].column)
+        if col[0].column <= 7:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            ws.column_dimensions[col_letter].width = max(max_len + 3, 11)
+        else:
+            ws.column_dimensions[col_letter].width = 10 
+            
+    # H6 sütunundan paneli dondururuq
+    ws.freeze_panes = "H6"
+    
+    # 10. Brauzerə ötürmə
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f'attachment; filename="Solvey_Aptek_Hesabat_{tarix_bas}.xlsx"'
+    wb.save(response)
+    return response

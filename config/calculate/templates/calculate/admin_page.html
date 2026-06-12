@@ -1,0 +1,246 @@
+{% extends "calculate/base.html" %}
+
+{% block section_title %}Sistem İstifadəçilərinin İdarə Edilməsi{% endblock section_title %}
+
+{% block content %}
+<style>
+    .admin-grid {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 30px;
+        align-items: start;
+        margin-top: 10px;
+    }
+
+    /* Kart Strukturları */
+    .admin-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        padding: 24px;
+    }
+
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    /* Form Elementləri */
+    .form-group {
+        margin-bottom: 18px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 6px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        color: #0f172a;
+        outline: none;
+        transition: all 0.2s;
+        background-color: #fff;
+    }
+
+    .form-control:focus {
+        border-color: #0284c7;
+        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 12px;
+        background-color: #0284c7;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        margin-top: 10px;
+    }
+
+    .btn-submit:hover {
+        background-color: #0369a1;
+    }
+
+    /* İstifadəçi Cədvəli */
+    .user-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 0.95rem;
+    }
+
+    .user-table th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 14px 16px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .user-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+    }
+
+    .user-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    /* Rol Nişanları (Badges) */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .badge-rəhbər { background-color: #fef2f2; color: #ef4444; border: 1px solid #fee2e2; }
+    .badge-menecer { background-color: #eff6ff; color: #3b82f6; border: 1px solid #dbeafe; }
+    .badge-nümayəndə { background-color: #f0fdf4; color: #10b981; border: 1px solid #dcfce7; }
+
+    @media (max-width: 992px) {
+        .admin-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="admin-grid">
+    <div class="admin-card">
+        <h2 class="card-title"><i class="bi bi-person-plus"></i> Yeni İstifadəçi Yarat</h2>
+        <form method="POST" action="">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label class="form-label" for="name">İstifadəçi Adı (Name)</label>
+                <input type="text" id="name" name="name" class="form-control" placeholder="İstifadəçi adını daxil edin" required>
+            </div>
+        
+            <div class="form-group">
+                <label class="form-label" for="password">Şifrə (Password)</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+            </div>
+        
+            <div class="form-group">
+                <label class="form-label" for="role">Sistem Rolu</label>
+                <select id="role" name="role" class="form-control" onchange="toggleGroupField()" required>
+                    <option value="" disabled selected>Rol seçin...</option>
+                    {% for db_val, display_val in roles %}
+                        <option value="{{ db_val }}">{{ display_val }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        
+            <div class="form-group" id="group-wrapper">
+                <label class="form-label" for="group">Qrup</label>
+                <select id="group" name="group" class="form-control">
+                    <option value="" selected>Qrup yoxdur (Boş buraxıla bilər)</option>
+                    {% for db_val, display_val in groups_list %}
+                        <option value="{{ db_val }}">{{ display_val }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        
+            <button type="submit" class="btn-submit">Sistemə Əlavə Et</button>
+        </form>
+        
+
+    </div>
+
+    <div class="admin-card">
+        <h2 class="card-title"><i class="bi bi-list-check"></i> Aktiv İstifadəçilərin Siyahısı ({{ users|length }})</h2>
+        <div style="overflow-x: auto;">
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60px; text-align: center;">№</th>
+                        <th>İstifadəçi Adı</th>
+                        <th>Qrup</th>
+                        <th>Təyin Olunmuş Rol</th>
+                        <th>Düzəliş</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td style="text-align: center; color: #94a3b8;">{{ forloop.counter }}</td>
+                        <td style="font-weight: 500; color: #0f172a;">{{ user.login }}</td>
+                        {% if user.qrup %}
+                            <td style="font-family: monospace; color: #64748b;">{{ user.get_qrup_display }}</td>
+                        {% else %}
+                            <td style="font-family: monospace; color: #64748b;">Yoxdur</td>
+                        {% endif %}
+                        <td>
+                            {% if user.rol == 'Rəhbər' %}
+                                <span class="badge badge-rəhbər"><i class="bi bi-shield-fill"></i> {{ user.get_rol_display }}</span>
+                            {% elif user.rol == 'Menecer' %}
+                                <span class="badge badge-menecer"><i class="bi bi-person-workspace"></i> {{ user.get_rol_display }}</span>
+                            {% else %}
+                                <span class="badge badge-nümayəndə"><i class="bi bi-person-lines-fill"></i> {{ user.get_rol_display }}</span>
+                            {% endif %}
+                        </td>
+                        <!-- <td>
+                            <a href="{% url 'calculate:admin_page' %}?edit_user={{ user.id }}" class="btn-edit">
+                                <i class="bi bi-pencil-square"></i> Düzəliş
+                            </a>
+                        </td> -->
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #94a3b8; padding: 30px; font-style: italic;">
+                            Sistemdə hələ ki heç bir istifadəçi qeydiyyata alınmayıb.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+    function toggleGroupField() {
+        const roleSelect = document.getElementById('role');
+        const groupSelect = document.getElementById('group');
+        const groupWrapper = document.getElementById('group-wrapper');
+        
+        // DƏYİŞDİRİLDİ: 'Tibbi Nümayəndə' əvəzinə modeldəki 'numayende' yazıldı
+        if (roleSelect.value === 'numayende') {
+            // Tibbi Nümayəndədirsə qrup seçilməlidir
+            groupWrapper.style.opacity = '1';
+            groupSelect.disabled = false;
+            groupSelect.required = true;
+        } else {
+            // Menecer, Rəhbər və ya Diviziya rəhbəridirsə qrup sahəsinə ehtiyac yoxdur
+            groupWrapper.style.opacity = '0.5'; // Vizual olaraq passivləşdirmək üçün
+            groupSelect.value = '';             // Dəyəri sıfırlayırıq
+            groupSelect.disabled = true;        // Post olunmasını əngəlləyirik
+            groupSelect.required = false;
+        }
+    }
+
+    // Səhifə ilk açılanda funksiyanı yoxla
+    document.addEventListener("DOMContentLoaded", toggleGroupField);
+    </script>
+{% endblock content %}

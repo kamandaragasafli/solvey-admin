@@ -1,110 +1,44 @@
 {% extends "base.html" %}
 {% block content %}
 <style>
-  body {
-    background-color: #030b1a;
-    color: #f9fafb;
-    font-family: "Inter", sans-serif;
-  }
-
-  .card {
-    background-color: #273549;
-    border: none;
-    border-radius: 14px;
-    color: #f9fafb;
-  }
-
-  .form-label {
-    font-weight: 500;
-    color: #e5e7eb;
-  }
-
-  .form-select,
-  .form-control {
-    background-color: #374151;
-    border: 1px solid #4b5563;
-    color: #f9fafb;
-    border-radius: 10px;
-    transition: all 0.3s ease;
-  }
-
-  .form-select:focus,
-  .form-control:focus {
-    background-color: #4b5563;
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
-    color: #fff;
-  }
-
-  .btn-success {
-    background-color: #22c55e;
-    border: none;
-    border-radius: 10px;
-    padding: 10px 18px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-  }
-
-  .btn-success:hover {
-    background-color: #16a34a;
-    transform: scale(1.03);
-  }
-
-  h5 {
-    font-weight: 600;
-    color: #f3f4f6;
-  }
-
-  .card.shadow {
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-  }
-
-  select option {
-    background-color: #1f2937;
-    color: #f9fafb;
-  }
-
-  input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-  }
+  body { background-color: #030b1a; color: #f9fafb; font-family: "Inter", sans-serif; }
+  .card { background-color: #273549; border: none; border-radius: 14px; color: #f9fafb; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); }
+  .form-label { font-weight: 500; color: #e5e7eb; }
+  .form-select, .form-control { background-color: #374151; border: 1px solid #4b5563; color: #f9fafb; border-radius: 10px; padding: 10px; }
+  .btn-success { background-color: #22c55e; border: none; border-radius: 10px; padding: 10px 18px; font-weight: 500; }
+  
+  /* Axtarış üçün yeni stildər */
+  .doctor-dropdown-list { background-color: #374151; border: 1px solid #4b5563; max-height: 200px; overflow-y: auto; list-style: none; padding: 0; margin: 0; position: absolute; width: 100%; z-index: 1000; border-radius: 0 0 10px 10px; display: none; }
+  .doctor-dropdown-list li { padding: 10px; cursor: pointer; color: #f9fafb; }
+  .doctor-dropdown-list li:hover { background-color: #4b5563; }
 </style>
+
 <div class="container mt-5">
-  <div class="card shadow p-4">
+  <div class="card p-4">
     <h5 class="mb-4">Həkimə Ödəniş Əlavə Et</h5>
-    <form method="POST" action="{% if selected_region_id %}{% url 'add-pay-dr-region' selected_region_id %}{% else %}{% url 'add-pay-dr' %}{% endif %}">
+    <form method="POST" action="{% url 'add-pay-dr' %}">
       {% csrf_token %}
       <div class="row">
-        <!-- Region -->
         <div class="col-md-6 mb-3">
           <label for="payment_region_id" class="form-label">Bölgə Seç</label>
-          <select
-            class="form-select"
-            name="region_id"
-            id="payment_region_id"
-            required
-          >
+          <select class="form-select" name="region_id" id="payment_region_id" required>
             <option disabled selected>Bölgə Seçin</option>
             {% for r in region %}
-              <option value="{{ r.id }}" {% if selected_region_id == r.id %}selected{% endif %}>{{ r.region_name }}</option>
+              <option value="{{ r.id }}">{{ r.region_name }}</option>
             {% endfor %}
           </select>
         </div>
 
-        <!-- Doctor -->
         <div class="col-md-6 mb-3">
-          <label for="payment_doctor_id" class="form-label">Həkim Seç</label>
-          <select class="form-select" name="doctor_id" id="payment_doctor_id" required>
-            {% if doctors %}
-              {% for doktor in doctors %}
-                <option value="{{ doktor.id }}">{{ doktor.ad }}</option>
-              {% endfor %}
-            {% else %}
-              <option selected disabled>Əvvəl bölgə seçin</option>
-            {% endif %}
-          </select>
+          <label for="doctor-search" class="form-label">Həkim Seç</label>
+          <div class="position-relative">
+            <input type="hidden" name="doctor_id" id="payment_doctor_id" required />
+            <input type="text" id="doctor-search" class="form-control" style="background-color: #545c6b; color: #f9fafb; border: 1px solid #4b5563;"
+                   placeholder="Əvvəlcə bölgə seçin..." autocomplete="off" disabled />
+            <ul id="doctor-dropdown" class="doctor-dropdown-list"></ul>
+          </div>
         </div>
 
-        <!-- Payment Type -->
         <div class="col-md-6 mb-3">
           <label for="payment_type" class="form-label">Ödəniş Növü</label>
           <select class="form-select" name="payment_type" id="payment_type" required>
@@ -113,88 +47,96 @@
             <option value="Geri_qaytarma">Geri Qaytarma</option>
           </select>
         </div>
-
-        <!-- Amount -->
         <div class="col-md-6 mb-3">
           <label for="amount" class="form-label">Ödəniş Məbləği (₼)</label>
           <input type="number" class="form-control" name="amount" id="amount" min="0.01" step="0.01" required>
         </div>
-
-        <!-- Date -->
         <div class="col-md-6 mb-3">
           <label for="pay_date" class="form-label">Tarix Seç</label>
           <input type="date" class="form-control" name="pay_date" id="pay_date" value="{% now 'Y-m-d' %}" required>
         </div>
       </div>
-
-      <button type="submit" class="btn btn-success mt-2">
-        <i class="bi bi-plus-circle me-1"></i> Ödəniş Əlavə Et
-      </button>
+      <button type="submit" class="btn btn-success mt-2">Ödəniş Əlavə Et</button>
     </form>
   </div>
 </div>
-
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  // Ödəniş formu üçün
-  const paymentRegionSelect = document.getElementById("payment_region_id");
-  const paymentDoctorSelect = document.getElementById("payment_doctor_id");
+    const regionSelect = document.getElementById("payment_region_id");
+    const doctorSearch = document.getElementById("doctor-search");
+    const doctorDropdown = document.getElementById("doctor-dropdown");
+    const doctorIdInput = document.getElementById("payment_doctor_id");
 
-  // Sənəd formu üçün
-  const documentRegionSelect = document.getElementById("document_region_id");
-  const documentDoctorSelect = document.getElementById("document_doctor_id");
+    let allDoctors = [];
 
-  function loadDoctors(regionId, doctorSelect) {
-    doctorSelect.innerHTML = '<option disabled selected>Yüklənir...</option>';
-
-    fetch('/reports/ajax/get-doctors/?region_id=' + regionId)
-      .then(response => response.json())
-      .then(data => {
-        doctorSelect.innerHTML = '';
-
-        if (data.doctors && data.doctors.length > 0) {
-          data.doctors.forEach(doctor => {
-            const option = document.createElement("option");
-            option.value = doctor.id;
-            option.textContent = doctor.ad;
-            doctorSelect.appendChild(option);
-          });
-        } else {
-          const option = document.createElement("option");
-          option.text = "Həkim tapılmadı";
-          option.disabled = true;
-          option.selected = true;
-          doctorSelect.appendChild(option);
-        }
-      })
-      .catch(error => {
-        console.error("Həkimlər alınarkən xəta:", error);
-        doctorSelect.innerHTML = '<option disabled selected>Xəta baş verdi</option>';
-      });
-  }
-
-  // Ödəniş formu üçün region dəyişikliyi
-  paymentRegionSelect.addEventListener("change", function () {
-    const regionId = this.value;
-    loadDoctors(regionId, paymentDoctorSelect);
-    
-    // URL-i yenilə (region seçildikdə səhifəni yeniləmək üçün)
-    if (regionId) {
-      window.location.href = "{% url 'add-pay-dr-region' 0 %}".replace('0', regionId);
+    function normalizeAz(s) {
+        return s.toLowerCase()
+            .replace(/i̇/g, 'i')
+            .replace(/ı/g, 'i')
+            .replace(/ə/g, 'e')
+            .replace(/ö/g, 'o')
+            .replace(/ü/g, 'u')
+            .replace(/ş/g, 's')
+            .replace(/ç/g, 'c')
+            .replace(/ğ/g, 'g');
     }
-  });
 
-  // Sənəd formu üçün region dəyişikliyi
-  documentRegionSelect.addEventListener("change", function () {
-    loadDoctors(this.value, documentDoctorSelect);
-  });
+    function renderDropdown(filtered) {
+        doctorDropdown.innerHTML = '';
+        if (filtered.length === 0) {
+            doctorDropdown.style.display = 'none';
+            return;
+        }
+        doctorDropdown.style.display = 'block';
+        filtered.forEach(doc => {
+            const li = document.createElement("li");
+            li.textContent = doc.ad;
+            li.style.padding = "10px";
+            li.style.cursor = "pointer";
+            li.style.borderBottom = "1px solid #4b5563";
+            li.onmouseover = () => li.style.backgroundColor = "#4b5563";
+            li.onmouseout = () => li.style.backgroundColor = "transparent";
+            li.onclick = () => {
+                doctorSearch.value = doc.ad;
+                doctorIdInput.value = doc.id;
+                doctorDropdown.style.display = 'none';
+            };
+            doctorDropdown.appendChild(li);
+        });
+    }
 
-  // Əgər URL-də region_id varsa, həkimləri avtomatik yüklə
-  {% if selected_region_id %}
-    loadDoctors({{ selected_region_id }}, paymentDoctorSelect);
-    loadDoctors({{ selected_region_id }}, documentDoctorSelect);
-  {% endif %}
+    // Bölgə seçiləndə həkimləri BİR DƏFƏ yüklə
+    regionSelect.addEventListener("change", function () {
+        doctorSearch.disabled = false;
+        doctorSearch.value = '';
+        doctorIdInput.value = '';
+        doctorDropdown.innerHTML = '';
+        doctorDropdown.style.display = 'none';
+        doctorSearch.placeholder = "Həkim adını yazın...";
+        allDoctors = [];
+
+        fetch(`/reports/ajax/get-doctors/?region_id=${encodeURIComponent(this.value)}`)
+            .then(res => res.json())
+            .then(data => { allDoctors = data.doctors || []; });
+    });
+
+    // Filter tamamilə JS-də — backend-ə sorğu yoxdur
+    doctorSearch.addEventListener("input", function () {
+        const query = normalizeAz(this.value.trim());
+        if (!query) {
+            doctorDropdown.style.display = 'none';
+            return;
+        }
+        const filtered = allDoctors.filter(doc => normalizeAz(doc.ad).includes(query));
+        renderDropdown(filtered);
+    });
+
+    // Kənara klikləyəndə gizlət
+    document.addEventListener("click", (e) => {
+        if (!doctorSearch.contains(e.target) && !doctorDropdown.contains(e.target)) {
+            doctorDropdown.style.display = 'none';
+        }
+    });
 });
-</script>
-
+  </script>
 {% endblock content %}

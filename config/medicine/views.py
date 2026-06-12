@@ -36,7 +36,7 @@ def del_drug(request, id):
 
 
 def drugs(request):
-    drugs = Medical.objects.all()
+    drugs = Medical.objects.all().order_by("position")
     context ={
         "drugs": drugs
     }

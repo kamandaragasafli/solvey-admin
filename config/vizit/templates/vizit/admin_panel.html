@@ -3,7 +3,7 @@
 {% block title %}Admin Panel{% endblock %}
 
 {% block content %}
-<h1 style="margin-bottom:20px;font-size:22px;color:var(--primary);">⚙️ Admin Panel</h1>
+<h1 style="margin-bottom:20px;font-size:22px;color:var(--primary);"><i class="fas fa-cog"></i> Admin Panel</h1>
 
 {% if messages %}
     {% for message in messages %}
@@ -12,13 +12,13 @@
 {% endif %}
 
 <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
-    <a href="{% url 'vizit:admin_panel' %}?tab=istifadeciler" class="btn {% if tab == 'istifadeciler' %}btn-primary{% else %}btn-outline{% endif %}">👤 İstifadəçilər</a>
-    <a href="{% url 'vizit:admin_panel' %}?tab=hekimler" class="btn {% if tab == 'hekimler' %}btn-primary{% else %}btn-outline{% endif %}">🩺 Həkimlər</a>
+    <a href="{% url 'vizit:admin_panel' %}?tab=istifadeciler" class="btn {% if tab == 'istifadeciler' %}btn-primary{% else %}btn-outline{% endif %}"><i class="fas fa-user"></i> İstifadəçilər</a>
+    <a href="{% url 'vizit:admin_panel' %}?tab=hekimler" class="btn {% if tab == 'hekimler' %}btn-primary{% else %}btn-outline{% endif %}"><i class="fas fa-user-md"></i> Həkimlər</a>
 </div>
 
 {% if tab == 'istifadeciler' %}
 <div class="card">
-    <div class="card-title">➕ Yeni İstifadəçi</div>
+    <div class="card-title"><i class="fas fa-plus"></i> Yeni İstifadəçi</div>
     <form method="post">
         {% csrf_token %}
         <div class="grid-3" style="gap:12px;">
@@ -44,11 +44,11 @@
                 <small style="color:gray;">(Ctrl/Command düyməsini sıxaraq çoxlu seçim edə bilərsiniz)</small>
             </div>
         </div>
-        <div style="margin-top:14px;"><button type="submit" name="add_user" class="btn btn-primary">➕ Əlavə et</button></div>
+        <div style="margin-top:14px;"><button type="submit" name="add_user" class="btn btn-primary"><i class="fas fa-plus"></i> Əlavə et</button></div>
     </form>
 </div>
 <div class="card">
-    <div class="card-title">👤 Mövcud İstifadəçilər ({{ istifadeciler|length }})</div>
+    <div class="card-title"><i class="fas fa-user"></i> Mövcud İstifadəçilər ({{ istifadeciler|length }})</div>
     <div class="table-wrap">
         <table>
             <thead><tr><th>#</th><th>Login</th><th>Ad</th><th>Rol</th><th>Bölgə</th><th>Aktiv</th><th>Sil</th></tr></thead>
@@ -71,7 +71,7 @@
 
 {% elif tab == 'hekimler' %}
 <div class="card">
-    <div class="card-title">➕ Yeni Həkim</div>
+    <div class="card-title"><i class="fas fa-plus"></i> Yeni Həkim</div>
     <form method="post">
         {% csrf_token %}
         <div class="grid-3" style="gap:12px;">
@@ -104,11 +104,11 @@
                 </select>
             </div>
         </div>
-        <div style="margin-top:14px;"><button type="submit" name="add_hekim" class="btn btn-primary">➕ Həkim əlavə et</button></div>
+        <div style="margin-top:14px;"><button type="submit" name="add_hekim" class="btn btn-primary"><i class="fas fa-plus"></i> Həkim əlavə et</button></div>
     </form>
 </div>
 <div class="card">
-    <div class="card-title">🩺 Həkimlər ({{ hekimler|length }})</div>
+    <div class="card-title"><i class="fas fa-user-md"></i> Həkimlər ({{ hekimler|length }})</div>
     <div class="table-wrap">
         <table>
             <thead><tr><th>#</th><th>Ad, Soyad</th><th>Rayon</th><th>İxtisas</th><th>Kat.</th></tr></thead>

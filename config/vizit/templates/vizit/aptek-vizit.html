@@ -1,7 +1,7 @@
 {% extends 'vizit/base.html' %}
 
-{% block title %}Aptek Vizit — Solvey Pharma{% endblock %}
-
+{% block title %}Yeni Aptek Viziti{% endblock %}
+bl
 {% block content %}
 {% if messages %}
     {% for message in messages %}
@@ -9,130 +9,636 @@
     {% endfor %}
 {% endif %}
 
-<form method="post" id="vizit-form" action="">
-    {% csrf_token %}
+{% block extra_css %}
+<style>
+    /* ── LAYOUT ── */
+    .page-wrap { max-width: 860px; margin: 0 auto; padding: 28px 16px 60px; }
 
-    <div class="card">
-        <div class="card-title">📍 Apteki qeyd edin</div>
-        <div class="grid-3" id="location-grid">
-            <div>
-                <label for="aptek_adi">Aptek adı</label>
-                <input type="text" name="aptek_adi" id="aptek_adi" required placeholder="Aptekin adını daxil edin...">
+    .page-header { margin-bottom: 24px; }
+    .page-header h4 { font-size: 22px; font-weight: 800; color: #1a3a5c; margin-bottom: 4px; }
+    .page-header p  { color: #7f8c8d; font-size: 14px; margin: 0; }
+
+    /* ── STEPS ── */
+    .steps {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 28px;
+        background: #eef1f5;
+        padding: 8px;
+        border-radius: 14px;
+        flex-wrap: wrap;
+    }
+    .step {
+        flex: 1;
+        min-width: 80px;
+        text-align: center;
+        padding: 9px 6px;
+        border-radius: 9px;
+        font-weight: 600;
+        font-size: 12px;
+        color: #95a5a6;
+        white-space: nowrap;
+    }
+    .step.active {
+        background: #1a3a5c;
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(26,58,92,.25);
+    }
+
+    /* ── SECTION CARD ── */
+    .section-card {
+        background: #fff;
+        border-radius: 18px;
+        box-shadow: 0 2px 16px rgba(0,0,0,.06);
+        padding: 24px;
+        margin-bottom: 20px;
+    }
+    .section-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1a3a5c;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding-bottom: 12px;
+        border-bottom: 1.5px solid #f0f2f5;
+    }
+    .section-title i { color: #2980b9; font-size: 15px; }
+
+    /* ── FORM FIELDS ── */
+    .form-label { font-size: 13px; font-weight: 600; color: #34495e; margin-bottom: 6px; }
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 1.5px solid #dce3ec;
+        padding: 10px 14px;
+        font-size: 14px;
+        color: #2c3e50;
+        transition: border-color .18s, box-shadow .18s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #2980b9;
+        box-shadow: 0 0 0 3px rgba(41,128,185,.12);
+        outline: none;
+    }
+    .alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    }
+    .alert-error {
+        background-color: #fdf2f2;
+        color: #922b21;
+        border: 1px solid #e74c3c;
+    }
+    .alert-success {
+        background-color: #eafaf1;
+        color: #1e8449;
+        border: 1px solid #27ae60;
+    }
+    .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .table th { text-align: left; color: #7f8c8d; padding: 8px 4px; border-bottom: 2px solid #f0f2f5; }
+    .table td { padding: 12px 4px; border-bottom: 1px solid #f0f2f5; }
+    .table-responsive { overflow-x: auto; }
+
+    /* ── ACTION BAR ── */
+    .action-bar {
+        margin-bottom: 16px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .btn-action {
+        padding: 7px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 8px;
+        border: 1.5px solid transparent;
+    }
+
+    /* ── CHİP GRİD ── */
+    .chip-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    /* ── CHİP ── */
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 16px;
+        border: 2px solid #dce3ec;
+        border-radius: 30px;
+        cursor: pointer;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #5d6d7e;
+        transition: all .18s;
+        user-select: none;
+        background: #f8fafc;
+        white-space: nowrap;
+    }
+    .chip:active { transform: scale(.96); }
+    .chip:hover  { border-color: #aab8c8; background: #f0f4f8; }
+
+    /* chip-ico dairə */
+    .chip-ico {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid #bdc3c7;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+        transition: all .18s;
+        background: #fff;
+        color: transparent;
+    }
+
+    /* Seçilmiş hallar */
+    .chip.sel-sorusulub {
+        border-color: #8e44ad;
+        background: #f8f0fc;
+        color: #6c3483;
+    }
+    .chip.sel-sorusulub .chip-ico {
+        background: #8e44ad;
+        border-color: #8e44ad;
+        color: #fff;
+    }
+
+    .chip.sel-satilib {
+        border-color: #27ae60;
+        background: #eafaf1;
+        color: #1e8449;
+    }
+    .chip.sel-satilib .chip-ico {
+        background: #27ae60;
+        border-color: #27ae60;
+        color: #fff;
+    }
+
+    .chip.sel-yoxdur {
+        border-color: #e74c3c;
+        background: #fdf2f2;
+        color: #922b21;
+    }
+    .chip.sel-yoxdur .chip-ico {
+        background: #e74c3c;
+        border-color: #e74c3c;
+        color: #fff;
+    }
+
+    /* ── RƏF BUTTONS ── */
+    .ref-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .ref-btn {
+        padding: 16px 12px;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 12px;
+        border: 2px solid #dce3ec;
+        background: #f8fafc;
+        color: #5d6d7e;
+        transition: all .2s;
+        cursor: pointer;
+    }
+    .ref-btn:hover { border-color: #aab8c8; background: #f0f4f8; }
+    .ref-btn.active {
+        border-color: #1abc9c;
+        background: #e8faf6;
+        color: #0f766e;
+        box-shadow: 0 2px 10px rgba(26,188,156,.18);
+    }
+    .ref-btn i { margin-right: 6px; }
+
+    /* ── SUBMIT ── */
+    .big-green-btn {
+        background: linear-gradient(135deg, #27ae60, #1e8449);
+        color: #fff;
+        font-size: 16px;
+        font-weight: 700;
+        padding: 16px;
+        border: none;
+        border-radius: 12px;
+        width: 100%;
+        margin-top: 8px;
+        letter-spacing: .3px;
+        transition: opacity .2s, transform .1s;
+        cursor: pointer;
+    }
+    .big-green-btn:hover  { opacity: .93; }
+    .big-green-btn:active { transform: scale(.98); }
+
+    /* ── TODAY VISITS ── */
+    .empty-state { text-align: center; padding: 40px 0; color: #aab8c8; }
+    .empty-state i { font-size: 36px; margin-bottom: 10px; }
+    .empty-state p { font-size: 14px; margin: 0; }
+
+    /* ── SPACING helpers ── */
+    .mt-field { margin-top: 18px; }
+</style>
+{% endblock extra_css %}
+
+
+
+<div class="page-wrap">
+
+    <!-- Header -->
+    <div class="page-header">
+        <h4>Yeni Aptek Viziti</h4>
+        <p>Məlumatları doldurun və viziti qeydə alın</p>
+    </div>
+
+    <!-- Steps -->
+    <div class="steps">
+        <div class="step active" id="step1-btn">1. Məkan</div>
+        <div class="step" id="step2-btn">2. Soruşulan</div>
+        <div class="step" id="step3-btn">3. Satış</div>
+        <div class="step" id="step4-btn">4. Mövcudluq</div>
+        <div class="step" id="step5-btn">5. Rəf & Yekun</div>
+    </div>
+
+    <form method="POST" id="vizit-form">
+        {% csrf_token %}
+
+        <!-- 1. Rayon və Aptek -->
+        <div class="section-card" id="step1">
+            <div class="section-title">
+                <i class="fas fa-map-marker-alt"></i> Rayon və Aptek
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Bölgə</label>
+                    <select name="bolge_id" id="bolge_id" class="form-select" required>
+                        <option value="">Bölgə seçin...</option>
+                        {% for bolge in bolgeler %}
+                        <option value="{{ bolge.id }}">{{ bolge.region_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6" id="rayon-wrap">
+                    <label class="form-label">Rayon</label>
+                    <select name="rayon_id" id="rayon_id" class="form-select">
+                        <option value="">Əvvəlcə bölgə seçin...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-field">
+                <label class="form-label">Aptekin adı</label>
+                <input type="text" name="aptek_ad" id="aptek_ad" class="form-control"
+                       placeholder="Aptekin tam adı" required>
+            </div>
+
+            <div class="mt-field">
+                <label class="form-label">Aptekin nömrəsi / filial <span style="font-weight:400;color:#95a5a6">(ixtiyari)</span></label>
+                <input type="text" name="aptek_nomre" class="form-control"
+                       placeholder="№ 12 və ya filial adı">
             </div>
         </div>
-    </div>
 
-    <div class="card">
-        <div class="card-title">📋 Preparat məlumatları (Aptek hesabatı)</div>
-        <table class="table" id="aptek-table" style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr>
-                    <th>Aptek</th>
-                    <th>Soruşulan Dərman</th>
-                    <th>Satış vəziyyəti</th>
-                    <th>Mövcudluq</th>
-                    <th>Pozisiya</th>
-                    <th>İşçi</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-                </tbody>
-        </table>
-        <button type="button" class="btn btn-outline" onclick="addRow()" style="margin-top:10px;">+ Sətir əlavə et</button>
-    </div>
-
-    <div class="card" id="preparat-section">
-        <div class="card-title">💊 Preparatlar</div>
-        <div style="display:flex; gap:10px; margin-bottom:14px;">
-            <button type="button" class="btn btn-outline" id="select-all-prep">✅ Hamısını seç</button>
-            <button type="button" class="btn btn-outline" id="clear-all-prep">❌ Sıfırla</button>
+        <!-- 2. Soruşulan dərmanlar -->
+        <div class="section-card" id="step2">
+            <div class="section-title">
+                <i class="fas fa-search"></i> Soruşulan dərmanlar
+            </div>
+            <div class="action-bar">
+                <button type="button" class="btn btn-success btn-action" id="sorusulub-all">
+                    <i class="fas fa-check"></i> Hamısını seç
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-action" id="sorusulub-clear">
+                    <i class="fas fa-times"></i> Təmizlə
+                </button>
+            </div>
+            <div class="chip-grid" id="sorusulub-grid">
+                {% for p in preparatlar %}
+                <div class="chip" data-group="sorusulub">
+                    <span class="chip-ico">✓</span>
+                    {{ p.med_name }}
+                    <input type="checkbox" name="sorusulub" value="{{ p.id }}" style="display:none">
+                </div>
+                {% endfor %}
+            </div>
         </div>
-        <div class="preparat-grid">
-            {% for p in dermanlar %}
-            <label class="preparat-item">
-                <input type="checkbox" name="dermanlar[]" value="{{ p.id }}">
-                <span>{{ p.med_name }}</span>
-            </label>
-            {% endfor %}
+
+        <!-- 3. Satış vəziyyəti -->
+        <div class="section-card" id="step3">
+            <div class="section-title">
+                <i class="fas fa-money-bill-wave"></i> Satış vəziyyəti
+            </div>
+            <div class="action-bar">
+                <button type="button" class="btn btn-outline-danger btn-action" id="satis-yox-btn">
+                    <i class="fas fa-ban"></i> Satış olmayıb
+                </button>
+                <button type="button" class="btn btn-success btn-action" id="satis-all-btn">
+                    <i class="fas fa-check-double"></i> Hamısı satılıb
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-action" id="satis-clear">
+                    <i class="fas fa-times"></i> Təmizlə
+                </button>
+            </div>
+            <div class="chip-grid" id="satilib-grid">
+                {% for p in preparatlar %}
+                <div class="chip" data-group="satilib">
+                    <span class="chip-ico">✓</span>
+                    {{ p.med_name }}
+                    <input type="checkbox" name="satilib" value="{{ p.id }}" style="display:none">
+                </div>
+                {% endfor %}
+            </div>
         </div>
+
+        <!-- 4. Mövcudluq -->
+        <div class="section-card" id="step4">
+            <div class="section-title">
+                <i class="fas fa-boxes"></i> Aptekdəki mövcudluq
+            </div>
+            <div class="action-bar">
+                <button type="button" class="btn btn-success btn-action" id="movcud-all-btn">
+                    <i class="fas fa-check"></i> Hamısı var
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-action" id="movcud-clear">
+                    <i class="fas fa-times"></i> Təmizlə
+                </button>
+            </div>
+            <p style="font-size:12px;color:#95a5a6;margin:-4px 0 12px">
+                <i class="fas fa-info-circle"></i>
+                Aptekdə <strong>olmayan</strong> dərmanları seçin
+            </p>
+            <div class="chip-grid" id="yoxdur-grid">
+                {% for p in preparatlar %}
+                <div class="chip" data-group="yoxdur">
+                    <span class="chip-ico">✓</span>
+                    {{ p.med_name }}
+                    <input type="checkbox" name="yoxdur" value="{{ p.id }}" style="display:none">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 5. Rəf vəziyyəti & Yekun -->
+        <div class="section-card" id="step5">
+            <div class="section-title">
+                <i class="fas fa-layer-group"></i> Rəf vəziyyəti
+            </div>
+
+            <input type="hidden" name="ref_veziyyeti" id="ref_val">
+
+            <div class="ref-grid">
+                <button type="button" class="ref-btn" data-val="Ayrıca rəfdə">
+                    <i class="fas fa-folder"></i> Ayrı rəfdə
+                </button>
+                <button type="button" class="ref-btn" data-val="Fərqli rəflərdə">
+                    <i class="fas fa-book"></i> Fərqli rəflərdə
+                </button>
+            </div>
+
+            <div class="mt-field">
+                <label class="form-label">Aptek işçisinin adı</label>
+                <input type="text" name="aptek_iscisi" class="form-control"
+                       placeholder="Əczacı / işçinin adı">
+            </div>
+
+            <div class="mt-field">
+                <label class="form-label">Əlavə qeyd / müşahidə</label>
+                <textarea name="qeyd" class="form-control" rows="3"
+                          placeholder="Əlavə məlumat..."></textarea>
+            </div>
+
+            <button type="submit" name="vizit_saxla" class="big-green-btn">
+                <i class="fas fa-lock"></i>&nbsp; Viziti Bağla
+            </button>
+        </div>
+
+    </form>
+
+    <div class="section-card mt-2">
+        <div class="section-title">
+            <i class="fas fa-clock"></i>
+            Bu gün — <strong style="margin-left:4px">{{ bugun_vizitler|length }}</strong>&nbsp;vizit
+        </div>
+    
+        {% if bugun_vizitler %}
+            <div class="table-responsive">
+                <table class="table table-hover" style="font-size: 13px; color: #34495e;">
+                    <thead>
+                        <tr>
+                            <th>Aptek</th>
+                            <th>Aptek Nömrəsi</th>
+                            <th>Rayon</th>
+                            <th>Rəf Vəziyyəti</th>
+                            <th>Vaxt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vizit in bugun_vizitler %}
+                        <tr>
+                            <td style="font-weight: 600;">{{ vizit.aptek_ad }}</td>
+                            <td>{{ vizit.aptek_nomre }}</td>
+                            <td>{{ vizit.rayon.city_name }}</td>
+                            <td>{{ vizit.ref_vez }}</td>
+                            <td>{{ vizit.created_at|date:"H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>Bu gün hələ heç bir vizit qeydə alınmayıb.</p>
+            </div>
+        {% endif %}
     </div>
 
-    <div style="margin-top: 20px; text-align: right;">
-        <button type="submit" class="btn btn-primary" style="padding: 12px 30px; font-size: 16px; cursor: pointer;">
-            💾 Viziti Tamamla
-        </button>
-    </div>
-</form>
-{% endblock %}
+</div>
+{% endblock content %}
+
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+    const BAKI_IDS = {{ baki_bolge_ids|safe }};
+    document.addEventListener('DOMContentLoaded', () => {
     
-    // Münasibət düymələrinin kliklənmə məntiqi
-    const munasibatButtons = document.querySelectorAll('.munasibat-btn');
-    const munasibatInput = document.getElementById('munasibat_val');
-
-    munasibatButtons.forEach(btn => {
-        btn.addEventListener('click', function () {
-            munasibatButtons.forEach(b => b.classList.remove('selected'));
-            this.classList.add('selected');
-            munasibatInput.value = this.dataset.val;
+        // ── BÖLGƏ → RAYON kaskadı ────────────────────────────────
+        const bolgeEl   = document.getElementById('bolge_id');
+        const rayonEl   = document.getElementById('rayon_id');
+        const rayonWrap = document.getElementById('rayon-wrap');
+    
+        function isBaki(bolgeId) {
+            return BAKI_IDS.includes(parseInt(bolgeId));
+        }
+    
+        function handleBolgeChange() {
+            const selectedValue = bolgeEl.value;
+            const selectedText = bolgeEl.options[bolgeEl.selectedIndex]?.text || '';
+    
+            rayonEl.innerHTML = '<option value="">Rayon seçin...</option>';
+            rayonEl.disabled  = true;
+    
+            if (!selectedValue) {
+                rayonWrap.style.display = '';
+                return;
+            }
+    
+            // DÜZƏLİŞ: ID ilə yoxla (selectedValue, selectedText deyil)
+            if (isBaki(selectedValue)) {
+                rayonWrap.style.display = 'none';
+                rayonEl.value = '';
+                return;
+            }
+    
+            rayonWrap.style.display = '';
+            fetch(`/vizit/ajax/rayonlar/?bolge_id=${selectedValue}`)
+                .then(r => r.json())
+                .then(data => {
+                    data.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value   = r.id;
+                        opt.textContent = r.ad;
+                        rayonEl.appendChild(opt);
+                    });
+                    rayonEl.disabled = false;
+                })
+                .catch(error => console.error('Xəta:', error));
+        }
+    
+        bolgeEl.addEventListener('change', handleBolgeChange);
+        
+        // Səhifə yükləndikdə əgər bölgə artıq seçilibsə yoxla
+        if (bolgeEl.value) {
+            handleBolgeChange();
+        }
+    
+        // ── CHİP toggle ──────────────────────────────────────────
+        const groupCls = {
+            sorusulub: 'sel-sorusulub',
+            satilib:   'sel-satilib',
+            yoxdur:    'sel-yoxdur',
+        };
+    
+        function initChips(gridId) {
+            const grid = document.getElementById(gridId);
+            if (!grid) return;
+            grid.querySelectorAll('.chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const cls = groupCls[chip.dataset.group];
+                    const on  = chip.classList.contains(cls);
+                    chip.classList.toggle(cls, !on);
+                    const cb = chip.querySelector('input');
+                    if (cb) cb.checked = !on;
+                });
+            });
+        }
+        initChips('sorusulub-grid');
+        initChips('satilib-grid');
+        initChips('yoxdur-grid');
+    
+        function setAll(gridId, cls, checked) {
+            document.querySelectorAll(`#${gridId} .chip`).forEach(chip => {
+                chip.classList.toggle(cls, checked);
+                const cb = chip.querySelector('input');
+                if (cb) cb.checked = checked;
+            });
+        }
+    
+        document.getElementById('sorusulub-all')  ?.addEventListener('click', () => setAll('sorusulub-grid', 'sel-sorusulub', true));
+        document.getElementById('sorusulub-clear') ?.addEventListener('click', () => setAll('sorusulub-grid', 'sel-sorusulub', false));
+    
+        document.getElementById('satis-all-btn')  ?.addEventListener('click', () => setAll('satilib-grid', 'sel-satilib', true));
+        document.getElementById('satis-yox-btn')  ?.addEventListener('click', () => setAll('satilib-grid', 'sel-satilib', false));
+        document.getElementById('satis-clear')    ?.addEventListener('click', () => setAll('satilib-grid', 'sel-satilib', false));
+    
+        document.getElementById('movcud-all-btn') ?.addEventListener('click', () => setAll('yoxdur-grid', 'sel-yoxdur', false));
+        document.getElementById('movcud-clear')   ?.addEventListener('click', () => setAll('yoxdur-grid', 'sel-yoxdur', false));
+    
+        // ── RƏF seçimi ───────────────────────────────────────────
+        const refInput = document.getElementById('ref_val');
+        document.querySelectorAll('.ref-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.ref-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (refInput) refInput.value = btn.dataset.val;
+            });
         });
+    
     });
 
-    // Preparatların hamısını seç / sıfırla funksiyası
-    const checkboxes = document.querySelectorAll('input[name="dermanlar[]"]');
-    const selectAllBtn = document.getElementById('select-all-prep');
-    const clearAllBtn = document.getElementById('clear-all-prep');
 
-    if (selectAllBtn && clearAllBtn) {
-        selectAllBtn.addEventListener('click', () => {
-            checkboxes.forEach(cb => { cb.checked = true; });
-        });
+    // ── STEP keçid sistemi ──────────────────────────────────────────
+const steps = document.querySelectorAll('.step');
+const sections = {
+    1: document.getElementById('step1'),
+    2: document.getElementById('step2'),
+    3: document.getElementById('step3'),
+    4: document.getElementById('step4'),
+    5: document.getElementById('step5')
+};
 
-        clearAllBtn.addEventListener('click', () => {
-            checkboxes.forEach(cb => { cb.checked = false; });
-        });
-    }
+let currentStep = 1;
 
-    // Form göndərilməzdən əvvəl kiçik yoxlama (Münasibət növü seçilibmi?)
-    const vizitForm = document.getElementById('vizit-form');
-    vizitForm.addEventListener('submit', function (e) {
-        if (!munasibatInput.value) {
-            e.preventDefault();
-            alert('Zəhmət olmasa, Münasibət Növünü seçin!');
+function showStep(step) {
+    // Bütün sectionları gizlət
+    Object.values(sections).forEach(section => {
+        if (section) section.style.display = 'none';
+    });
+    
+    // Seçilmiş step-i göstər
+    if (sections[step]) sections[step].style.display = 'block';
+    
+    // Step-lərin active class-ını yenilə
+    steps.forEach((stepEl, index) => {
+        if (index + 1 === step) {
+            stepEl.classList.add('active');
+        } else {
+            stepEl.classList.remove('active');
         }
     });
-});
-
-
-function addRow() {
-    const tbody = document.getElementById('table-body');
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td><input type="text" name="aptek_ad[]" placeholder="Aptek adı" required></td>
-        <td>
-            <select name="derman_ad[]">
-                {% for p in dermanlar %}
-                <option value="{{ p.med_name }}">{{ p.med_name }}</option>
-                {% endfor %}
-            </select>
-        </td>
-        <td><input type="text" name="satis_vaziyyeti[]" placeholder="Vəziyyət"></td>
-        <td>
-            <select name="movcudluq[]">
-                <option value="Hamısı var">Hamısı var</option>
-                <option value="Qismən var">Qismən var</option>
-                <option value="Yoxdur">Yoxdur</option>
-            </select>
-        </td>
-        <td><input type="text" name="pozisiya[]" placeholder="Rəf mövqeyi"></td>
-        <td><input type="text" name="isci_adi[]" placeholder="İşçi adı"></td>
-        <td><button type="button" onclick="this.parentElement.parentElement.remove()" class="btn-danger">x</button></td>
-    `;
-    tbody.appendChild(row);
+    
+    currentStep = step;
 }
-</script>
+
+// Step-lərə click event əlavə et
+steps.forEach((stepEl, index) => {
+    stepEl.addEventListener('click', () => {
+        const stepNumber = index + 1;
+        
+        // Əgər əvvəlki step-lər tamamlanmayıbsa, keçid etməsin (istəyə bağlı)
+        // Sadəcə olaraq keçid etməyə icazə verək
+        showStep(stepNumber);
+    });
+});
+// Səhifə yüklənəndə yalnız 1-ci step görünsün
+function showStep(step) {
+    // Heç bir section-u gizlətmirik, sadəcə həmin section-a scroll edirik
+    if (sections[step]) {
+        sections[step].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Step-lərin active class-ını yenilə
+    steps.forEach((stepEl, index) => {
+        if (index + 1 === step) {
+            stepEl.classList.add('active');
+        } else {
+            stepEl.classList.remove('active');
+        }
+    });
+
+    currentStep = step;
+}
+
+// Rəf düyməsi seçiləndə step-i sabit saxla (artıq son step-dir)
+    </script>
 {% endblock %}

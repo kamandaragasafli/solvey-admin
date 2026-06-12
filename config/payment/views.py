@@ -41,24 +41,39 @@ def get_doctors_by_region(request):
     return JsonResponse({"doctors": []})
 
 
-def add_pay_dr(request, region_id=None):
-
+def get_doctors(request):
+    region_id = request.GET.get('region_id')
+    search = request.GET.get('search', '').strip()
     
+    # 1. Bölgə yoxdursa, boş qaytar
+    if not region_id:
+        return JsonResponse({"doctors": []})
+        
+    # 2. Həkimləri filtrələ
+# Sərt filtrasiya üçün:
+    doctors = Doctors.objects.filter(bolge_id=region_id, ad__icontains=search)
+    
+    # 3. Axtarış varsa, yalnız onu tətbiq et
+    if search:
+        # 'ad' sahəsinin modelinizdə dəqiq adı nədirsə onu yazın (ad, name, fullname)
+        doctors = doctors.filter(ad__icontains=search) 
+    
+    # 4. JSON formatına çevir
+    data = list(doctors.values('id', 'ad'))
+    return JsonResponse({"doctors": data})
+
+def add_pay_dr(request, region_id=None):
     region = Region.objects.all().order_by('id')
+    doctors = Doctors.objects.none()
 
     if region_id:
-        
         doctors = Doctors.objects.filter(bolge_id=region_id).prefetch_related('odenisler')
-
         for d in doctors:
             last = d.odenisler.order_by('-date').first()
             if last:
                 d.son_odenis_mebleg = last.pay
                 d.son_odenis_tarixi = last.date
                 d.son_odenis_novu = last.payment_type
-
-    else:
-        doctors = Doctors.objects.none()
 
     if request.method == "POST":
         region_id = request.POST.get("region_id")
@@ -69,7 +84,7 @@ def add_pay_dr(request, region_id=None):
 
         if not all([region_id, doctor_id, payment_type, amount, pay_date]):
             messages.error(request, "Zəhmət olmasa bütün sahələri doldurun.")
-            return redirect("add-pay-dr-region", region_id=region_id)
+            return redirect("add-pay-dr-region", region_id=region_id) if region_id else redirect("add-pay-dr")
 
         try:
             borc_miqdari = Decimal(amount)
@@ -77,10 +92,7 @@ def add_pay_dr(request, region_id=None):
             messages.error(request, "Ödəniş məbləği düzgün formatda deyil.")
             return redirect("add-pay-dr-region", region_id=region_id)
 
-        dr = get_object_or_404(Doctors, id=doctor_id)
-
         try:
-            # Ödəniş qeyd edilir
             Payment_doctor.objects.create(
                 area_id=region_id,
                 doctor_id=doctor_id,
@@ -88,12 +100,8 @@ def add_pay_dr(request, region_id=None):
                 pay=borc_miqdari,
                 date=pay_date
             )
-            
- 
             messages.success(request, "Ödəniş uğurla əlavə edildi.")
             return redirect("doctor_detail", doctor_id=doctor_id)
-
-
         except Exception as e:
             messages.error(request, f"Xəta baş verdi: {e}")
             return redirect("add-pay-dr-region", region_id=region_id)
@@ -101,7 +109,7 @@ def add_pay_dr(request, region_id=None):
     context = {
         "region": region,
         "doctors": doctors,
-        "selected_region_id": region_id,
+        "selected_region_id": int(region_id) if region_id and str(region_id).isdigit() else None,
     }
     return render(request, "crud/addpay_dr.html", context)
 

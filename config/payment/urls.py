@@ -1,11 +1,13 @@
 from django.urls import path
 from payment import views
+from payment.views import get_doctors
 from doctors.views import del_payments
 
 
 
 urlpatterns = [
     path("add-pay-dr/", views.add_pay_dr, name="add-pay-dr"),
+    path('reports/ajax/get-doctors/', get_doctors, name='get_doctors'),
     path("add-pay-dr/<int:region_id>/", views.add_pay_dr, name="add-pay-dr-region"),
     path("document-add/", views.document_add, name="document_add"),
      path('financial-documents/', views.financial_documents, name='financial_documents'),

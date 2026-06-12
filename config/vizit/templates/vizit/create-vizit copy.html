@@ -1,0 +1,285 @@
+{% extends 'vizit/base.html' %}
+
+{% block title %}Yeni Vizit — Solvey Pharma{% endblock %}
+
+{% block content %}
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert {% if '❌' in message.message %}alert-error{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<div class="steps">
+    <div class="step active" id="step-1">1. Bölgə & Rayon & Həkim</div>
+    <div class="step" id="step-2">2. Münasibət</div>
+    <div class="step" id="step-3">3. Preparatlar</div>
+    <div class="step" id="step-4">4. Bağla</div>
+</div>
+
+<form method="post" id="vizit-form">
+    {% csrf_token %}
+
+    <div class="card">
+        <div class="card-title">📍 Bölgə, Rayon və Həkim</div>
+        <div class="grid-3" id="location-grid">
+            <div>
+                <label>Bölgə</label>
+                <select name="bolge_id" id="bolge_id" class="form-control" required>
+                    <option value="">Bölgə seçin...</option>
+                    {% for b in bolgeler %}
+                        <option value="{{ b.id }}" {% if b.id|stringformat:"s" == selected_bolge_id|stringformat:"s" %}selected{% endif %}>
+                            {{ b.region_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div id="rayon-wrap">
+                <label>Rayon <span style="font-weight:normal;color:#888;">(ixtiyari)</span></label>
+                <select name="rayon_id" id="rayon_id" disabled>
+                    <option value="">Əvvəlcə bölgə...</option>
+                </select>
+            </div>
+            <div>
+                <label>Həkim</label>
+                <select name="hekim_id" id="hekim_id" required disabled>
+                    <option value="">Həkim seçin...</option>
+                </select>
+            </div>
+        </div>
+        <div id="hekim-info" class="hekim-info-panel hidden"></div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">🤝 Münasibət Növü</div>
+        <input type="hidden" name="munasibat" id="munasibat_val" required>
+        <div class="munasibat-grid">
+            <button type="button" class="munasibat-btn" data-val="Xatırlatma">Xatırlatma</button>
+            <button type="button" class="munasibat-btn" data-val="Annotasiya">Annotasiya</button>
+            <button type="button" class="munasibat-btn" data-val="Münasibət">Münasibət</button>
+            <button type="button" class="munasibat-btn" data-val="İş planı">İş planı</button>
+            <button type="button" class="munasibat-btn" data-val="Propaqanda">Propaqanda</button>
+            <button type="button" class="munasibat-btn" data-val="Razılaşma">Razılaşma</button>
+        </div>
+    </div>
+
+    <div class="card" id="preparat-section">
+        <div class="card-title">💊 Preparatlar</div>
+        <div style="display:flex;gap:10px;margin-bottom:14px;">
+            <button type="button" class="btn btn-outline" id="select-all-prep">✅ Hamısını seç</button>
+            <button type="button" class="btn btn-outline" id="clear-all-prep">❌ Sıfırla</button>
+        </div>
+        <div class="preparat-grid">
+            {% for p in preparatlar_siyahisi %}
+            <label class="preparat-item">
+                <input type="checkbox" name="preparatlar[]" value="{{ p.id }}">
+                <span>{{ p.med_name }}</span>
+            </label>
+            {% endfor %}
+        </div>
+        <div style="margin-top:18px;">
+            <label>Qeyd (ixtiyari)</label>
+            <textarea name="qeyd" rows="2" placeholder="Əlavə qeyd..."></textarea>
+        </div>
+        <div style="margin-top:20px;">
+            <button type="submit" name="vizit_bagla" class="btn btn-success btn-lg">🔒 Viziti Bağla</button>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-title" style="justify-content:space-between;">
+        <span>📋 Bu gün ({{ bugun_tarix }}) — {{ bugun_vizitler|length }} vizit</span>
+        {% if bugun_vizitler %}
+        <button type="button" class="btn btn-outline no-print" onclick="window.print();">🖨️ Çap et</button>
+        {% endif %}
+    </div>
+
+    {% if not bugun_vizitler %}
+    <div class="empty">
+        <div class="empty-icon">📭</div>
+        <p>Bu gün hələ vizit yoxdur.</p>
+    </div>
+    {% else %}
+    <ul class="vizit-list">
+        {% for v in bugun_vizitler %}
+        <li>
+            <div class="vizit-num">{{ forloop.counter }}</div>
+            <div class="vizit-info">
+                <div class="hekim-name">
+                    {{ v.hekim.ad }}
+                    {% if v.hekim.ixtisas %}<span class="badge badge-ixtisas">{{ v.hekim.ixtisas }}</span>{% endif %}
+                    {% if v.hekim.kategoriya %}<span class="badge badge-kat">Kat: {{ v.hekim.kategoriya }}</span>{% endif %}
+                </div>
+                <div class="vizit-meta">
+                    {% if v.rayon %}<span>📍 {{ v.rayon.get_city_name_display }}</span>{% endif %}
+                    <span>🤝 {{ v.munasibat }}</span>
+                    <span>🕐 {{ v.vaxt|time:"H:i" }}</span>
+                    {% if user_rol != 'numayende' %}
+                    <span>👤 {{ v.istifadeci.ad }}</span>
+                    {% endif %}
+                </div>
+                <div class="vizit-preparatlar">Dərmanlar:
+                    {% for vp in v.preparatlar.all %}
+                    {{ vp.preparat.med_name }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </div>
+                {% if v.qeyd %}
+                <div style="font-size:13px;margin-top:4px;">📝 {{ v.qeyd }}</div>
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const RAYONLAR_URL = "{% url 'vizit:api_rayonlar' %}";
+const HEKIMLER_URL = "{% url 'vizit:api_hekimler' %}";
+
+document.addEventListener('DOMContentLoaded', function () {
+    const bolgeSelect = document.getElementById('bolge_id');
+    const rayonSelect = document.getElementById('rayon_id');
+    const rayonWrap = document.getElementById('rayon-wrap');
+    const locationGrid = document.getElementById('location-grid');
+    const hekimSelect = document.getElementById('hekim_id');
+    const hekimInfo = document.getElementById('hekim-info');
+
+    function isBakiBolge() {
+        const opt = bolgeSelect.options[bolgeSelect.selectedIndex];
+        return opt && opt.dataset.regionType === 'Bakı';
+    }
+
+    function resetHekimSelect(placeholder) {
+        hekimSelect.innerHTML = `<option value="">${placeholder}</option>`;
+        hekimSelect.disabled = true;
+        if (hekimInfo) hekimInfo.classList.add('hidden');
+    }
+
+    function fillHekimSelect(hekimler) {
+        hekimler.forEach(h => {
+            const opt = new Option(h.ad_soyad, h.id);
+            opt.dataset.ixtKod = h.ixtisas_kod || '';
+            opt.dataset.kat = h.kateqoriya || '';
+            opt.dataset.derece = h.derece || '';
+            hekimSelect.add(opt);
+        });
+        hekimSelect.disabled = false;
+        document.getElementById('step-1').classList.add('active');
+    }
+
+    function setBakiMode(enabled) {
+        if (enabled) {
+            rayonWrap.classList.add('hidden');
+            locationGrid.classList.add('baki-mode');
+            rayonSelect.removeAttribute('required');
+            rayonSelect.disabled = true;
+            rayonSelect.value = '';
+        } else {
+            rayonWrap.classList.remove('hidden');
+            locationGrid.classList.remove('baki-mode');
+        }
+    }
+
+    function loadHekimlerByBolge(bolgeId) {
+        resetHekimSelect('Həkim seçin...');
+        fetch(`${HEKIMLER_URL}?bolge_id=${bolgeId}`)
+            .then(r => r.json())
+            .then(data => fillHekimSelect(data.hekimler));
+    }
+
+    bolgeSelect.addEventListener('change', function () {
+        const bolgeId = this.value;
+        rayonSelect.innerHTML = '<option value="">Rayon seçin (ixtiyari)...</option>';
+        resetHekimSelect('Həkim seçin...');
+        if (!bolgeId) {
+            setBakiMode(false);
+            rayonSelect.disabled = true;
+            return;
+        }
+        if (isBakiBolge()) {
+            setBakiMode(true);
+            loadHekimlerByBolge(bolgeId);
+            return;
+        }
+        setBakiMode(false);
+        fetch(`${RAYONLAR_URL}?bolge_id=${bolgeId}`)
+            .then(r => r.json())
+            .then(data => {
+                data.rayonlar.forEach(r => {
+                    rayonSelect.add(new Option(r.ad, r.id));
+                });
+                rayonSelect.disabled = false;
+                loadHekimlerByBolge(bolgeId);
+            });
+    });
+
+    rayonSelect.addEventListener('change', function () {
+        const rayonId = this.value;
+        const bolgeId = bolgeSelect.value;
+        resetHekimSelect('Həkim seçin...');
+        if (!bolgeId) {
+            return;
+        }
+        if (!rayonId) {
+            loadHekimlerByBolge(bolgeId);
+            return;
+        }
+        fetch(`${HEKIMLER_URL}?rayon_id=${rayonId}`)
+            .then(r => r.json())
+            .then(data => fillHekimSelect(data.hekimler));
+    });
+
+        hekimSelect.addEventListener('change', function () {
+        if (!this.value || !hekimInfo) return;
+        
+        const opt = this.options[this.selectedIndex];
+        
+        // Məlumatları yığırıq
+        const ixtisas = opt.dataset.ixtKod || '—';
+        const kat = opt.dataset.kat || '—';
+        const derece = opt.dataset.derece || '—';
+
+        // HTML-i formalaşdırırıq
+        hekimInfo.innerHTML = `
+            <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff; margin-top: 10px;">
+                <div style="margin-bottom: 5px;">🩺 İxtisas: <strong>${ixtisas}</strong></div>
+                <div style="margin-bottom: 5px;">🏷️ Kateqoriya: <strong>${kat}</strong></div>
+                <div>🎓 Dərəcə: <strong>${derece}</strong></div>
+            </div>
+        `;
+        
+        hekimInfo.classList.remove('hidden');
+    });
+
+    document.querySelectorAll('.munasibat-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.munasibat-btn').forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            document.getElementById('munasibat_val').value = this.dataset.val;
+            document.getElementById('step-2').classList.add('active');
+        });
+    });
+
+    const checkboxes = document.querySelectorAll('input[name="preparatlar[]"]');
+    document.getElementById('select-all-prep').addEventListener('click', () => {
+        checkboxes.forEach(cb => { cb.checked = true; });
+        document.getElementById('step-3').classList.add('active');
+    });
+    document.getElementById('clear-all-prep').addEventListener('click', () => {
+        checkboxes.forEach(cb => { cb.checked = false; });
+    });
+
+    if (bolgeSelect.value) {
+        bolgeSelect.dispatchEvent(new Event('change'));
+    }
+
+    document.getElementById('vizit-form').addEventListener('submit', function () {
+        rayonSelect.disabled = false;
+        hekimSelect.disabled = false;
+    });
+});
+</script>
+{% endblock %}
