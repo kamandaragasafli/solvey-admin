@@ -19,15 +19,16 @@ class LoginRequiredMiddleware:
     ]
 
     def __call__(self, request):
-        # Statik və media faylları bypass et
         if request.path.startswith(settings.STATIC_URL) or request.path.startswith('/media/'):
             return self.get_response(request)
 
-        # Vizit modulu öz sessiyası ilə işləyir — Django auth tələb olunmur
         if request.path.startswith('/vizit/'):
             return self.get_response(request)
 
-        # Trailing slash fərqi olmamalıdır (mobil brauzerlərdə tez-tez /login yazılır)
+        # Groups modulu öz sessiyası ilə işləyir
+        if request.path.startswith('/groups/'):
+            return self.get_response(request)
+
         normalized_path = request.path.rstrip('/') or '/'
 
         if not request.user.is_authenticated and normalized_path not in self.EXEMPT_PATHS:
