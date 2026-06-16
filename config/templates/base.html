@@ -489,7 +489,11 @@
         <i class='bx bx-wallet-alt  icon'></i>
         <span>Aylıq Satışlar</span>
     </a>
-
+    
+    <a href="{% url 'depo-sales' %}" class="nav-item {% if request.resolver_match.url_name == 'depo-sales' %}active{% endif %}">
+        <i class='bx bx-store  icon'></i>
+        <span>Depo Satışları</span>
+    </a>
     <a href="{% url 'report' %}" class="nav-item {% if request.resolver_match.url_name == 'report' %}active{% endif %}">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>

@@ -5,7 +5,7 @@ from decimal import Decimal as D
 from django.utils import timezone
 from django.contrib import messages
 from decimal import Decimal
-from payment.models import Payment_doctor, Sale, MonthlyDoctorReport, Financial_document
+from payment.models import Payment_doctor, Sale, MonthlyDoctorReport, Financial_document, DepoSale
 from regions.models import Region
 from doctors.models import Doctors, Recipe, RecipeDrug
 from medicine.models import Medical
@@ -29,6 +29,7 @@ from decimal import Decimal as d
 from collections import defaultdict
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
+import openpyxl
 
 
 
@@ -565,7 +566,235 @@ def export_sales_excel(request):
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     wb.save(response)
     return response
+  
+def depo_sales(request):
+    all_region = Region.objects.all().order_by("id")
+    all_drug = Medical.objects.all().order_by("id")
 
+    # ================= 1. 1C EXCEL IMPORT (POST) =================
+    if request.method == 'POST' and request.FILES.get('excel_file'):
+        selected_depo_raw = request.POST.get('modal_depo')
+        selected_month    = request.POST.get('modal_month')
+        excel_file        = request.FILES['excel_file']
+
+        depo_mapping = {'avromed': 'Avromed', 'zeytun': 'Zeytun', 'bine': 'Binə'}
+        depo_name    = depo_mapping.get(selected_depo_raw, 'Binə')
+
+        drug_translation = {
+            'бетасол':      'betasol',
+            'витомер д3':   'vitomer d3',
+            'витомер d3':   'vitomer d3',
+            'витомер kids': 'vitomer kids',
+            'витомер':      'vitomer d3',
+            'гептразол':    'heptrazol',
+            'сольтроп':     'soltrop',
+            'soltrop':      'soltrop',
+            'солтр':        'soltrop',
+            'фенсавин':     'fensavin',
+            'сольтеп':      'soltep',
+            'литасол':      'litasol',
+            'простазолин':  'prostazolin',
+            'провитал':     'provital',
+            'геносфер':     'genosfer',
+            'серрасол':     'serrasol',
+            'картовей':     'kartovey',
+            'левостронг':   'levostrong',
+            'опеблок':      'opeblock',
+            'ропсол':       'ropsol',
+            'фесola':       'fesola',
+            'зимвоар':      'zemovar',
+            'земовар':      'zemovar',
+            'опсайдол':     'opsidol',
+            'солсайдол':    'solseda',
+            'солседа':      'solseda',
+            'бетакон':      'betacon',
+            'моксивиста':   'moksivista',
+            'пейнстоп':     'peynstop',
+        }
+
+        try:
+            wb    = openpyxl.load_workbook(excel_file, data_only=True)
+            sheet = wb.active
+
+            current_drug = None
+            saved_count  = 0
+
+            with transaction.atomic():
+                for row in range(14, sheet.max_row + 1):
+                    b_obj  = sheet.cell(row=row, column=2)
+                    c_val  = sheet.cell(row=row, column=3).value
+                    b_val  = b_obj.value
+
+                    if b_val is None:
+                        continue
+
+                    b_str = str(b_val).strip().lower()
+
+                    # ── ADDIM 1: Dərman sətirini aşkar et ──────────────────────────
+                    # Kiril dərman adı varsa → bu dərman başlıq sətiridir
+                    is_drug_row      = False
+                    matched_latin    = None
+
+                    for kiril_key, latin_val in drug_translation.items():
+                        if kiril_key in b_str:
+                            is_drug_row   = True
+                            matched_latin = latin_val
+                            break
+
+                    # "флак", "шт", "ампулы" və s. vahid sözləri də dərman sətiridir
+                    if not is_drug_row:
+                        drug_unit_kw = ["флак", "шт", "ампулы", "капсул",
+                                        "капли", "таблет", "мг №", "раствор", "саше", "сироп"]
+                        if any(kw in b_str for kw in drug_unit_kw):
+                            is_drug_row = True
+
+                    if is_drug_row:
+                        drug_obj = None
+
+                        if matched_latin:
+                            drug_obj = next(
+                                (d for d in all_drug
+                                 if d.med_name.lower().strip() == matched_latin),
+                                None
+                            )
+                        # Translation ilə tapılmadısa birbaşa mətndən axtar
+                        if not drug_obj:
+                            drug_obj = next(
+                                (d for d in all_drug
+                                 if d.med_name.lower().strip() in b_str),
+                                None
+                            )
+
+                        if drug_obj:
+                            current_drug = drug_obj
+                        continue  # dərman sətirini data kimi yazma
+
+                    # ── ADDIM 2: Miqdar olmayan sətirləri atla ──────────────────────
+                    if current_drug is None or c_val is None:
+                        continue
+
+                    # ── ADDIM 3: Yalnız indent=1 sətirləri → depo/region cəmi ──────
+                    #
+                    # Excel hierarxiyası:
+                    #   indent=0  → "Итог" (ümumi cəm) — skip
+                    #   indent=1  → Depo/Region cəmi:
+                    #               "Bakı", "Abşeron", "Bölgə (Şəki Depo)",
+                    #               "Şamaxı", "Sumqayıt", "Xaçmaz" ...
+                    #   indent=2  → Alt-region (Şəki, Gəncə, Qəbələ ...) — skip
+                    #   indent=3  → Alt müştəri (VIP class ...) — skip
+                    #
+                    # indent=1 olan sətir = bizim bazaya yazacağımız region cəmidir.
+
+                    try:
+                        indent = b_obj.alignment.indent if b_obj.alignment else 0
+                        indent = indent if indent is not None else 0
+                    except Exception:
+                        indent = 0
+
+                    if indent != 1:
+                        continue  # alt-region, alt-müştəri, yekun → hamısı skip
+
+                    # ── ADDIM 4: Region adını tap ───────────────────────────────────
+                    matched_region = None
+                    for r in all_region:
+                        r_name = r.region_name.lower().strip()
+                        if r_name in b_str:
+                            matched_region = r
+                            break
+
+                    if not matched_region:
+                        continue  # naməlum region → skip
+
+                    # ── ADDIM 5: Miqdarı təmizlə və bazaya yaz ─────────────────────
+                    try:
+                        clean_qty = (
+                            str(c_val)
+                            .replace(" ", "")
+                            .replace("\xa0", "")
+                            .replace(",", ".")
+                            .strip()
+                        )
+                        qty = float(clean_qty)
+
+                        DepoSale.objects.create(
+                            depo_type = depo_name,
+                            region    = matched_region,
+                            drug      = current_drug,
+                            quantity  = qty,
+                            sale_date = f"2026-{str(selected_month).zfill(2)}-01"
+                        )
+                        saved_count += 1
+
+                    except (ValueError, TypeError):
+                        pass  # rəqəmə çevrilməyən dəyəri atla
+
+            messages.success(
+                request,
+                f"{depo_name} üçün {saved_count} region satışı uğurla idxal edildi!"
+            )
+
+        except Exception as e:
+            messages.error(request, f"Excel oxunarkən xəta baş verdi: {str(e)}")
+
+        return redirect('depo-sales')
+
+    # ================= 2. AJAX FILTER (GET) =================
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        depo_mapping   = {'avromed': 'Avromed', 'zeytun': 'Zeytun', 'bine': 'Binə'}
+        selected_depo  = depo_mapping.get(request.GET.get('depo', 'bine'), 'Binə')
+        region_type    = request.GET.get('region_type', 'all')
+        selected_month = request.GET.get('month', 'all')
+
+        regions_queryset = Region.objects.all().order_by("id")
+        if region_type != 'all':
+            regions_queryset = regions_queryset.filter(region_type=region_type)
+
+        sales_data = []
+        for region in regions_queryset:
+            region_sales = []
+            for drug in all_drug:
+                filters = {
+                    'depo_type': selected_depo,
+                    'region':    region,
+                    'drug':      drug,
+                }
+                if selected_month != 'all':
+                    filters['sale_date__month'] = int(selected_month)
+
+                total_qty = (
+                    DepoSale.objects
+                    .filter(**filters)
+                    .aggregate(total=Sum('quantity'))['total'] or 0
+                )
+                region_sales.append(float(total_qty))
+
+            sales_data.append({
+                "region": region.region_name,
+                "sales":  region_sales,
+            })
+
+        return JsonResponse({'sales': sales_data})
+
+    # ================= 3. İLKİN SƏHİFƏ YÜKLƏNMƏSİ =================
+    context = {
+        "all_drug":     all_drug,
+        "region_types": ['Bakı', 'Digər', 'Şəhər'],
+        "months": [
+            {'num': 1,  'name': 'Yanvar'},
+            {'num': 2,  'name': 'Fevral'},
+            {'num': 3,  'name': 'Mart'},
+            {'num': 4,  'name': 'Aprel'},
+            {'num': 5,  'name': 'May'},
+            {'num': 6,  'name': 'İyun'},
+            {'num': 7,  'name': 'İyul'},
+            {'num': 8,  'name': 'Avqust'},
+            {'num': 9,  'name': 'Sentyabr'},
+            {'num': 10, 'name': 'Oktyabr'},
+            {'num': 11, 'name': 'Noyabr'},
+            {'num': 12, 'name': 'Dekabr'},
+        ],
+    }
+    return render(request, "depo-sales.html", context)
 
 def report_list(request):
     region = Region.objects.all().order_by('id')
@@ -575,7 +804,7 @@ def report_list(request):
         "region": region,
         "drug": drug
     }
-    return render(request, "reports/report.html", context)
+    return render(request, "reports/report.html", context )
 
 
 def d(v):

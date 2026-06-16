@@ -51,6 +51,26 @@ class Sale(models.Model):
         verbose_name_plural = "Bölgə Satışları"
 
 
+class DepoSale(models.Model):
+    DEPO_TYPE = [
+        ('Avromed', 'Avromed'),
+        ('Zeytun', 'Zeytun'),
+        ('Binə', 'Binə'),
+    ]
+    depo_type = models.CharField(max_length=200, choices=DEPO_TYPE, default='Avromed')
+    region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name='depo_sales')
+    drug = models.ForeignKey(Medical, on_delete=models.CASCADE, related_name='depo_sales')
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    sale_date = models.DateField()
+
+    def __str__(self):
+        return f"{self.depo_type} - {self.region.region_name} - {self.drug.med_name} - {self.quantity}"
+    
+    class Meta:
+        verbose_name = "Depo Satış"
+        verbose_name_plural = "Depo Satışları"
+
+
 class MonthlyDoctorReport(models.Model):
     region = models.ForeignKey(Region, on_delete=models.CASCADE, blank=True, null=True)
     doctor = models.ForeignKey(Doctors, on_delete=models.CASCADE)

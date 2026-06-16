@@ -18,6 +18,7 @@ urlpatterns = [
     path("addsells/",views.create_sale, name ="add-sell"),
     path("sales/export-excel/", views.export_sales_excel, name="export_sales_excel"),
     path("sales/",views.sales, name ="sales"),
+    path("depo-sales/",views.depo_sales, name ="depo-sales"),
     path("update-sell/",views.update_sale, name ="update-sell"),
     path('hesabat-bagla/', views.hesabat_bagla, name='hesabat_bagla'),
 

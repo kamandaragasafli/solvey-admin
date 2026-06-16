@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Solvey Pharma Tünd Mövzu Stilləri */
+    .report-card {
+        background-color: var(--dark-color, #1f2937);
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: var(--shadow-xl);
+        margin: 20px auto;
+        max-width: 100%;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .report-title {
+        color: #ffffff;
+        font-size: 24px;
+        font-weight: 600;
+        margin-top: 0;
+        margin-bottom: 25px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 15px;
+    }
+    .filter-section {
+        margin-bottom: 30px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 20px;
+    }
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .filter-label {
+        font-weight: 600;
+        font-size: 14px;
+        color: #94a3b8;
+    }
+    .custom-select, .custom-file-input {
+        padding: 10px 18px;
+        font-size: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        background-color: rgba(255, 255, 255, 0.05);
+        cursor: pointer;
+        outline: none;
+        font-weight: 500;
+        color: #ffffff;
+        min-width: 160px;
+        transition: all 0.2s ease;
+    }
+    .custom-select option {
+        background-color: var(--dark-color, #1f2937);
+        color: #ffffff;
+    }
+    .custom-button {
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.2s ease;
+    }
+    .btn-primary { background-color: var(--primary-color, #3b82f6); color: #fff; }
+    .btn-success { background-color: var(--success-color, #10b981); color: #fff; }
+    
+    /* MODAL TÜND REJİM SİZİN SİSTEMƏ UYĞUNLAŞDIRILMA */
+    .solvey-modal .modal-content {
+        background-color: #111827 !important; /* Daha tünd vizual fon */
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        color: #ffffff;
+    }
+    .solvey-modal .modal-header {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .solvey-modal .modal-footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .solvey-modal .form-label {
+        color: #94a3b8;
+        font-weight: 500;
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    .solvey-modal .btn-close {
+        filter: invert(1); /* X düyməsini ağ rəng edir */
+    }
+
+    .table-container {
+        overflow-x: auto;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+    .matrix-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: center;
+        font-size: 14px;
+    }
+    .matrix-table th, .matrix-table td {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 14px 10px;
+        color: #e2e8f0;
+        vertical-align: middle;
+    }
+    th.rotate {
+        height: 140px;
+        white-space: nowrap;
+        background-color: rgba(255, 255, 255, 0.04);
+        font-weight: 600;
+        color: #ffffff;
+        position: relative;
+    }
+    th.rotate > div {
+        transform: rotate(-90deg);
+        width: 30px;
+        margin: 0 auto;
+        position: absolute;
+        bottom: 35px;
+        left: 0;
+        right: 0;
+    }
+    .header-region {
+        background-color: rgba(255, 255, 255, 0.04);
+        font-weight: 600;
+        color: #ffffff;
+        width: 130px;
+    }
+    .matrix-table td.bg-excel-blue, .matrix-table th.bg-excel-blue {
+        background-color: #8DB4E2 !important;
+        color: #0f172a !important;
+        font-weight: 700;
+    }
+    .matrix-table tbody tr:hover td:not(.bg-excel-blue) {
+        background-color: rgba(255, 255, 255, 0.08);
+    }
+</style>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert" style="border-radius: 8px; margin-bottom: 15px;">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="report-card">
+    <h2 class="report-title">Depo Satış Hesabatı (Matris)</h2>
+    
+    <div class="filter-section">
+        <div class="filter-group">
+            <span class="filter-label">Anbar:</span>
+            <select id="depoSelect" class="custom-select" onchange="updateTable()">
+                <option value="avromed">Avromed Depo</option>
+                <option value="zeytun">Zeytun Depo</option>
+                <option value="bine" selected>Binə Depo</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">Bölgə Tipi:</span>
+            <select id="regionTypeSelect" class="custom-select" onchange="updateTable()">
+                <option value="all">Hamısı (Bütün Bölgələr)</option>
+                {% for r_type in region_types %}
+                    <option value="{{ r_type }}">{{ r_type }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">Ay:</span>
+            <select id="monthSelect" class="custom-select" onchange="updateTable()">
+                <option value="all">Bütün Aylar</option>
+                {% for m in months %}
+                    <option value="{{ m.num }}">{{ m.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <button type="button" id="exportExcelButton" class="custom-button btn btn-success" onclick="exportExcel()">
+                <i class="bi bi-file-earmark-excel"></i> Exceli çıxar
+            </button>
+        </div>
+
+        <div class="filter-group">
+            <button type="button" id="addDepoSaleButton" class="custom-button btn btn-primary" data-bs-toggle="modal" data-bs-target="#importExcelModal">
+                Depo Satışlarını əlavə et <i class="bi bi-plus-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="matrix-table">
+            <thead>
+                <tr>
+                    <th class="header-region">Bölgə</th>
+                    {% for drug in all_drug %}
+                        <th class="rotate"><div>{{ drug.med_name }}</div></th>
+                    {% endfor %}
+                    <th class="rotate"><div>Cəm</div></th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade solvey-modal" id="importExcelModal" tabindex="-1" aria-labelledby="importExcelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importExcelModalLabel"><i class="bi bi-file-earmark-excel-fill text-success"></i> 1C Excel İthalatı (Depo Satışları)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" enctype="multipart/form-data" action="{% url 'depo-sales' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    
+                    <div class="mb-3">
+                        <label for="modal_depo" class="form-label">Satışın Aid Olduğu Anbar:</label>
+                        <select name="modal_depo" id="modal_depo" class="custom-select w-100" required>
+                            <option value="avromed">Avromed Depo</option>
+                            <option value="zeytun">Zeytun Depo</option>
+                            <option value="bine" selected>Binə Depo</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modal_month" class="form-label">Hesabat Ayı:</label>
+                        <select name="modal_month" id="modal_month" class="custom-select w-100" required>
+                            {% for m in months %}
+                                <option value="{{ m.num }}">{{ m.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="excel_file" class="form-label">Excel Faylını Seçin (.xlsx):</label>
+                        <input type="file" name="excel_file" id="excel_file" class="custom-file-input w-100" accept=".xlsx, .xls" required>
+                    </div>
+                    <small class="" style="font-size: 12px;">Qeyd: Excel faylında sütunlar sıra ilə Region, Dərman, Miqdar formatında olmalıdır.</small>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="custom-button style-btn" style="background-color: #374151; color: #fff;" data-bs-dismiss="modal">İmtina</button>
+                    <button type="submit" class="custom-button btn-success">Yükləməni Başlat <i class="bi bi-cloud-arrow-up"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+const totalDrugsCount = {{ all_drug.count }};
+
+function updateTable() {
+    const depo = document.getElementById("depoSelect").value;
+    const regionType = document.getElementById("regionTypeSelect").value;
+    const month = document.getElementById("monthSelect").value;
+    const tableBody = document.getElementById("tableBody");
+    
+    tableBody.innerHTML = `<tr><td colspan="${totalDrugsCount + 2}" style="padding: 20px; color: #94a3b8;">Məlumatlar gətirilir...</td></tr>`;
+
+    fetch(`?depo=${depo}&region_type=${regionType}&month=${month}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        tableBody.innerHTML = "";
+        const currentData = data.sales;
+
+        if (!currentData || currentData.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="${totalDrugsCount + 2}" style="padding: 20px; color: #94a3b8;">Seçilmiş kriteriyalara uyğun satış tapılmadı.</td></tr>`;
+            return;
+        }
+
+        let columnTotals = new Array(totalDrugsCount).fill(0);
+        let grandTotal = 0;
+
+        currentData.forEach(rowData => {
+            let rowHtml = `<tr>`;
+            rowHtml += `<td class="bg-excel-blue">${rowData.region}</td>`;
+            let rowSum = 0;
+            
+            rowData.sales.forEach((sale, index) => {
+                let displayValue = "-";
+                let styleClass = "";
+                
+                if (sale > 0) {
+                    displayValue = sale.toLocaleString();
+                } else if (sale < 0) {
+                    displayValue = sale.toLocaleString();
+                    styleClass = 'style="color: #ef4444; font-weight: bold;"';
+                }
+                
+                rowHtml += `<td ${styleClass}>${displayValue}</td>`;
+                rowSum += sale;
+                if (index < columnTotals.length) { columnTotals[index] += sale; }
+            });
+            
+            let rowSumClass = rowSum < 0 ? 'style="color: #991b1b !important;"' : '';
+            rowHtml += `<td class="bg-excel-blue" ${rowSumClass}>${rowSum.toLocaleString()}</td>`;
+            rowHtml += `</tr>`;
+            
+            grandTotal += rowSum;
+            tableBody.innerHTML += rowHtml;
+        });
+
+        let totalRowHtml = `<tr><td class="bg-excel-blue">Cəm</td>`;
+        columnTotals.forEach(colTotal => {
+            let colClass = colTotal < 0 ? 'style="color: #991b1b !important;"' : '';
+            totalRowHtml += `<td class="bg-excel-blue" ${colClass}>${colTotal.toLocaleString()}</td>`;
+        });
+        let grandClass = grandTotal < 0 ? 'style="color: #991b1b !important;"' : '';
+        totalRowHtml += `<td class="bg-excel-blue" ${grandClass}>${grandTotal.toLocaleString()}</td>`;
+        totalRowHtml += `</tr>`;
+        
+        tableBody.innerHTML += totalRowHtml;
+    })
+    .catch(error => {
+        tableBody.innerHTML = `<tr><td colspan="${totalDrugsCount + 2}" style="padding: 20px; color: #ef4444;">Məlumat yüklənərkən xəta baş verdi.</td></tr>`;
+    });
+}
+
+function exportExcel() {
+    alert("Excel faylı tezliklə hazırlanacaq!");
+}
+
+document.addEventListener("DOMContentLoaded", updateTable);
+</script>
+{% endblock %}

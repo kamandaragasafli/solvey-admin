@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
-from .models import MonthlyDoctorReport, Sale, Payment_doctor, Financial_document
+from .models import MonthlyDoctorReport, Sale, Payment_doctor, Financial_document, DepoSale
 
 
 @admin.register(Sale)
@@ -153,3 +153,15 @@ class MonthlyDoctorReportAdmin(admin.ModelAdmin):
 
 
 admin.site.register(MonthlyDoctorReport, MonthlyDoctorReportAdmin)
+
+
+
+@admin.register(DepoSale)
+class DepoSaleAdmin(admin.ModelAdmin):
+    list_display = ('depo_type', 'region', 'drug', 'quantity', 'sale_date')
+    list_filter = ('depo_type', 'region', 'drug', 'sale_date')
+    search_fields = ('region__region_name', 'drug__med_name')
+    date_hierarchy = 'sale_date'
+    list_per_page = 50
+    list_select_related = ('region', 'drug')
+    ordering = ('-sale_date', 'region__region_name', 'drug__med_name')

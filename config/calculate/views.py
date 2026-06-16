@@ -26,8 +26,8 @@ def login_user(request):
         # Bu sətir sayəsində middleware-dən keçdik!
 
     if request.method == "POST":
-        name_input = request.POST.get("name")
-        password_input = request.POST.get("password")
+        name_input = request.POST.get("name").strip()
+        password_input = request.POST.get("password").strip()
         
         # Real istifadəçini bizim MD5 modelindən yoxlayırıq
         user = Istifadeci.objects.filter(
