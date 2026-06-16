@@ -134,7 +134,7 @@ def hesablamalar(request):
     # 1. TƏHLÜKƏSİZLİK: Əgər istifadəçi giriş etməyibsə, tam URL ilə qeyd olunan login-ə atırıq
     user_data = request.session.get('current_user_data')
     if not user_data:
-        return redirect('/groups/login')  # Səhv yönləndirmənin qarşısını almaq üçün birbaşa statik URL yazırıq
+        return redirect('/groups/login/')  # Səhv yönləndirmənin qarşısını almaq üçün birbaşa statik URL yazırıq
 
     user_role = user_data.get('rol')   
     user_qrup = user_data.get('qrup')  
