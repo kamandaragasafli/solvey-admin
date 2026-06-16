@@ -19,7 +19,7 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f4f6f9; /* Arxa fon açıq boz */
+            background-color: #f4f6f9;
             color: #334155;
             min-height: 100vh;
             display: flex;
@@ -30,7 +30,6 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Giriş Kartı Konteyneri */
         .login-container {
             width: 100%;
             max-width: 420px;
@@ -42,7 +41,6 @@
             transition: transform 0.2s;
         }
 
-        /* Loqo və Başlıq Bölməsi */
         .login-header {
             text-align: center;
             margin-bottom: 32px;
@@ -67,7 +65,6 @@
             color: #64748b;
         }
 
-        /* Form Elementləri */
         .form-group {
             margin-bottom: 20px;
         }
@@ -97,7 +94,33 @@
             box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
         }
 
-        /* Giriş Düyməsi */
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper .form-control {
+            padding-right: 44px;
+        }
+
+        .btn-eye {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #94a3b8;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            transition: color 0.2s;
+        }
+
+        .btn-eye:hover {
+            color: #0284c7;
+        }
+
         .btn-login {
             width: 100%;
             padding: 14px;
@@ -116,7 +139,6 @@
             background-color: #0369a1;
         }
 
-        /* Xəta və Bildiriş Mesajları */
         .alert-error {
             background-color: #fdf2f2;
             border: 1px solid #fde2e2;
@@ -141,7 +163,6 @@
             line-height: 1;
         }
 
-        /* Alt Məlumat (Footer) */
         .login-footer {
             margin-top: 24px;
             text-align: center;
@@ -155,7 +176,9 @@
     <div class="login-container">
         
         <div class="login-header">
-            <span class="login-logo"><img src="{% static 'img/solvey logo.png' %}" style="width: 80px; height: 50px;"></span>
+            <span class="login-logo">
+                <img src="{% static 'img/solvey logo.png' %}" style="width: 80px; height: 50px;">
+            </span>
             <h1 class="login-title">Solvey Pharma</h1>
             <p class="login-subtitle">Sistemə daxil olmaq üçün məlumatlarınızı yazın</p>
         </div>
@@ -174,12 +197,34 @@
             
             <div class="form-group">
                 <label class="form-label" for="username">İstifadəçi Adı</label>
-                <input type="text" id="username" name="name" class="form-control" placeholder="İstifadəçi adınızı daxil edin" autocomplete="username" required>
+                <input type="text" id="username" name="name" class="form-control" 
+                       placeholder="İstifadəçi adınızı daxil edin" 
+                       autocomplete="username" required>
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="password">Şifrə</label>
-                <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" autocomplete="current-password" required>
+                <div class="password-wrapper">
+                    <input type="password" id="password" name="password" class="form-control" 
+                           placeholder="••••••••" autocomplete="current-password" required>
+                    <button type="button" class="btn-eye" onclick="togglePassword()" id="eye-btn">
+                        <!-- Göz açıq ikonu -->
+                        <svg id="eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" 
+                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" 
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        <!-- Göz qapalı ikonu -->
+                        <svg id="eye-closed" xmlns="http://www.w3.org/2000/svg" width="20" height="20" 
+                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" 
+                             stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                            <line x1="1" y1="1" x2="23" y2="23"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <button type="submit" class="btn-login">Sistemə Giriş Yap</button>
@@ -189,6 +234,24 @@
             &copy; 2026 Solvey Pharma. Bütün hüquqlar qorunur.
         </div>
     </div>
+
+    <script>
+        function togglePassword() {
+            const input = document.getElementById('password');
+            const eyeOpen = document.getElementById('eye-open');
+            const eyeClosed = document.getElementById('eye-closed');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                eyeOpen.style.display = 'none';
+                eyeClosed.style.display = 'block';
+            } else {
+                input.type = 'password';
+                eyeOpen.style.display = 'block';
+                eyeClosed.style.display = 'none';
+            }
+        }
+    </script>
 
 </body>
 </html>

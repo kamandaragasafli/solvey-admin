@@ -2,11 +2,22 @@ from django.contrib import admin
 from .models import Istifadeci, Vizit, VizitPreparat, AptekVizit, AptekVizitPreparat
 
 # Register your models here.
-admin.site.register(Istifadeci)
+class IstifadeciAdmin(admin.ModelAdmin):
+    def save_model(self, request, obj, form, change):
+        # Şifrə sahəsi dəyişibsə, hash et
+        if 'sifre' in form.changed_data:
+            obj.sifre = Istifadeci.hash_sifre(form.cleaned_data['sifre'])
+        super().save_model(request, obj, form, change)
+
+admin.site.register(Istifadeci, IstifadeciAdmin)
 admin.site.register(Vizit)
 admin.site.register(VizitPreparat)
 admin.site.register(AptekVizit)
 admin.site.register(AptekVizitPreparat)
+
+
+
+
 
 
 
