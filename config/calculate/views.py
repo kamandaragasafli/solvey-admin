@@ -11,25 +11,13 @@ from django.contrib.auth.models import User
 
 
 def login_user(request):
-    # Əgər adam zatən daxil olubsa, birbaşa hesablamağa getsin
     if request.session.get('current_user_data'):
         return redirect('/groups/calculate/')
 
-    # 🚀 MIDDLWARE-İ SUSDURMAQ (ƏN VACİB HİSSƏ):
-    # Əgər istifadəçi anonimdirsə (çıxış edibsə və ya ilk dəfə gəlirsə),
-    # Biz arxa planda müvəqqəti bir sistem istifadəçisi ilə daxili auth-u aktiv edirik.
-    # Beləcə core.middleware baxır ki, sistem boş deyil və bizi ana /login/-ə ATLA MIR.
-    if not request.user.is_authenticated:
-        system_user, _ = User.objects.get_or_create(username="system_groups_user")
-        system_user.backend = 'django.contrib.auth.backends.ModelBackend'
-        django_login(request, system_user)
-        # Bu sətir sayəsində middleware-dən keçdik!
-
     if request.method == "POST":
-        name_input = request.POST.get("name").strip()
-        password_input = request.POST.get("password").strip()
+        name_input = request.POST.get("name", "").strip()
+        password_input = request.POST.get("password", "").strip()
         
-        # Real istifadəçini bizim MD5 modelindən yoxlayırıq
         user = Istifadeci.objects.filter(
             login=name_input, 
             sifre=Istifadeci.hash_sifre(password_input), 
@@ -37,10 +25,7 @@ def login_user(request):
         ).first()
         
         if user is not None:
-            # Bizim tətbiqin əsas sessiyası
-            request.session['current_user_data'] = user.session_dict()
-            
-            # İndi isə daxili auth sistemini real daxil olan adamın adına keçiririk
+            # Əvvəlcə Django auth user ilə login ol
             django_auth_user, _ = User.objects.get_or_create(
                 username=user.login,
                 defaults={'first_name': user.ad, 'is_active': True}
@@ -48,10 +33,20 @@ def login_user(request):
             django_auth_user.backend = 'django.contrib.auth.backends.ModelBackend'
             django_login(request, django_auth_user)
             
+            # Django_login session flush etdikdən SONRA yaz
+            request.session['current_user_data'] = user.session_dict()
+            request.session.modified = True
+            
             return redirect('/groups/calculate/')
         else:
             messages.error(request, "İstifadəçi adı və ya şifrə səhvdir!")
             return redirect('/groups/login/')
+            
+    # GET request — sistem user ilə middleware-i keç
+    if not request.user.is_authenticated:
+        system_user, _ = User.objects.get_or_create(username="system_groups_user")
+        system_user.backend = 'django.contrib.auth.backends.ModelBackend'
+        django_login(request, system_user)
             
     return render(request, "calculate/login.html")
 
