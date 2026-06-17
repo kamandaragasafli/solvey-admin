@@ -52,92 +52,70 @@ def login_user(request):
 
 
 def logout_user(request):
-    # 🔥 DİQQƏT: django_logout(request) funksiyasını ƏSLA çağırmırıq!
-    # Çünki o çağırılsaydı settings.py-dakı LOGOUT_REDIRECT_URL='login' işə düşəcəkdi 
-    # və middleware bizi dərhal ana /login/-ə tullayacaqdı.
-    
-    # Onun əvəzinə sadəcə bizim xüsusi sessiyanı silirik:
-    if 'current_user_data' in request.session:
-        del request.session['current_user_data']
-    
-    # Daxili auth sistemini də tam silmək əvəzinə, sadəcə yuxarıdakı saxta sistem istifadəçisinə geri qaytarırıq.
-    # Beləcə middleware yenə adamın sistemdə olduğunu zənn edir və bizi rəvan buraxır.
-    system_user, _ = User.objects.get_or_create(username="system_groups_drugs_user")
-    system_user.backend = 'django.contrib.auth.backends.ModelBackend'
-    django_login(request, system_user)
-    
-    # Tam zəmanətli şəkildə öz loginimizə qayıdırıq
+    request.session.flush()
     return redirect('/groups/login/')
 
 # Qiymət siyahısı (Konstantlar funksiyalardan kənarda saxlanılır)
-login_required(login_url="calculate:login_user")
 PRICES_NUMAYENDE_QRUP_1 = {
-    "LEVOSTRONG": 0.6,
-    "LIPOMAG": 3.6,
-    "SOLSEDA": 1.5,
-    "SOLTEP": 0.0,
-    "ZEMOVAR": 2.3,
-    "KALVEY": 0.0,
-    "PAINSTOP": 1.5,
-    "BETASOL": 2.1,
-    "LITASOL": 1.7,
-    "FENSAVIN": 1.6,
+    "LEVOSTRONG": 0.6, "LIPOMAG": 3.6, "SOLSEDA": 1.5, "SOLTEP": 0.0,
+    "ZEMOVAR": 2.3, "KALVEY": 0.0, "PAINSTOP": 1.5, "BETASOL": 2.1,
+    "LITASOL": 1.7, "FENSAVIN": 1.6,
 }
 
-login_required(login_url="calculate:login_user")
 PRICES_NUMAYENDE_QRUP_2 = {
-    "PROSTAZOLIN": 0.6,
-    "HEPTRAZOL": 1.6,
-    "OPEBLOCK": 2.4,
-    "OPSIDOL": 0.0,
-    "SERRASOL": 3.0,
-    "GENOSFER": 1.6,
-    "VITOMER": 1.2,
-    "KARTOVEY": 0.0,
-    "SOLTROP": 2.7,
-    "ROPSOL": 1.4,
-    "MOXIVISTA": 0.6,
+    "PROSTAZOLIN": 0.6, "HEPTRAZOL": 1.6, "OPEBLOCK": 2.4, "OPSIDOL": 0.0,
+    "SERRASOL": 3.0, "GENOSFER": 1.6, "VITOMER": 1.2, "KARTOVEY": 0.0,
+    "SOLTROP": 2.7, "ROPSOL": 1.4, "MOXIVISTA": 0.6,
 }
 
-
-login_required(login_url="calculate:login_user")
-PRICES_MENECER = {
+# Menecer qiymətləri şəkildəki qruplara əsasən ikiyə bölündü
+PRICES_MENECER_QRUP_1 = {
     "LEVOSTRONG": 0.4,
-    "MOXIVISTA": 0.4,
-    "VITOMER": 0.8,
-    "ROPSOL": 0.9,
-    "PROSTAZOLIN": 0.4,
-    "PAINSTOP": 1,
-    "FENSAVIN": 1.2,
-    "GENOSFER": 1.2,
-    "KALVEY": 0,
-    "LIPOMAQ": 3,
+    "LIPOMAG": 3.0,     # "LIPOMAQ" -> "LIPOMAG" olaraq düzəldildi
     "SOLSEDA": 1.2,
-    "SOLTEP": 0,
-    "KARTOVEY": 0,
+    "SOLTEP": 0.0,
+    "ZEMOVAR": 1.7,
+    "KALVEY": 0.0,
+    "PAINSTOP": 1.0,
     "BETASOL": 1.4,
     "LITASOL": 1.3,
-    "OPSIDOL": 0,
-    "SERRASOL": 2,
-    "SOLTROP": 1.8,
-    "ZEMOVAR": 1.7,
-    "OPEBLOCK": 1.6,
-    "HEPTRAZOL": 1.4,
+    "FENSAVIN": 1.2,
 }
 
+PRICES_MENECER_QRUP_2 = {
+    "PROSTAZOLIN": 0.4,
+    "HEPTRAZOL": 1.4,
+    "OPEBLOCK": 1.6,
+    "OPSIDOL": 0.0,
+    "SERRASOL": 2.0,
+    "GENOSFER": 1.2,
+    "VITOMER": 0.8,     # "Vitomer" adının qorunması təmin edilir
+    "KARTOVEY": 0.0,
+    "SOLTROP": 1.8,
+    "ROPSOL": 0.9,
+    "MOXIVISTA": 0.4,
+}
+
+# =========================================================================
+
 def hesablamalar(request):
-    # 1. TƏHLÜKƏSİZLİK: Əgər istifadəçi giriş etməyibsə, tam URL ilə qeyd olunan login-ə atırıq
+    # 1. TƏHLÜKƏSİZLİK: Əgər istifadəçi giriş etməyibsə, redirect edirik
     user_data = request.session.get('current_user_data')
     if not user_data:
-        return redirect('/groups/login/')  # Səhv yönləndirmənin qarşısını almaq üçün birbaşa statik URL yazırıq
+        return redirect('/groups/login/')
 
     user_role = user_data.get('rol')   
     user_qrup = user_data.get('qrup')  
 
-    # --- Qiymət və Qrup Filtrləmə Məntiqi ---
+    # --- Yenilənmiş Qiymət və Qrup Filtrləmə Məntiqi ---
     if user_role in ['menecer', 'diviziya_rehb', 'rehber', 'admin']:
-        active_prices = PRICES_MENECER
+        # Menecer və rəhbərlər üçün qrup ayrımı
+        if user_qrup == 'QRUP 2':
+            active_prices = PRICES_MENECER_QRUP_2
+        else:
+            active_prices = PRICES_MENECER_QRUP_1
     else:
+        # Nümayəndələr üçün qrup ayrımı
         if user_qrup == 'QRUP 2':
             active_prices = PRICES_NUMAYENDE_QRUP_2
         else:
@@ -149,7 +127,7 @@ def hesablamalar(request):
         "PAINSTOP": "Painstop", "BETASOL": "Betasol", "LITASOL": "Litasol", 
         "FENSAVIN": "Fensavin", "PROSTAZOLIN": "Prostazolin", "HEPTRAZOL": "Heptrazol", 
         "OPEBLOCK": "Opeblock", "OPSIDOL": "Opsidol", "SERRASOL": "Serrasol", 
-        "GENOSFER": "Genosfer", "VITOMER": "Vitomer", "KARTOVEY": "Kartovey", 
+        "GENOSFER": "Genosfer", "VITOMER": "Vitomer D3", "KARTOVEY": "Kartovey", 
         "SOLTROP": "Soltrop", "ROPSOL": "Ropsol", "MOXIVISTA": "Moxivista"
     }
 
@@ -162,8 +140,8 @@ def hesablamalar(request):
         "medicals": filtered_items,
         "current_user": {
             "name": user_data.get("ad"),
-            "role": user_data.get("rol"), 
-            "group": user_data.get("qrup")
+            "role": user_role, 
+            "group": user_qrup
         }
     }
     return render(request, "calculate/calculate.html", context)

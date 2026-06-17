@@ -123,6 +123,12 @@ USE_I18N = True
 # yay/qış vaxtı keçidlərinin (əgər tətbiq olunarsa) idarə edilməsi üçün True qalması məsləhətdir
 USE_TZ = True
 
+
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 gün
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = True
+
+
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
