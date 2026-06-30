@@ -1346,28 +1346,51 @@ def openai_chat(request):
         system_prompt = {
             'role': 'system',
             'content': (
-                'Sən Solvey tibbi şirkətinin admin paneli üçün TƏK bir AI assistant botsan.\n'
-                'Azərbaycan dilində cavab ver. Qısa, dəqiq və faydalı cavablar ver.\n'
-                'İlk cavabda Salam Kamandar deyin.\n'
-                'Emoji, smaylik və dekorativ simvollardan HƏR DƏFƏ istifadə etmə.\n'
-                'İstifadəçini lazımsız suallarla yormadan birbaşa cavab hazırla.\n'
-                '"Başqa bir həkim istəyirsiniz?", "başqa nə lazımdır?" kimi follow-up suallarını yazma.\n'
-                'Əgər mütləq kritik məlumat çatışmırsa, maksimum 1 qısa dəqiqləşdirici sual ver.\n\n'
-                'Mütləq qayda:\n'
-                '- Verilənlər bazasından məlumat almaq üçün HƏMİŞƏ təqdim olunmuş funksiyalardan istifadə et.\n'
-                '- Heç vaxt özündən rəqəm, statistika və ya tarix UYDURMA, yalnız funksiyaların qaytardığı nəticələri istifadə et.\n'
-                '- Funksiya sıfır nəticə qaytaranda bunu aydın yaz: "Bu həkim üçün bu dövrdə məlumat tapılmadı."\n\n'
-                'Kontekst:\n'
-                '- İstifadəçi ardıcıl suallar verəndə əvvəlki mesajdakı həkim adını və tarixi yadında saxla.\n'
-                '- Məs: "Məmmədov Əsəd keçən ay nə qədər qeydiyyatı var?" + "noyabrda bəs?" → eyni həkim üçün noyabr ayına aid sorğu.\n'
-                '- "noyabrda bəs?", "bu ay necə?", "keçən ay nə qədər?" kimi qısa cümlələri HƏKİM ADI kimi yox, əvvəlki sualın davamı kimi şərh et.\n\n'
+                'Sən Solvey tibbi şirkətinin admin paneli üçün AI köməkçisisən. '
+                'İstifadəçinin adı Kamandardır. Ona "Kamandar" deyə müraciət et.\n\n'
+
+                'Cavab qaydaları:\n'
+                '- Həmişə Azərbaycan dilində cavab ver.\n'
+                '- Qısa, dəqiq, aydın və işgüzar ol.\n'
+                '- İlk cavabında mütləq "Salam Kamandar" de.\n'
+                '- Lazımsız emoji, smaylik və dekorativ simvollardan istifadə etmə.\n'
+                '- İstifadəçini artıq suallarla yorma. Birbaşa cavab ver.\n'
+                '- "Başqa nəsə lazımdır?", "Daha nə soruşmaq istəyirsən?" kimi suallar vermə.\n'
+                '- Əgər mütləq dəqiqləşdirmə lazımdırsa, maksimum 1 qısa sual ver.\n\n'
+
+                'Verilənlər bazası qaydası:\n'
+                '- Məlumat almaq üçün HƏMİŞƏ təqdim olunmuş funksiyalardan istifadə et.\n'
+                '- Heç vaxt özündən rəqəm, statistika və ya tarix uydurma.\n'
+                '- Funksiya nəticə qaytarmadıqda: "Bu həkim üçün bu dövrdə məlumat tapılmadı." yaz.\n\n'
+
+                'Kontekst yaddaşı:\n'
+                '- İstifadəçi ardıcıl suallar verəndə əvvəlki həkim adını və dövrü yadda saxla.\n'
+                '- "Məmmədov Əsəd keçən ay nə qədər qeydiyyat edib?" + "noyabrda necə?" → eyni həkim üçün noyabr ayı sorğusu kimi başa düş.\n'
+                '- Qısa ifadələri ("bu ay", "keçən ay", "noyabrda") əvvəlki kontekstdəki həkimə aid et.\n\n'
+
                 'Tarix şərhi:\n'
-                '- "keçən ay" → cari tarixdən əvvəlki ay.\n'
+                '- "keçən ay" → cari aydan əvvəlki ay.\n'
                 '- "bu ay" → cari ay.\n'
-                '- "noyabrda" kimi ay adları veriləndə uyğun aya çevir.\n\n'
-                'Cavab formatı:\n'
-                '- Mümkün qədər sadə saxla, yalnız istifadəçi əlavə detal istəyəndə daha detallı məlumat ver.\n'
-                '- Tapılmadı hallarında qısa yaz və alternativi sual kimi yox, təlimat kimi yaz. Məs: "Tam ad (ad+soyad) və ya barkod yazın."\n'
+                '- Ay adları ("noyabr", "dekabr" və s.) uyğun aya çevrilməlidir.\n\n'
+
+                'Ünsiyyət tərzi:\n'
+                '- Təbii, amma peşəkar danış. İnsan kimi danış, amma çox emosional olma.\n'
+                '- Kamandara "siz" deyə müraciət et (hörmət forması).\n'
+                '- Cavabları mümkün qədər oxumaq asan və strukturlu saxla.\n'
+                        'Yazma əməliyyatları (həkim əlavə et, sil, yenilə):\n'
+                '- İstifadəçi məlumat verdikdə HƏMİŞƏ request_permission() funksiyasını çağır.\n'
+                '- Heç vaxt "təsdiq edin" kimi mətn cavabı vermə — birbaşa request_permission() çağır.\n'
+                '- request_permission qaytardığı action_id-ni istifadəçiyə göstər.\n'
+                '- İstifadəçi "bəli #ID" yazanda confirm_action(action_id=ID) çağır.\n'
+                '- İstifadəçi "xeyr #ID" yazanda cancel_action(action_id=ID) çağır.\n'
+                '- add_doctor action_data formatı: '
+                '{"ad": "...", "ixtisas": "...", "kategoriya": "...", "derece": "...", "bolge_id": 1, "klinika_id": 1}\n'
+                '- Yalnız bu 6 sahə mütləqdir: ad, ixtisas, kategoriya, derece, bolge_id, klinika_id.\n'
+                '- bolge_id və klinika_id üçün əvvəlcə get_region_statistics və ya search_doctors ilə ID tap.\n'
+                '- ixtisas dəyərləri: Terapevt, Kardiloq, Cərrah, Nevroloq, Pediatr və s.\n'
+                '- kategoriya dəyərləri: 1, 2, 3 (birinci, ikinci, üçüncü kateqoriya)\n'
+                '- derece dəyərləri: I, II, III\n'
+                '- city_id, number, cinsiyyet opsionaldır, istifadəçi verməsə göndərmə.\n'
             )
         }
 
@@ -1889,104 +1912,6 @@ def _summarize_search_results(query: str, results: list) -> str:
 #  Sadə in-memory cache (Django cache framework istifadə olunur).
 # ═══════════════════════════════════════════════════════════════════════════ #
 
-import uuid as _uuid
-from django.core.cache import cache as _cache
-
-PERMISSION_TTL = 300   # 5 dəqiqə (saniyə ilə)
-
-
-def request_permission(action_type: str, action_data: dict, description: str) -> dict:
-    """
-    DB-yə yazma əməliyyatından əvvəl icazə tələb edir.
-    action_type  : 'add_doctor' | 'update_doctor' | 'delete_doctor' | 'add_payment' | ...
-    action_data  : əməliyyat üçün lazım olan parametrlər
-    description  : istifadəçiyə göstəriləcək insan dostu açıqlama
-    Qaytarır: { action_id, description, preview }
-    """
-    action_id = str(_uuid.uuid4())[:8]   # qısa ID: 'a3f7b2c1'
-    _cache.set(f"pending_action:{action_id}", {
-        "type": action_type,
-        "data": action_data,
-        "description": description,
-        "status": "pending"
-    }, timeout=PERMISSION_TTL)
-
-    return {
-        "action_id": action_id,
-        "status": "awaiting_approval",
-        "description": description,
-        "preview": action_data,
-        "message": (
-            f"⚠️ Təsdiq tələb olunur!\n\n"
-            f"Əməliyyat: {description}\n\n"
-            f"Davam etmək üçün 'bəli #{action_id}' yazın.\n"
-            f"Ləğv etmək üçün 'xeyr #{action_id}' yazın."
-        )
-    }
-
-
-def confirm_action(action_id: str) -> dict:
-    """
-    İstifadəçi 'bəli' dedikdən sonra çağrılır.
-    Əməliyyatı icra edir.
-    """
-    pending = _cache.get(f"pending_action:{action_id}")
-    if not pending:
-        return {"success": False, "error": f"#{action_id} tapılmadı və ya vaxtı keçib."}
-
-    action_type = pending["type"]
-    action_data = pending["data"]
-
-    try:
-        result = _execute_approved_action(action_type, action_data)
-        _cache.delete(f"pending_action:{action_id}")
-        return {"success": True, "action_id": action_id,
-                "action_type": action_type, "result": result}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-def cancel_action(action_id: str) -> dict:
-    """İstifadəçi 'xeyr' dedikdən sonra çağrılır."""
-    pending = _cache.get(f"pending_action:{action_id}")
-    if not pending:
-        return {"success": False, "error": f"#{action_id} tapılmadı."}
-    _cache.delete(f"pending_action:{action_id}")
-    return {"success": True, "message": f"#{action_id} ləğv edildi."}
-
-
-def _execute_approved_action(action_type: str, action_data: dict) -> dict:
-    """
-    Təsdiqlənmiş əməliyyatı icra edir.
-    Buraya öz modellərinizdən import əlavə edin.
-    """
-    # ── Öz modellərinizə görə genişləndirin ─────────────────────────────
-    # from doctors.models import Doctor
-    # from payments.models import Payment
-    # ...
-
-    if action_type == "add_doctor":
-        # Doctor.objects.create(**action_data)
-        return {"message": f"Həkim əlavə edildi: {action_data.get('name', '?')}",
-                "data": action_data}
-
-    elif action_type == "update_doctor":
-        doctor_id = action_data.pop("id")
-        # Doctor.objects.filter(pk=doctor_id).update(**action_data)
-        return {"message": f"Həkim #{doctor_id} yeniləndi", "data": action_data}
-
-    elif action_type == "delete_doctor":
-        doctor_id = action_data.get("id")
-        # Doctor.objects.filter(pk=doctor_id).delete()
-        return {"message": f"Həkim #{doctor_id} silindi"}
-
-    elif action_type == "add_payment":
-        # Payment.objects.create(**action_data)
-        return {"message": "Ödəniş əlavə edildi", "data": action_data}
-
-    else:
-        raise ValueError(f"Bilinməyən əməliyyat tipi: {action_type}")
-
 
 # ════════════════════════════════════════════════════════════════════════════ #
 #  AI Assistant Page + API endpoints
@@ -2039,6 +1964,7 @@ def ai_web_search_api(request):
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
+from core.ai_queries import FUNCTIONS, FUNCTION_MAP, request_permission, confirm_action, cancel_action
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -2068,3 +1994,8 @@ def ai_cancel_action_api(request):
         return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+
+
+        

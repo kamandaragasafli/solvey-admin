@@ -24,6 +24,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
+    
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     
     <style>
@@ -382,10 +383,16 @@
                 <ul class="navbar-menu">
                     <li>
                         <a href="{% url 'calculate:hesablamalar' %}" class="nav-link">
-                            <i class="bi bi-house-fill"></i> Hesablamalar
+                            <i class="bi bi-house-fill"></i> Əsas səhifə
                         </a>
                     </li>
                     {% if current_user.role == 'admin' or current_user.role == 'rehber' or current_user.role == 'Admin' or current_user.role == 'Rehber' %} 
+                    <li>
+                        <a href="{% url 'calculate:reports_list' %}" class="nav-link">
+                            <i class="bi bi-calculator-fill"></i> Hesablamalar
+                        </a>
+                    </li>
+                   
                     <li>
                         <a href="/groups/admin/" class="nav-link">
                             <i class="bi bi-gear-fill"></i> Ayarlar
@@ -396,9 +403,9 @@
 
                 <div class="navbar-user">
                     {% if current_user %}
-                        <div class="user-avatar">{{ current_user.ad|first|upper }}</div>
+                       
                         <span class="user-name">
-                            {{ current_user.ad }} 
+                            {{ current_user.name }} 
                             {% if current_user.qrup %}- {{ current_user.get_qrup_display }}{% endif %} 
                         </span>
                     {% else %}

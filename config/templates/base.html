@@ -466,6 +466,12 @@
         <span>Maliyyələr</span>
     </a>
 
+    <a href="{% url 'ai-assistant' %}" class="nav-item {% if request.resolver_match.url_name == 'ai-assistant' %}active{% endif %}">
+        <i class="bi bi-robot"></i>
+        <span>AI Assistant</span>
+    </a>
+
+
     <div class="prescription-divider"></div>
 
     <a href="{% url 'drugs' %}" class="nav-item {% if request.resolver_match.url_name == 'drugs' %}active{% endif %}">
@@ -576,19 +582,7 @@
           <span>Əməliyyatlar</span>
         </button>
 
-        <div class="user-profile">
-                        <button id="avatarBtn" class="ai-chat-btn" aria-controls="sohbetPanel" aria-expanded="false" title="AI Assistant">
-                            <div class="ai-chat-icon-wrapper">
-                                <i class="bi bi-robot"></i>
-                                <span class="ai-pulse"></span>
-                            </div>
-                        </button>
-                        <!-- {% if user.is_authenticated %}
-                        <span class="user-name">{{ user.username }}</span>
-                        {% else %}
-                         <a href="{% url 'login' %}" class="text-dark"><img src="{% static 'img/man.png' %}" class="fs-5"></a>
-                    {% endif %} -->
-        </div>
+
     </div>
 
     <div class="top-actions" id="topActions">
