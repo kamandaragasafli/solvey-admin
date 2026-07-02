@@ -299,6 +299,67 @@
             font-size: 1.2rem;
         }
     }
+
+    .filter-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 12px 16px;
+        background-color: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .filter-label {
+        font-weight: 600;
+        color: #475569;
+        font-size: 0.9rem;
+    }
+
+    .filter-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .filter-btn {
+        padding: 8px 16px;
+        border: 1px solid #cbd5e1;
+        background-color: white;
+        color: #475569;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+        background-color: #f1f5f9;
+        border-color: #94a3b8;
+    }
+
+    .filter-btn.active {
+        background-color: #0284c7;
+        color: white;
+        border-color: #0284c7;
+    }
+
+    @media (max-width: 768px) {
+        .filter-section {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .filter-buttons {
+            width: 100%;
+        }
+
+        .filter-btn {
+            flex: 1;
+            text-align: center;
+        }
+    }
 </style>
 
 <div class="qiymet-wrapper">
@@ -309,14 +370,31 @@
         {% endif %}
     </div>
 
+    <!-- Filter bölümü (yalnız admin/rehber üçün) -->
+    {% if current_user.role|lower in 'admin rehber diviziya_rehb' or current_user.role|lower == 'admin' or current_user.role|lower == 'rehber' %}
+    <div class="filter-section">
+        <span class="filter-label">🔍 Filter:</span>
+        <div class="filter-buttons">
+            <button class="filter-btn {% if filter_type == 'all' or filter_type == None %}active{% endif %}" onclick="setFilter('all')">
+                Ümumi
+            </button>
+            <button class="filter-btn {% if filter_type == 'group1' %}active{% endif %}" onclick="setFilter('group1')">
+                QRUP 1
+            </button>
+            <button class="filter-btn {% if filter_type == 'group2' %}active{% endif %}" onclick="setFilter('group2')">
+                QRUP 2
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Excel düyməsi -->
-    {% if current_user.role == 'admin' or current_user.role == 'rehber' or current_user.role == 'Admin' or current_user.role == 'Rehber' %} 
+   
     <div class="header-actions">
         <button class="btn btn-success excel-btn" onclick="exportToExcel()">
             <i class="bi bi-file-earmark-excel"></i> Excel yüklə
         </button>
     </div>
-    {% endif %}
     <form id="saveForm" action="{% url 'calculate:hesablamalar' %}" method="POST">
         {% csrf_token %}
         
@@ -330,7 +408,7 @@
                     <tr>
                         <th class="col-num">№</th>
                         <th class="col-name">Dərmanın Adı</th>
-                        <th class="col-price">(₼)</th>
+                        <th class="col-price">Qiymət (₼)</th>
                         <th class="col-qty">Ədəd</th>
                         <th class="col-total">Cəm (₼)</th>
                     </tr>
@@ -340,11 +418,11 @@
                     <tr data-default="{{ item.azn|default:'0' }}">
                         <td class="col-num">{{ forloop.counter }}</td>
                         <td class="col-name" data-label="Dərman">{{ item.med_name }}</td>
-                        <td class="col-price" data-label="Qiymət">{{ item.azn }} ₼</td>
+                        <td class="col-price" data-label="Qiymət">{{ item.azn }} </td>
                         <td class="col-qty" data-label="Ədəd">
                             <input type="number" class="input-qty" min="0" step="1" placeholder="0" oninput="hesabla(this)">
                         </td>
-                        <td class="col-total total-field" data-label="Cəm">0.00 ₼</td>
+                        <td class="col-total total-field" data-label="Cəm">0.00</td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -355,8 +433,12 @@
                 
                 <tfoot>
                     <tr>
+                        <td colspan="4" class="grand-total-label">Ümumi Ədəd:</td>
+                        <td class="grand-total-value" id="totalQty">0</td>
+                    </tr>
+                    <tr>
                         <td colspan="4" class="grand-total-label">Yekun Cəm:</td>
-                        <td class="grand-total-value" id="grandTotal">0.00 ₼</td>
+                        <td class="grand-total-value" id="grandTotal">0.00</td>
                     </tr>
                 </tfoot>
             </table>
@@ -373,141 +455,204 @@
     </form>
 
 <!-- SheetJS kitabxanası -->
+<!-- SheetJS kitabxanası -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
-    // Final versiya - Excel export
+    // Filter funksiyası
+    function setFilter(filterType) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('filter', filterType);
+        window.location.href = url.toString();
+    }
+
+    // ============================================================
+    // Excel export — HTML cədvəlini oxumaq əvəzinə birbaşa massivdən
+    // (array-of-arrays) qururuq. Bu üsulda heç bir mətn-parse və
+    // "₼" təmizləmə əməliyyatı olmadığı üçün nə qiymətlər 10 dəfə
+    // böyüyür, nə də manat işarəsi səhv xanaya sızır.
+    // ============================================================
     function exportToExcel() {
-        const table = document.getElementById("priceTable");
-        if (!table) {
+        const rows = document.querySelectorAll('#medRows tr');
+        if (!rows.length) {
             alert("Cədvəl tapılmadı!");
             return;
         }
-    
-        const cloneTable = table.cloneNode(true);
-    
-        // Inputları mətnə çevir
-        cloneTable.querySelectorAll('input.input-qty').forEach(input => {
-            const value = input.value.trim() || "0";
-            input.parentElement.textContent = value;
+
+        const data = [];
+        data.push(['№', 'Dərmanın Adı', 'Qiymət', 'Ədəd', 'Cəm']);
+
+        let counter = 0;
+        let totalQty = 0;
+        let grandTotal = 0;
+
+        rows.forEach(row => {
+            const nameCell = row.querySelector('.col-name');
+            const priceCell = row.querySelector('.col-price');
+            const qtyInput = row.querySelector('.input-qty');
+            if (!nameCell || !priceCell || !qtyInput) return; // boş/empty-msg sətrini ötür
+
+            counter++;
+
+            const name = nameCell.textContent.trim();
+            const price = parseFloat(priceCell.textContent.trim().replace(',', '.')) || 0;
+            const qty = parseInt(qtyInput.value) || 0;
+            const total = price * qty;
+
+            totalQty += qty;
+            grandTotal += total;
+
+            data.push([counter, name, price, qty, total]);
         });
-    
-        // Bold + rəng məntiqi
-        cloneTable.querySelectorAll('tbody tr').forEach(row => {
-            const qty = parseInt(row.querySelector('input.input-qty')?.value) || 0;
-            const totalCell = row.querySelector('.total-field');
-            
-            if (qty > 0 && totalCell) {
-                totalCell.innerHTML = `<b>${totalCell.textContent}</b>`;
-                totalCell.style.fontWeight = "bold";
-            }
-        });
-    
-        // Excel yarat
-        const wb = XLSX.utils.table_to_book(cloneTable, {
-            sheet: "Dərman Qiymətləri"
-        });
-    
-        // Grand Total-ı da bold etmək üçün
-        const ws = wb.Sheets["Dərman Qiymətləri"];
-        const lastRow = XLSX.utils.decode_range(ws['!ref']).e.r + 1;
-        
-        // Yekun cəm sətrini tapıb bold edirik
-        if (ws[`E${lastRow}`]) {
-            ws[`E${lastRow}`].v = parseFloat(ws[`E${lastRow}`].v) || 0;
-            ws[`E${lastRow}`].s = { font: { bold: true }, alignment: { horizontal: "right" } };
+
+        if (counter === 0) {
+            alert("Cədvəldə heç bir dərman tapılmadı!");
+            return;
         }
-    
+
+        data.push(['', '', '', 'Ümumi Ədəd:', totalQty]);
+        data.push(['', '', '', 'Yekun Cəm:', grandTotal]);
+
+        const ws = XLSX.utils.aoa_to_sheet(data);
+
+        // Sütun enləri
+        ws['!cols'] = [
+            { wch: 5 },
+            { wch: 28 },
+            { wch: 12 },
+            { wch: 10 },
+            { wch: 12 }
+        ];
+
+        const range = XLSX.utils.decode_range(ws['!ref']);
+
+        // Qiymət (C) və Cəm (E) sütunlarını rəqəm formatına salırıq
+        for (let r = 1; r <= range.e.r; r++) {
+            const priceCell = ws[XLSX.utils.encode_cell({ r, c: 2 })];
+            if (priceCell && typeof priceCell.v === 'number') {
+                priceCell.t = 'n';
+                priceCell.z = '0.00';
+            }
+            const totalCell = ws[XLSX.utils.encode_cell({ r, c: 4 })];
+            if (totalCell && typeof totalCell.v === 'number') {
+                totalCell.t = 'n';
+                totalCell.z = '0.00';
+            }
+        }
+
+        // Başlıq sətrini bold edirik
+        for (let c = 0; c <= 4; c++) {
+            const headCell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+            if (headCell) headCell.s = { font: { bold: true } };
+        }
+
+        // Son iki sətri (Ümumi Ədəd, Yekun Cəm) bold edirik
+        const lastRow = range.e.r;
+        [lastRow, lastRow - 1].forEach(r => {
+            const labelCell = ws[XLSX.utils.encode_cell({ r, c: 3 })];
+            const valueCell = ws[XLSX.utils.encode_cell({ r, c: 4 })];
+            if (labelCell) labelCell.s = { font: { bold: true } };
+            if (valueCell) valueCell.s = { font: { bold: true }, alignment: { horizontal: 'right' } };
+        });
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Dərman Qiymətləri');
+
         const date = new Date();
-        const fileName = `derman_qiymet_${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}.xlsx`;
-    
+        const fileName = `derman_qiymet_${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}.xlsx`;
+
         XLSX.writeFile(wb, fileName);
     }
-   
 
     function hesabla(input) {
-    if (input.value < 0) input.value = 0;
+        if (input.value < 0) input.value = 0;
 
-    const row = input.closest('tr');
-    const totalField = row.querySelector('.total-field');
-    
-    const rawPrice = (row.dataset.default || '0').replace(',', '.');
-    const price = parseFloat(rawPrice) || 0;
-    const qty = parseInt(input.value) || 0;
+        const row = input.closest('tr');
+        const totalField = row.querySelector('.total-field');
 
-    const total = price * qty;
+        const rawPrice = (row.dataset.default || '0').replace(',', '.');
+        const price = parseFloat(rawPrice) || 0;
+        const qty = parseInt(input.value) || 0;
 
-    // Cəmi yaz
-    totalField.textContent = total.toFixed(2) + ' ₼';
+        const total = price * qty;
 
-    // 0-dan böyük olduqda bold + rəng
-    if (qty > 0) {
-        totalField.style.fontWeight = '700';
-        totalField.style.color = '#0284c7';
-    } else {
-        totalField.style.fontWeight = 'normal';
-        totalField.style.color = '#334155';
+        // Cəmi yaz
+        totalField.textContent = total.toFixed(2) + ' ';
+
+        // 0-dan böyük olduqda bold + rəng
+        if (qty > 0) {
+            totalField.style.fontWeight = '700';
+            totalField.style.color = '#0284c7';
+        } else {
+            totalField.style.fontWeight = 'normal';
+            totalField.style.color = '#334155';
+        }
+
+        // Yekun cəmi yenilə
+        cemHesabla();
     }
 
-    // Yekun cəmi yenilə
-    cemHesabla();
-}
+    function cemHesabla() {
+        let grand = 0;
+        let totalQty = 0;
+        document.querySelectorAll('#medRows tr').forEach(row => {
+            const totalField = row.querySelector('.total-field');
+            const qtyInput = row.querySelector('.input-qty');
+            if (totalField) {
+                let textValue = totalField.textContent.replace('Cəm', '').replace('AZN', '').trim();
+                const value = parseFloat(textValue) || 0;
+                grand += value;
+            }
+            if (qtyInput) {
+                const qty = parseInt(qtyInput.value) || 0;
+                totalQty += qty;
+            }
+        });
+        document.getElementById('grandTotal').innerHTML = (document.documentElement.clientWidth <= 768 ? '<span></span>' : '') + grand.toFixed(2);
+        document.getElementById('totalQty').textContent = totalQty;
+    }
 
-function cemHesabla() {
-    let grand = 0;
-    document.querySelectorAll('#medRows tr').forEach(row => {
-        const totalField = row.querySelector('.total-field');
-        if (totalField) {
-            // Mətndən yalnız rəqəm hissəsini ayırırıq
-            let textValue = totalField.textContent.replace('Cəm', '').replace('AZN', '').trim();
-            const value = parseFloat(textValue) || 0;
-            grand += value;
-        }
-    });
-    document.getElementById('grandTotal').innerHTML = (document.documentElement.clientWidth <= 768 ? '<span></span>' : '') + grand.toFixed(2) + ' AZN';
-}
+    // Ekran ölçüsü dəyişəndə yekun cəmin dizaynının pozulmaması üçün kiçik tənzimləmə
+    window.addEventListener('resize', cemHesabla);
 
-// Ekran ölçüsü dəyişəndə yekun cəmin dizaynının pozulmaması üçün kiçik tənzimləmə
-window.addEventListener('resize', cemHesabla);
+    document.getElementById('saveForm').addEventListener('submit', function (e) {
+        const rows = document.querySelectorAll('#medRows tr');
+        const items = [];
+        let grandTotal = 0;
 
+        rows.forEach(row => {
+            const nameCell = row.querySelector('.col-name');
+            const priceCell = row.querySelector('.col-price');
+            const qtyInput = row.querySelector('.input-qty');
+            const totalCell = row.querySelector('.total-field');
 
-document.getElementById('saveForm').addEventListener('submit', function(e) {
-    const rows = document.querySelectorAll('#medRows tr');
-    const items = [];
-    let grandTotal = 0;
+            if (!nameCell || !qtyInput) return; // boş/empty-msg sətirini ötür
 
-    rows.forEach(row => {
-        const nameCell = row.querySelector('.col-name');
-        const priceCell = row.querySelector('.col-price');
-        const qtyInput = row.querySelector('.input-qty');
-        const totalCell = row.querySelector('.total-field');
+            const qty = parseFloat(qtyInput.value) || 0;
+            if (qty <= 0) return; // sıfır ədəd olanları əlavə etmə
 
-        if (!nameCell || !qtyInput) return; // boş/empty-msg sətirini ötür
+            const price = parseFloat(priceCell.textContent.replace('', '').replace(',', '.').trim()) || 0;
+            const total = parseFloat(totalCell.textContent.replace('', '').replace(',', '.').trim()) || (price * qty);
 
-        const qty = parseFloat(qtyInput.value) || 0;
-        if (qty <= 0) return; // sıfır ədəd olanları əlavə etmə
+            items.push({
+                name: nameCell.textContent.trim(),
+                price: price,
+                qty: qty,
+                total: total
+            });
 
-        const price = parseFloat(priceCell.textContent.replace('₼', '').replace(',', '.').trim()) || 0;
-        const total = parseFloat(totalCell.textContent.replace('₼', '').replace(',', '.').trim()) || (price * qty);
-
-        items.push({
-            name: nameCell.textContent.trim(),
-            price: price,
-            qty: qty,
-            total: total
+            grandTotal += total;
         });
 
-        grandTotal += total;
+        if (items.length === 0) {
+            e.preventDefault();
+            alert('Ən azı bir dərman üçün ədəd daxil edin.');
+            return;
+        }
+
+        document.getElementById('hidden_items').value = JSON.stringify(items);
+        document.getElementById('hidden_total').value = grandTotal.toFixed(2);
     });
-
-    if (items.length === 0) {
-        e.preventDefault();
-        alert('Ən azı bir dərman üçün ədəd daxil edin.');
-        return;
-    }
-
-    document.getElementById('hidden_items').value = JSON.stringify(items);
-    document.getElementById('hidden_total').value = grandTotal.toFixed(2);
-});
 </script>
+
 {% endblock content %}

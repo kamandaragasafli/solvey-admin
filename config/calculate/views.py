@@ -122,7 +122,6 @@ def hesablamalar(request):
         items_raw = request.POST.get('items', '[]')
         total_amount_raw = request.POST.get('total_amount', '0')
 
-        # JSON string-i Python obyektinə çevir
         try:
             items_parsed = json.loads(items_raw) if items_raw else []
         except json.JSONDecodeError:
@@ -139,12 +138,12 @@ def hesablamalar(request):
 
         try:
             Report.objects.create(
-                user_id=user_data.get('id'),   # FK-yə pk veriləndə user_id istifadə olunur
+                user_id=user_data.get('id'),
                 user_name=user_data.get('ad'),
                 user_group=user_data.get('qrup'),
                 user_role=user_data.get('rol'),
                 total_amount=total_amount,
-                items=items_parsed,   # artıq real list/dict, JSONField düzgün saxlayacaq
+                items=items_parsed,
             )
             messages.success(request, 'Hesabat uğurla yadda saxlanıldı!')
             return redirect('/groups/calculate/')
@@ -152,17 +151,22 @@ def hesablamalar(request):
             messages.error(request, f'Xəta baş verdi: {e}')
 
     # ==================== GET - Səhifəni göstər ====================
-    user_role = user_data.get('rol')   
-    user_qrup = user_data.get('qrup')  
+    user_role = user_data.get('rol')
+    user_qrup = user_data.get('qrup')
+    filter_type = request.GET.get('filter', 'all')
 
     if user_role in ['rehber', 'diviziya_rehb', 'admin']:
-        active_prices = PRICES_REHBER
+        if filter_type == 'group1':
+            active_prices = PRICES_NUMAYENDE_QRUP_1
+        elif filter_type == 'group2':
+            active_prices = PRICES_NUMAYENDE_QRUP_2
+        else:
+            active_prices = PRICES_REHBER
     elif user_role in ['menecer']:
         active_prices = PRICES_MENECER_QRUP_2 if user_qrup == 'QRUP 2' else PRICES_MENECER_QRUP_1
     else:
         active_prices = PRICES_NUMAYENDE_QRUP_2 if user_qrup == 'QRUP 2' else PRICES_NUMAYENDE_QRUP_1
 
-    # Display names...
     display_names = {
         "LEVOSTRONG": "Levostrong", 
         "LIPOMAG": "Lipomag", 
@@ -185,12 +189,24 @@ def hesablamalar(request):
         "SOLTROP": "Soltrop", 
         "ROPSOL": "Ropsol", 
         "MOXIVISTA": "Moxivista"
-    }  # əvvəlki kimi saxla
+    }
 
     filtered_items = []
     for med_key, price in active_prices.items():
         name_display = display_names.get(med_key, med_key.title())
-        filtered_items.append({"med_name": name_display, "azn": price})
+        
+        # 1. ADDAN MANAT İŞARƏSİNİ TƏMİZLƏMƏK:
+        # Əgər dəyərin içində artıq "(₼)" simvolu varsa onu silirik
+        name_display = name_display.replace("(₼)", "").strip()
+        
+        # 2. QIYMƏT FORMATINI DÜZGÜN ÖTÜRMƏK:
+        # Vergül/nöqtə qarışıqlığının qarşısını almaq üçün qiyməti "0.40" string formatında ötürürük
+        formatted_price = "{:.2f}".format(float(price))
+        
+        filtered_items.append({
+            "med_name": name_display, 
+            "azn": formatted_price
+        })
 
     context = {
         "medicals": filtered_items,
@@ -198,10 +214,10 @@ def hesablamalar(request):
             "name": user_data.get("ad"),
             "role": user_role, 
             "group": user_qrup
-        }
+        },
+        "filter_type": filter_type
     }
     return render(request, "calculate/calculate.html", context)
-
 
 def admin_page(request):
     # 1. TƏHLÜKƏSİZLİK: Giriş edilməyibsə dərhal /groups-drugs/login/ səhifəsinə göndər
