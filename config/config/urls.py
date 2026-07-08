@@ -14,6 +14,7 @@ urlpatterns = [
     path('reports/', include("payment.urls")),
     path('regions/', include("regions.urls")),
     path('doctors/', include("doctors.urls")),
+    path('aptek/', include("aptek.urls")),
     path('api/', include("tracking.urls")),
     path('users/', include("user.urls")),
     path('vizit/', include("vizit.urls")),

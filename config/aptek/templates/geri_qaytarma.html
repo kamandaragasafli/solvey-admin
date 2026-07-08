@@ -1,0 +1,136 @@
+{% extends "anbar_base.html" %}
+{% load aptek_extras %}
+
+{% block title %}Geri qaytarmalar — Solvey Pharma{% endblock %}
+
+{% block extra_css %}
+  .return-stats{
+    display:flex;
+    gap:14px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .return-stats .stat-card{min-width:160px;}
+  .return-table .col-date{min-width:110px;white-space:nowrap;}
+  .return-table .col-aptek{min-width:180px;}
+  .return-table .col-doc{min-width:72px;text-align:center;}
+  .return-table .col-qty{min-width:88px;text-align:right;}
+  .return-table .col-pdf{min-width:64px;text-align:center;}
+  .return-table tbody td.col-pdf a{
+    font-size:12px;
+    color:var(--primary-color);
+    text-decoration:none;
+    font-weight:600;
+  }
+  .return-table tbody td.col-pdf a:hover{text-decoration:underline;}
+  .return-table tbody tr.date-row td{
+    background:#f1f5f9;
+    font-weight:700;
+    color:#334155;
+    font-size:13px;
+    border-top:2px solid #cbd5e1;
+  }
+  .filters .field.search{flex:1;min-width:200px;}
+  .filters .field.search input{min-width:200px;width:100%;}
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1>Geri qaytarmalar</h1>
+    <div class="sub">{{ period_label }} — apteklərdən anbara qaytarılan dərmanlar</div>
+  </div>
+</div>
+
+<div class="return-stats">
+  <div class="stat-card in">
+    <div class="k">Sənəd sayı</div>
+    <div class="v">{{ doc_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="k">Sətir sayı</div>
+    <div class="v">{{ record_count }}</div>
+  </div>
+  <div class="stat-card in">
+    <div class="k">Ümumi miqdar</div>
+    <div class="v">{{ total_qty|qty_az }}</div>
+  </div>
+</div>
+
+<form class="filters" method="get">
+  <div class="field">
+    <label for="f-aptek">Aptek</label>
+    <select id="f-aptek" name="aptek">
+      <option value="all" {% if not selected_aptek %}selected{% endif %}>Bütün apteklər</option>
+      {% for aptek in aptekler %}
+      <option value="{{ aptek.id }}" {% if selected_aptek == aptek.id|stringformat:"s" %}selected{% endif %}>{{ aptek.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-from">Tarixdən</label>
+    <input type="date" id="f-from" name="from" value="{{ date_from }}">
+  </div>
+  <div class="field">
+    <label for="f-to">Tarixə</label>
+    <input type="date" id="f-to" name="to" value="{{ date_to }}">
+  </div>
+  <div class="field search">
+    <label for="f-search">Dərman</label>
+    <input type="text" id="f-search" name="q" value="{{ search }}" placeholder="Dərman adı...">
+  </div>
+  <button type="submit" class="btn btn-primary">Filtrlə</button>
+</form>
+
+<div class="ledger">
+  <div class="ledger-head">
+    <h2>Qaytarma siyahısı</h2>
+    <span class="count">{{ record_count }} sətir</span>
+  </div>
+  <div class="ledger-scroll">
+    <table class="ledger-table return-table">
+      <thead>
+        <tr>
+          <th class="col-date">Tarix</th>
+          <th class="col-aptek">Aptek</th>
+          <th class="col-doc">Sənəd №</th>
+          <th class="drug-name">Dərman</th>
+          <th class="num col-qty">Miqdar</th>
+          <th class="col-pdf">PDF</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if rows %}
+        {% regroup rows by date as by_date %}
+        {% for group in by_date %}
+        <tr class="date-row">
+          <td colspan="6">{{ group.grouper|date:"d.m.Y" }}</td>
+        </tr>
+        {% for row in group.list %}
+        <tr>
+          <td class="col-date">{{ row.date|date:"d.m.Y" }}</td>
+          <td class="col-aptek">{{ row.aptek }}</td>
+          <td class="col-doc">{{ row.qaime_number }}</td>
+          <td class="drug-name">
+            {{ row.drug }}
+            {% if row.drug_full %}<br><span style="font-size:12px;color:var(--ink-soft);font-weight:400;">{{ row.drug_full }}</span>{% endif %}
+          </td>
+          <td class="num col-qty delta-in">{{ row.quantity|delta_in }}</td>
+          <td class="col-pdf">
+            {% if row.pdf_url %}<a href="{{ row.pdf_url }}" target="_blank" rel="noopener">PDF</a>{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="6" style="text-align:center;color:var(--ink-soft);padding:32px;">
+            Seçilmiş dövr üçün geri qaytarma tapılmadı
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

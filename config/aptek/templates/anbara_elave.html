@@ -1,0 +1,140 @@
+{% extends "anbar_base.html" %}
+{% load aptek_extras %}
+
+{% block title %}Anbara əlavə — Solvey Pharma{% endblock %}
+
+{% block extra_css %}
+  .inbound-stats{
+    display:flex;
+    gap:14px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .inbound-stats .stat-card{min-width:160px;}
+  .inbound-table .col-date{min-width:110px;white-space:nowrap;}
+  .inbound-table .col-source{min-width:160px;}
+  .inbound-table .col-aptek{min-width:140px;}
+  .inbound-table .col-qty{min-width:88px;text-align:right;}
+  .inbound-table tbody tr.date-row td{
+    background:#f1f5f9;
+    font-weight:700;
+    color:#334155;
+    font-size:13px;
+    border-top:2px solid #cbd5e1;
+  }
+  .inbound-table .source-pill{
+    display:inline-block;
+    padding:3px 10px;
+    border-radius:6px;
+    font-size:12px;
+    font-weight:600;
+    background:#dbeafe;
+    color:#1e40af;
+  }
+  .inbound-table .source-pill.evvel{background:#fef9c3;color:#854d0e;}
+  .filters .field.search{flex:1;min-width:200px;}
+  .filters .field.search input{min-width:200px;width:100%;}
+  .topbar-actions{display:flex;gap:10px;align-items:center;}
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1>Anbara əlavə</h1>
+    <div class="sub">{{ period_label }} — geri qaytarmadan başqa anbar girişləri (əvvələ qalıq və s.)</div>
+  </div>
+  <div class="topbar-actions">
+    <a href="{% url 'aptek:anbara_elave_form' %}" class="btn btn-primary">Anbara əlavə et</a>
+  </div>
+</div>
+
+<div class="inbound-stats">
+  <div class="stat-card in">
+    <div class="k">Mənbə növü</div>
+    <div class="v">{{ source_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="k">Sətir sayı</div>
+    <div class="v">{{ record_count }}</div>
+  </div>
+  <div class="stat-card in">
+    <div class="k">Ümumi miqdar</div>
+    <div class="v">{{ total_qty|qty_az }}</div>
+  </div>
+</div>
+
+<form class="filters" method="get">
+  <div class="field">
+    <label for="f-aptek">Aptek</label>
+    <select id="f-aptek" name="aptek">
+      <option value="all" {% if not selected_aptek %}selected{% endif %}>Hamısı</option>
+      {% for aptek in aptekler %}
+      <option value="{{ aptek.id }}" {% if selected_aptek == aptek.id|stringformat:"s" %}selected{% endif %}>{{ aptek.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-from">Tarixdən</label>
+    <input type="date" id="f-from" name="from" value="{{ date_from }}">
+  </div>
+  <div class="field">
+    <label for="f-to">Tarixə</label>
+    <input type="date" id="f-to" name="to" value="{{ date_to }}">
+  </div>
+  <div class="field search">
+    <label for="f-search">Axtar</label>
+    <input type="text" id="f-search" name="q" value="{{ search }}" placeholder="Dərman və ya mənbə...">
+  </div>
+  <button type="submit" class="btn btn-primary">Filtrlə</button>
+</form>
+
+<div class="ledger">
+  <div class="ledger-head">
+    <h2>Giriş siyahısı</h2>
+    <span class="count">{{ record_count }} sətir</span>
+  </div>
+  <div class="ledger-scroll">
+    <table class="ledger-table inbound-table">
+      <thead>
+        <tr>
+          <th class="col-date">Tarix</th>
+          <th class="col-source">Mənbə</th>
+          <th class="col-aptek">Aptek</th>
+          <th class="drug-name">Dərman</th>
+          <th class="num col-qty">Miqdar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if rows %}
+        {% regroup rows by date as by_date %}
+        {% for group in by_date %}
+        <tr class="date-row">
+          <td colspan="5">{{ group.grouper|date:"d.m.Y" }}</td>
+        </tr>
+        {% for row in group.list %}
+        <tr>
+          <td class="col-date">{{ row.date|date:"d.m.Y" }}</td>
+          <td class="col-source">
+            <span class="source-pill {% if row.source == 'Əvvələ qalıq' %}evvel{% endif %}">{{ row.source }}</span>
+          </td>
+          <td class="col-aptek">{{ row.aptek }}</td>
+          <td class="drug-name">
+            {{ row.drug }}
+            {% if row.drug_full %}<br><span style="font-size:12px;color:var(--ink-soft);font-weight:400;">{{ row.drug_full }}</span>{% endif %}
+          </td>
+          <td class="num col-qty delta-in">{{ row.quantity|delta_in }}</td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="5" style="text-align:center;color:var(--ink-soft);padding:32px;">
+            Seçilmiş dövr üçün anbar girişi tapılmadı
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

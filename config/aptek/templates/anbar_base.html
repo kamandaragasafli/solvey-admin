@@ -1,0 +1,640 @@
+{% load aptek_extras %}
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Anbar — Solvey Pharma{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary-color: #3b82f6;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --info-color: #06b6d4;
+    --dark-color: #1f2937;
+    --secondary-color: #6b7280;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-card: #ffffff;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --border-color: #e5e7eb;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --radius: 2px;
+    --paper: var(--bg-secondary);
+    --paper-raised: var(--bg-card);
+    --ink: var(--text-primary);
+    --ink-soft: var(--text-secondary);
+    --line: var(--border-color);
+    --green: var(--success-color);
+    --green-soft: rgba(16, 185, 129, 0.12);
+    --red: var(--danger-color);
+    --red-soft: rgba(239, 68, 68, 0.12);
+    --stamp: var(--warning-color);
+
+    /* Sidebar-a məxsus tonlar */
+    --sb-bg: #14181f;
+    --sb-bg-raised: #1b212c;
+    --sb-line: rgba(255,255,255,0.08);
+    --sb-text: #cbd5e1;
+    --sb-text-dim: #64748b;
+    --sb-accent: #3b82f6;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--paper);
+    color:#111827;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    min-height:100vh;
+  }
+  .app{
+    display:grid;
+    grid-template-columns:252px 1fr;
+    min-height:100vh;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    background:var(--sb-bg);
+    color:var(--bg-primary);
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    border-right:1px solid var(--sb-line);
+    position:sticky;
+    top:0;
+    align-self:start;
+    height:100vh;
+    overflow-y:auto;
+    z-index:50;
+  }
+
+  .brand{
+    padding:24px 22px 20px;
+    border-bottom:1px solid var(--sb-line);
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .brand-mark{
+    width:38px; height:38px;
+    flex-shrink:0;
+    background:linear-gradient(145deg, var(--sb-accent), #1d4ed8);
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    font-size:17px;
+    color:#fff;
+    box-shadow:0 4px 10px rgba(59,130,246,0.35);
+  }
+  .brand-text a{
+    color:#fff;
+    text-decoration:none;
+    font-family:'Source Serif 4', serif;
+    font-size:16.5px;
+    font-weight:600;
+    letter-spacing:0.01em;
+    line-height:1.25;
+    display:block;
+  }
+  .brand-text a:hover{color:#e5e7eb;}
+  .brand-text small{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9.5px;
+    letter-spacing:0.13em;
+    text-transform:uppercase;
+    color:var(--sb-text-dim);
+    margin-top:3px;
+    font-weight:500;
+  }
+
+  .nav-section-label{
+    padding:18px 22px 8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--sb-text-dim);
+    font-weight:600;
+  }
+
+  .nav{
+    display:flex;
+    flex-direction:column;
+    gap:1px;
+    padding:0 12px;
+  }
+  .nav a{
+    position:relative;
+    color:var(--sb-text);
+    text-decoration:none;
+    font-size:13.5px;
+    font-weight:500;
+    padding:10px 12px 10px 14px;
+    border-radius:6px;
+    display:flex;
+    align-items:center;
+    gap:11px;
+    letter-spacing:0.01em;
+    transition:background .12s ease, color .12s ease;
+  }
+  .nav a .num{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color:var(--sb-text-dim);
+    width:18px;
+    font-weight:600;
+    transition:color .12s ease;
+  }
+  .nav a::before{
+    content:"";
+    position:absolute;
+    left:0; top:8px; bottom:8px;
+    width:3px;
+    border-radius:2px;
+    background:transparent;
+    transition:background .12s ease;
+  }
+  .nav a:hover{background:rgba(255,255,255,0.05); color:#fff;}
+  .nav a.active{
+    background:rgba(59,130,246,0.14);
+    color:#fff;
+  }
+  .nav a.active::before{background:var(--sb-accent);}
+  .nav a.active .num{color:var(--sb-accent);}
+
+  .sidebar-foot{
+    margin-top:auto;
+    padding:16px 22px 20px;
+    border-top:1px solid var(--sb-line);
+    display:flex;
+    align-items:center;
+    gap:11px;
+  }
+  .sidebar-foot .avatar{
+    width:32px; height:32px;
+    border-radius:50%;
+    background:var(--sb-bg-raised);
+    border:1px solid var(--sb-line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    font-weight:600;
+    color:var(--sb-text);
+    flex-shrink:0;
+  }
+  .sidebar-foot .meta{
+    font-family:'IBM Plex Mono', monospace;
+    line-height:1.5;
+    min-width:0;
+  }
+  .sidebar-foot .meta .user{
+    font-size:12px;
+    color:#e2e8f0;
+    font-weight:500;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .sidebar-foot .meta .date{
+    font-size:10.5px;
+    color:var(--sb-text-dim);
+  }
+
+  /* ---------- Main ---------- */
+  .main{padding:28px 36px 60px; max-width:1400px;}
+
+  .topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-bottom:26px;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  .topbar h1{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    font-size:26px;
+  }
+  .topbar .sub{
+    color:var(--ink-soft);
+    font-size:13px;
+    margin-top:4px;
+  }
+
+  .stamp{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    border:1.5px solid var(--stamp);
+    color:var(--stamp);
+    padding:8px 14px;
+    transform:rotate(-1.5deg);
+    text-align:center;
+    line-height:1.5;
+    letter-spacing:0.03em;
+  }
+  .stamp b{display:block; font-size:13px;}
+
+  /* ---------- Filter bar ---------- */
+  .filters{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    display:flex;
+    gap:22px;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    margin-bottom:22px;
+  }
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .field label{
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.09em;
+    color:var(--ink-soft);
+    font-weight:500;
+  }
+  .field select, .field input{
+    border:1px solid var(--line);
+    background:var(--paper);
+    padding:8px 10px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    color:var(--ink);
+    border-radius:var(--radius);
+    min-width:170px;
+  }
+  .field select:focus, .field input:focus{
+    outline:2px solid var(--primary-color);
+    outline-offset:1px;
+  }
+  .btn{
+    border:none;
+    padding:9px 18px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    border-radius:var(--radius);
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--primary-color); color:#fff;}
+  .btn-primary:hover{background:#2563eb;}
+  .btn-ghost{background:transparent; border:1px solid var(--line); color:var(--ink);}
+  .btn-ghost:hover{border-color:var(--ink-soft);}
+
+  /* ---------- Import panel ---------- */
+  .import-row{
+    display:flex;
+    gap:14px;
+    margin-bottom:24px;
+    flex-wrap:wrap;
+  }
+  .dropzone{
+    flex:1;
+    min-width:260px;
+    border:1.5px dashed var(--line);
+    background:var(--paper-raised);
+    border-radius:var(--radius);
+    padding:18px 20px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    cursor:pointer;
+    transition:border-color .15s;
+  }
+  .dropzone:hover{border-color:var(--primary-color);}
+  .dropzone .icon{
+    width:38px; height:38px;
+    border:1.5px solid var(--primary-color);
+    color:var(--primary-color);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    font-weight:600;
+    flex-shrink:0;
+  }
+  .dropzone .txt b{display:block; font-size:13.5px;}
+  .dropzone .txt span{font-size:12px; color:var(--ink-soft);}
+
+  .stat-card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 18px;
+    min-width:150px;
+  }
+  .stat-card .k{
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-soft);
+  }
+  .stat-card .v{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:22px;
+    font-weight:600;
+    margin-top:4px;
+  }
+  .stat-card.out .v{color:var(--red);}
+  .stat-card.in .v{color:var(--green);}
+
+  /* ---------- Table ---------- */
+  .ledger{
+    background:var(--bg-primary);
+    border:1px solid #d1d5db;
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  .ledger-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:18px 24px;
+    border-bottom:1px solid #d1d5db;
+    background:var(--bg-primary);
+  }
+  .ledger-head h2{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:20px;
+    font-weight:700;
+    color:#111827;
+  }
+  .ledger-head .count{
+    font-size:14px;
+    font-weight:600;
+    color:#374151;
+    background:#f3f4f6;
+    padding:6px 14px;
+    border-radius:20px;
+    border:1px solid #e5e7eb;
+  }
+  .ledger-scroll{
+    max-height:min(70vh, 760px);
+    overflow:auto;
+  }
+  .ledger-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:15px;
+    line-height:1.5;
+  }
+  .ledger-table thead th{
+    position:sticky;
+    top:0;
+    z-index:2;
+    text-align:left;
+    font-size:13px;
+    font-weight:700;
+    color:#1f2937;
+    padding:14px 16px;
+    border-bottom:2px solid #d1d5db;
+    white-space:nowrap;
+  }
+  .ledger-table thead th.num,
+  .ledger-table tbody td.num,
+  .ledger-table tfoot td.num{
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+  }
+  .ledger-table .col-idx{min-width:48px;width:48px;text-align:center;font-weight:700;}
+  .ledger-table .col-evvel{min-width:128px;}
+  .ledger-table .col-gelen{min-width:88px;}
+  .ledger-table .col-cixan{min-width:88px;}
+  .ledger-table .col-qalan-h{min-width:140px;}
+  .ledger-table .col-veziyyet{min-width:108px;text-align:center;}
+  .ledger-table tbody td.col-veziyyet{text-align:center;}
+
+  /* Sütun rəngləri */
+  .ledger-table thead th.col-idx,
+  .ledger-table tbody td.col-idx,
+  .ledger-table tfoot td.col-idx{background:#e2e8f0;}
+  .ledger-table thead th.drug-name,
+  .ledger-table tbody td.drug-name,
+  .ledger-table tfoot td.drug-name{background:#f8fafc;}
+  .ledger-table thead th.col-evvel,
+  .ledger-table tbody td.col-evvel,
+  .ledger-table tfoot td.col-evvel{background:#fef9c3;}
+  .ledger-table thead th.col-gelen,
+  .ledger-table tbody td.col-gelen,
+  .ledger-table tfoot td.col-gelen{background:#d1fae5;}
+  .ledger-table thead th.col-cixan,
+  .ledger-table tbody td.col-cixan,
+  .ledger-table tfoot td.col-cixan{background:#fee2e2;}
+  .ledger-table thead th.col-qalan-h,
+  .ledger-table tbody td.col-qalan,
+  .ledger-table tfoot td.col-qalan{background:#dbeafe;}
+  .ledger-table thead th.col-veziyyet,
+  .ledger-table tbody td.col-veziyyet,
+  .ledger-table tfoot td.col-veziyyet{background:#ede9fe;}
+
+  .ledger-table thead th.col-idx{background:#cbd5e1;}
+  .ledger-table thead th.drug-name{background:#e2e8f0;}
+  .ledger-table thead th.col-evvel{background:#fde047;}
+  .ledger-table thead th.col-gelen{background:#6ee7b7;}
+  .ledger-table thead th.col-cixan{background:#fca5a5;}
+  .ledger-table thead th.col-qalan-h{background:#93c5fd;}
+  .ledger-table thead th.col-veziyyet{background:#c4b5fd;}
+
+  .ledger-table tbody tr:hover td.col-idx{background:#cbd5e1;}
+  .ledger-table tbody tr:hover td.drug-name{background:#f1f5f9;}
+  .ledger-table tbody tr:hover td.col-evvel{background:#fef08a;}
+  .ledger-table tbody tr:hover td.col-gelen{background:#a7f3d0;}
+  .ledger-table tbody tr:hover td.col-cixan{background:#fecaca;}
+  .ledger-table tbody tr:hover td.col-qalan{background:#bfdbfe;}
+  .ledger-table tbody tr:hover td.col-veziyyet{background:#ddd6fe;}
+
+  .ledger-table tbody td{
+    padding:15px 16px;
+    border-bottom:1px solid #d1d5db;
+    color:#111827;
+    font-size:15px;
+    vertical-align:middle;
+    border-right:1px solid #e5e7eb;
+  }
+  .ledger-table tbody td.num{
+    font-size:15px;
+    font-weight:600;
+    color:#1f2937;
+  }
+  .ledger-table .drug-name{
+    font-size:15px;
+    font-weight:600;
+    color:#111827;
+    min-width:180px;
+  }
+  .ledger-table tbody tr.row-quiet .drug-name{color:#374151;}
+  .ledger-table tbody tr.row-quiet td.num{color:#4b5563;font-weight:500;}
+  .ledger-table .col-qalan{
+    font-weight:700;
+    font-size:16px;
+    color:#1e3a8a;
+  }
+  .ledger-table tfoot td{
+    padding:16px 16px;
+    font-weight:700;
+    font-size:15px;
+    color:#111827;
+    border-top:2px solid #374151;
+    border-right:1px solid #e5e7eb;
+  }
+  .ledger-table tfoot .drug-name{font-size:16px;color:#111827;}
+  .ledger-table tfoot .col-qalan{font-size:17px;color:#1e3a8a;}
+
+  .pill{
+    display:inline-block;
+    padding:5px 12px;
+    border-radius:6px;
+    font-size:13px;
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .pill.low{background:#fee2e2; color:#b91c1c;}
+  .pill.ok{background:#d1fae5; color:#047857;}
+
+  .delta-in{color:#047857; font-weight:700;}
+  .delta-out{color:#b91c1c; font-weight:700;}
+
+  .msg{
+    padding:12px 16px;
+    border-radius:var(--radius);
+    margin-bottom:18px;
+    font-size:13px;
+  }
+  .msg-success{background:var(--green-soft);color:var(--success-color);border:1px solid rgba(16,185,129,0.35);}
+  .msg-error{background:var(--red-soft);color:var(--danger-color);border:1px solid rgba(239,68,68,0.35);}
+  .msg-warning{background:rgba(245,158,11,0.12);color:var(--warning-color);border:1px solid rgba(245,158,11,0.35);}
+
+  @media (max-width:880px){
+    .app{grid-template-columns:1fr;}
+    .sidebar{
+      position:sticky;
+      top:0;
+      height:auto;
+      max-height:none;
+      flex-direction:row;
+      align-items:center;
+      padding:0;
+      gap:0;
+      overflow-x:auto;
+      overflow-y:visible;
+      border-right:none;
+      border-bottom:1px solid var(--sb-line);
+      z-index:100;
+    }
+    .brand{border-bottom:none; border-right:1px solid var(--sb-line); padding:14px 18px;}
+    .nav-section-label{display:none;}
+    .nav{flex-direction:row; padding:8px 10px;}
+    .nav a::before{left:8px; right:8px; top:auto; bottom:2px; height:3px; width:auto;}
+    .sidebar-foot{display:none;}
+    .main{padding:20px;}
+    table,.ledger-table{font-size:14px;}
+    .ledger-table tbody td,.ledger-table .drug-name{padding:12px 14px;font-size:14px;}
+  }
+
+  {% block extra_css %}{% endblock %}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-text">
+        <a href="{% url 'index' %}">Solvey Pharma</a>
+        <small>Anbar İdarəetmə</small>
+      </div>
+    </div>
+
+    <div class="nav-section-label">Əməliyyatlar</div>
+    <nav class="nav">
+      <a href="{% url 'aptek:anbar_dashboard' %}" class="{% if request.resolver_match.url_name == 'anbar_dashboard' %}active{% endif %}"><span class="num">01</span> Anbara Nəzarət</a>
+      <a href="{% url 'aptek:evvele_qaliq' %}" class="{% if request.resolver_match.url_name == 'evvele_qaliq' %}active{% endif %}"><span class="num">02</span> Düzəlişlər</a>
+      <a href="{% url 'aptek:anbara_elave_form' %}" class="{% if request.resolver_match.url_name == 'anbara_elave_form' or request.resolver_match.url_name == 'anbara_elave_siyahi' %}active{% endif %}"><span class="num">03</span> Anbara əlavə</a>
+      <a href="{% url 'aptek:geri_qaytarma' %}" class="{% if request.resolver_match.url_name == 'geri_qaytarma' %}active{% endif %}"><span class="num">04</span> Geri qaytarmalar</a>
+      <a href="{% url 'aptek:qaimeler' %}" class="{% if request.resolver_match.url_name == 'qaimeler' %}active{% endif %}"><span class="num">05</span> Qaimələr</a>
+      <a href="{% url 'aptek:aptekler' %}" class="{% if request.resolver_match.url_name == 'aptekler' %}active{% endif %}"><span class="num">06</span> Apteklər</a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="avatar">{{ user_label|slice:":1"|upper }}</div>
+      <div class="meta">
+        <div class="user">{{ user_label }}</div>
+        <div class="date">{{ today }}</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main{% block main_class %}{% endblock %}">
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="msg {% if message.tags == 'error' %}msg-error{% elif message.tags == 'warning' %}msg-warning{% else %}msg-success{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% block content %}
+    {% endblock %}
+
+  </main>
+</div>
+
+<script>
+    const pdfForm = document.getElementById('pdfUploadForm');
+    const pdfInput = document.getElementById('pdfInput');
+    const dropzone = document.getElementById('dropzone');
+    if (!pdfForm || !pdfInput || !dropzone) {
+      // PDF upload yalnız anbar səhifəsindədir
+    } else {
+    dropzone.addEventListener('click', function(){ pdfInput.click(); });
+  
+    dropzone.addEventListener('dragover', function(e){
+      e.preventDefault();
+      dropzone.style.borderColor = 'var(--primary-color)';
+    });
+    dropzone.addEventListener('dragleave', function(){
+      dropzone.style.borderColor = '';
+    });
+    dropzone.addEventListener('drop', function(e){
+      e.preventDefault();
+      dropzone.style.borderColor = '';
+      if(e.dataTransfer.files.length){
+        pdfInput.files = e.dataTransfer.files;
+        pdfForm.submit();
+      }
+    });
+  
+    pdfInput.addEventListener('change', function(e){
+      if(e.target.files[0]){
+        pdfForm.submit();
+      }
+    });
+    }
+</script>
+{% block extra_js %}{% endblock %}
+
+</body>
+</html>

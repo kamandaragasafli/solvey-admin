@@ -1,0 +1,305 @@
+{% extends "anbar_base.html" %}
+{% load aptek_extras %}
+{% block extra_css %}
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(2, 6, 23, .62);
+    display:none; align-items:center; justify-content:center; z-index:1000;
+    backdrop-filter: blur(3px);
+  }
+  .modal-backdrop.show{display:flex;}
+  .manual-modal{
+    width:min(940px, 94vw); max-height:88vh; overflow:auto;
+    background:var(--paper-raised); border:1px solid #dbe2ea; border-radius:12px;
+    box-shadow:0 28px 70px rgba(15, 23, 42, 0.28); padding:18px 18px 14px;
+  }
+  .manual-head{
+    display:flex;justify-content:space-between;align-items:center;
+    margin:2px 0 14px; padding-bottom:10px; border-bottom:1px solid #e5e7eb;
+  }
+  .manual-head h3{font-size:31px;font-weight:700; letter-spacing:.01em;}
+  .manual-close{
+    border:1px solid #d0d7e2; background:#fff; padding:8px 14px; cursor:pointer;
+    border-radius:8px; font-weight:600;
+  }
+  .manual-close:hover{background:#f8fafc;}
+  .manual-grid{
+    display:grid; grid-template-columns:1.2fr 1fr auto; gap:12px; margin-bottom:12px;
+  }
+  .manual-grid .field select,
+  .manual-grid .field input{
+    min-width:0;
+  }
+  .manual-table{
+    width:100%; border-collapse:separate; border-spacing:0; overflow:hidden;
+    border:1px solid #dbe2ea; border-radius:10px;
+  }
+  .manual-table th,.manual-table td{
+    border-bottom:1px solid #e5e7eb;
+    border-right:1px solid #eef2f7;
+    padding:10px 10px;
+  }
+  .manual-table th:last-child,.manual-table td:last-child{border-right:none;}
+  .manual-table tr:last-child td{border-bottom:none;}
+  .manual-table th{
+    background:#f8fafc; font-size:12px; text-align:left; text-transform:uppercase;
+    letter-spacing:.06em; color:#64748b; font-weight:700;
+  }
+  .manual-table td select,
+  .manual-table td input{
+    width:100%; min-width:0; border:1px solid #d3dae6; border-radius:8px;
+    padding:8px 10px; background:#fff;
+  }
+  .manual-table td input:focus,
+  .manual-table td select:focus{
+    outline:2px solid rgba(59,130,246,.25); border-color:#3b82f6;
+  }
+  .manual-remove{
+    min-width:44px; height:38px; border:1px solid #e2e8f0; border-radius:8px;
+    background:#fff; color:#64748b; font-weight:700; cursor:pointer;
+  }
+  .manual-remove:hover{background:#fee2e2; color:#b91c1c; border-color:#fecaca;}
+  .manual-actions{
+    display:flex; gap:10px; justify-content:flex-end; margin-top:14px;
+    padding-top:8px;
+  }
+  .manual-btn{white-space:nowrap;}
+  .ledger .ledger-scroll{
+    max-height:none;
+    overflow:visible;
+  }
+  @media(max-width:880px){
+    .manual-modal{padding:14px 12px;}
+    .manual-head h3{font-size:23px;}
+    .manual-grid{grid-template-columns:1fr;}
+    .manual-actions{position:sticky; bottom:0; background:var(--paper-raised);}
+  }
+{% endblock %}
+{% block content %}
+    <div class="topbar">
+      <div>
+        <h1>{{ month_label }} — Anbar Qalığı</h1>
+        <div class="sub">Bütün dərmanlar üzrə ayın hərəkət tarixçəsi</div>
+      </div>
+      {% if last_qaime %}
+      <div class="stamp">
+        SON QAİMƏ №{{ last_qaime.number }}{% if not selected_aptek %} · {{ last_qaime.aptek.name }}{% endif %}<br>
+        <span class="stamp-label">Tarix</span> <b>{{ last_qaime.doc_date|date:"d.m.Y" }}</b>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Import row -->
+    <form class="import-row" id="pdfUploadForm" method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="dropzone" id="dropzone">
+        <div class="icon">PDF</div>
+        <div class="txt">
+          <b>Qaimə və ya geriqaytarma PDF-i buraya atın</b>
+          <span>Qaimə → anbardan çıxış · Geriqaytarma → anbara giriş</span>
+        </div>
+        <input type="file" id="pdfInput" name="pdf_file" accept="application/pdf" hidden>
+      </div>
+      <div class="stat-card in">
+        <div class="k">Ay ərzində gələn</div>
+        <div class="v">{{ totals.gelen|qty_az }}</div>
+      </div>
+      <div class="stat-card out">
+        <div class="k">Ay ərzində çıxan</div>
+        <div class="v">{{ totals.cixan|qty_az }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="k">Anbarda qalıq</div>
+        <div class="v">{{ totals.qalan|qty_az }}</div>
+      </div>
+    </form>
+
+    <!-- Filters -->
+    <form class="filters" method="get">
+      <div class="field">
+        <label for="f-aptek">Aptek</label>
+        <select id="f-aptek" name="aptek">
+          <option value="all" {% if not selected_aptek %}selected{% endif %}>Bütün apteklər</option>
+          {% for aptek in aptekler %}
+          <option value="{{ aptek.id }}" {% if selected_aptek == aptek.id|stringformat:"s" %}selected{% endif %}>{{ aptek.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-from">Tarixdən</label>
+        <input type="date" id="f-from" name="from" value="{{ date_from }}">
+      </div>
+      <div class="field">
+        <label for="f-to">Tarixə</label>
+        <input type="date" id="f-to" name="to" value="{{ date_to }}">
+      </div>
+      <div class="field">
+        <label for="f-status">Vəziyyət</label>
+        <select id="f-status" name="status">
+          <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Hamısı</option>
+          <option value="low" {% if status_filter == 'low' %}selected{% endif %}>Azalan ehtiyat</option>
+          <option value="ok" {% if status_filter == 'ok' %}selected{% endif %}>Kifayət qədər</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Filtrlə</button>
+      <button type="button" class="btn btn-primary" id="openManualQaime">Qaimə əlavə et</button>
+      <a href="{% url 'aptek:export_ledger' %}?from={{ date_from }}&to={{ date_to }}&aptek={{ selected_aptek|default:'all' }}&status={{ status_filter }}" class="btn btn-ghost">Excel-ə çıxar</a>
+    </form>
+
+    <div class="modal-backdrop" id="manualQaimeModal">
+      <div class="manual-modal">
+        <div class="manual-head">
+          <h3>Manuel qaimə əlavə et</h3>
+          <button type="button" class="manual-close" id="closeManualQaime">Bağla</button>
+        </div>
+        <form method="post" id="manualQaimeForm">
+          {% csrf_token %}
+          <input type="hidden" name="manual_qaime" value="1">
+          <div class="manual-grid">
+            <div class="field">
+              <label for="manual_aptek">Aptek</label>
+              <select id="manual_aptek" name="manual_aptek" required>
+                <option value="">Seçin...</option>
+                {% for aptek in aptekler %}
+                <option value="{{ aptek.id }}">{{ aptek.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label for="manual_doc_date">Tarix</label>
+              <input type="date" id="manual_doc_date" name="manual_doc_date" value="{{ manual_default_date }}" required>
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button type="button" class="btn btn-ghost manual-btn" id="addManualRow">+ Sətir əlavə et</button>
+            </div>
+          </div>
+
+          <table class="manual-table">
+            <thead>
+              <tr>
+                <th style="width:70%;">Dərman</th>
+                <th style="width:20%;">Miqdar</th>
+                <th style="width:10%;">Sil</th>
+              </tr>
+            </thead>
+            <tbody id="manualQaimeRows"></tbody>
+          </table>
+
+          <div class="manual-actions">
+            <button type="button" class="btn btn-ghost" id="cancelManualQaime">Ləğv et</button>
+            <button type="submit" class="btn btn-primary">Qaiməni yadda saxla</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Ledger table -->
+    <div class="ledger">
+      <div class="ledger-head">
+        <h2>Dərman üzrə hərəkət</h2>
+        <span class="count">{{ record_count }} dərman</span>
+      </div>
+      <div class="ledger-scroll">
+      <table class="ledger-table">
+        <thead>
+          <tr>
+            <th class="col-idx">#</th>
+            <th class="drug-name">Malın adı</th>
+            <th class="num col-evvel">Əvvələ qalıq</th>
+            <th class="num col-gelen">Gələn</th>
+            <th class="num col-cixan">Çıxan</th>
+            <th class="num col-qalan-h">Anbarda qalıq</th>
+            <th class="col-veziyyet">Vəziyyət</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr class="{% if row.evvel == 0 and row.gelen == 0 and row.cixan == 0 and row.qalan == 0 %}row-quiet{% endif %}">
+            <td class="col-idx">{{ forloop.counter }}</td>
+            <td class="drug-name">{{ row.ad }}</td>
+            <td class="num col-evvel">{{ row.evvel|qty_az }}</td>
+            <td class="num col-gelen delta-in">{{ row.gelen|delta_in }}</td>
+            <td class="num col-cixan delta-out">{{ row.cixan|delta_out }}</td>
+            <td class="num col-qalan col-qalan-h">{{ row.qalan|qty_az }}</td>
+            <td class="col-veziyyet"><span class="pill {% if row.low %}low{% else %}ok{% endif %}">{% if row.low %}Azalır{% else %}Normal{% endif %}</span></td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" style="text-align:center;color:var(--ink-soft);padding:32px;">Seçilmiş dövr üçün məlumat tapılmadı</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td class="col-idx"></td>
+            <td class="drug-name">Cəmi</td>
+            <td class="num col-evvel">{{ totals.evvel|qty_az }}</td>
+            <td class="num col-gelen delta-in">{{ totals.gelen|delta_in }}</td>
+            <td class="num col-cixan delta-out">{{ totals.cixan|delta_out }}</td>
+            <td class="num col-qalan col-qalan-h">{{ totals.qalan|qty_az }}</td>
+            <td class="col-veziyyet"></td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+    </div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+  (function () {
+    const modal = document.getElementById('manualQaimeModal');
+    const openBtn = document.getElementById('openManualQaime');
+    const closeBtn = document.getElementById('closeManualQaime');
+    const cancelBtn = document.getElementById('cancelManualQaime');
+    const addRowBtn = document.getElementById('addManualRow');
+    const rowsBody = document.getElementById('manualQaimeRows');
+
+    if (!modal || !openBtn || !rowsBody) return;
+
+    const drugOptions = `{% for drug in manual_drugs %}<option value="{{ drug.id }}">{{ drug.med_name }}</option>{% endfor %}`;
+
+    function rowHtml() {
+      return `
+        <tr>
+          <td>
+            <select name="manual_drug_id" required>
+              <option value="">Seçin...</option>
+              ${drugOptions}
+            </select>
+          </td>
+          <td><input type="number" name="manual_qty" min="0.01" step="0.01" placeholder="0" required></td>
+          <td style="text-align:center;"><button type="button" class="manual-remove remove-row">×</button></td>
+        </tr>
+      `;
+    }
+
+    function addRow() {
+      rowsBody.insertAdjacentHTML('beforeend', rowHtml());
+    }
+
+    function openModal() {
+      modal.classList.add('show');
+      if (!rowsBody.children.length) addRow();
+    }
+
+    function closeModal() {
+      modal.classList.remove('show');
+    }
+
+    openBtn.addEventListener('click', openModal);
+    closeBtn && closeBtn.addEventListener('click', closeModal);
+    cancelBtn && cancelBtn.addEventListener('click', closeModal);
+    addRowBtn && addRowBtn.addEventListener('click', addRow);
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeModal();
+    });
+    rowsBody.addEventListener('click', function (e) {
+      if (e.target.classList.contains('remove-row')) {
+        const row = e.target.closest('tr');
+        if (row) row.remove();
+      }
+    });
+  })();
+</script>
+{% endblock %}

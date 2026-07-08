@@ -1,0 +1,147 @@
+{% extends "anbar_base.html" %}
+
+{% block title %}Anbara əlavə — Solvey Pharma{% endblock %}
+{% block main_class %} evvele-main{% endblock %}
+
+{% block extra_css %}
+  .main.evvele-main{max-width:900px;}
+  .card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:24px;
+    box-shadow:var(--shadow);
+  }
+  .toolbar{
+    display:flex;
+    gap:16px;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+    padding-bottom:20px;
+    border-bottom:1px solid var(--line);
+  }
+  .field.search{flex:1;min-width:200px;}
+  .total-box{margin-left:auto;text-align:right;}
+  .total-box .k{font-size:10.5px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:0.06em;}
+  .total-box .v{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--primary-color);}
+  .drug-list{display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 380px);overflow-y:auto;}
+  .drug-row{
+    display:grid;
+    grid-template-columns:1fr 110px;
+    gap:12px;
+    align-items:center;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:var(--paper);
+  }
+  .drug-row:hover{border-color:#cbd5e1;}
+  .drug-name{font-size:13px;font-weight:500;color:var(--ink);}
+  .drug-name small{display:block;font-size:11px;color:var(--ink-soft);font-weight:400;margin-top:2px;}
+  .drug-row input{
+    text-align:right;
+    font-family:'IBM Plex Mono',monospace;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:8px 10px;
+    width:100%;
+    background:var(--paper-raised);
+  }
+  .drug-row input:focus{outline:2px solid var(--primary-color);outline-offset:0;border-color:var(--primary-color);}
+  .actions{display:flex;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line);}
+  .empty-hint{text-align:center;padding:32px;color:var(--ink-soft);}
+  .topbar-actions{display:flex;gap:10px;align-items:center;}
+  @media(max-width:880px){.drug-list{max-height:none;}}
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1>Anbara əlavə</h1>
+    <div class="sub">Seçilmiş tarix üçün anbara manual giriş</div>
+  </div>
+  <div class="topbar-actions">
+    <a href="{% url 'aptek:anbara_elave_siyahi' %}" class="btn btn-ghost">Giriş siyahısı</a>
+  </div>
+</div>
+
+<form class="card" method="post" id="elaveForm">
+  {% csrf_token %}
+  <div class="toolbar">
+    <div class="field">
+      <label for="date">Tarix</label>
+      <input type="date" id="date" name="date" value="{{ selected_date }}" required>
+    </div>
+    <div class="field">
+      <label for="note">Mənbə / qeyd</label>
+      <input type="text" id="note" name="note" value="{{ note }}" maxlength="255" placeholder="Anbara əlavə">
+    </div>
+    <div class="field search">
+      <label for="search">Axtar</label>
+      <input type="text" id="search" placeholder="Dərman adı ilə axtar...">
+    </div>
+    <div class="total-box">
+      <div class="k">Yekun miqdar</div>
+      <div class="v" id="totalQty">0</div>
+    </div>
+  </div>
+
+  <div class="drug-list" id="drugList">
+    {% for drug in drugs %}
+    <div class="drug-row" data-name="{{ drug.med_name|lower }} {{ drug.med_full_name|default:''|lower }}">
+      <div class="drug-name">
+        {{ drug.med_name }}
+        {% if drug.med_full_name %}<small>{{ drug.med_full_name }}</small>{% endif %}
+      </div>
+      <input type="number" name="qty_{{ drug.id }}" class="qty-input" min="0" step="0.01"
+             value="{% if drug.qty %}{{ drug.qty }}{% endif %}" placeholder="0">
+    </div>
+    {% empty %}
+    <div class="empty-hint">Aktiv dərman tapılmadı</div>
+    {% endfor %}
+  </div>
+
+  <div class="actions">
+    <button type="submit" class="btn btn-primary">Yadda saxla</button>
+    <button type="reset" class="btn btn-ghost">Sıfırla</button>
+    <button type="button" class="btn btn-ghost" id="loadDate">Tarixi yüklə</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const qtyInputs = document.querySelectorAll('.qty-input');
+  const totalEl = document.getElementById('totalQty');
+  const searchEl = document.getElementById('search');
+  const dateEl = document.getElementById('date');
+  const noteEl = document.getElementById('note');
+
+  function updateTotal(){
+    let t = 0;
+    qtyInputs.forEach(inp => { t += parseFloat(inp.value.replace(',','.')) || 0; });
+    totalEl.textContent = t % 1 === 0 ? String(t) : t.toFixed(1).replace('.', ',');
+  }
+
+  qtyInputs.forEach(inp => inp.addEventListener('input', updateTotal));
+  updateTotal();
+
+  searchEl.addEventListener('input', function(){
+    const q = this.value.toLowerCase().trim();
+    document.querySelectorAll('.drug-row').forEach(row => {
+      row.style.display = !q || row.dataset.name.includes(q) ? '' : 'none';
+    });
+  });
+
+  function reloadForm(){
+    const params = new URLSearchParams();
+    params.set('date', dateEl.value);
+    if (noteEl.value.trim()) params.set('note', noteEl.value.trim());
+    window.location = '?' + params.toString();
+  }
+
+  document.getElementById('loadDate').addEventListener('click', reloadForm);
+  dateEl.addEventListener('change', reloadForm);
+</script>
+{% endblock %}

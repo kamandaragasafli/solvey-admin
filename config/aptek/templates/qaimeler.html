@@ -1,0 +1,130 @@
+{% extends "anbar_base.html" %}
+{% load aptek_extras %}
+
+{% block title %}Qaimələr — Solvey Pharma{% endblock %}
+
+{% block extra_css %}
+  .qaime-stats{
+    display:flex;
+    gap:14px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .qaime-stats .stat-card{min-width:160px;}
+  .qaime-table .col-date{min-width:110px;white-space:nowrap;}
+  .qaime-table .col-aptek{min-width:180px;}
+  .qaime-table .col-doc{min-width:72px;text-align:center;}
+  .qaime-table .col-qty{min-width:88px;text-align:right;}
+  .qaime-table .col-pdf{min-width:64px;text-align:center;}
+  .qaime-table tbody td.col-pdf a{
+    font-size:12px;
+    color:var(--primary-color);
+    text-decoration:none;
+    font-weight:600;
+  }
+  .qaime-table tbody td.col-pdf a:hover{text-decoration:underline;}
+  .qaime-table tbody tr.date-row td{
+    background:#f1f5f9;
+    font-weight:700;
+    color:#334155;
+    font-size:13px;
+    border-top:2px solid #cbd5e1;
+  }
+  .filters .field.search{flex:1;min-width:200px;}
+  .filters .field.search input{min-width:200px;width:100%;}
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1>Qaimələr</h1>
+    <div class="sub">{{ period_label }} — apteklərə anbardan çıxış qaimələri</div>
+  </div>
+</div>
+
+<div class="qaime-stats">
+  <div class="stat-card out">
+    <div class="k">Sənəd sayı</div>
+    <div class="v">{{ doc_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="k">Qaimə sayı</div>
+    <div class="v">{{ record_count }}</div>
+  </div>
+  <div class="stat-card out">
+    <div class="k">Ümumi miqdar</div>
+    <div class="v">{{ total_qty|qty_az }}</div>
+  </div>
+</div>
+
+<form class="filters" method="get">
+  <div class="field">
+    <label for="f-aptek">Aptek</label>
+    <select id="f-aptek" name="aptek">
+      <option value="all" {% if not selected_aptek %}selected{% endif %}>Bütün apteklər</option>
+      {% for aptek in aptekler %}
+      <option value="{{ aptek.id }}" {% if selected_aptek == aptek.id|stringformat:"s" %}selected{% endif %}>{{ aptek.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-from">Tarixdən</label>
+    <input type="date" id="f-from" name="from" value="{{ date_from }}">
+  </div>
+  <div class="field">
+    <label for="f-to">Tarixə</label>
+    <input type="date" id="f-to" name="to" value="{{ date_to }}">
+  </div>
+  <div class="field search">
+    <label for="f-search">Dərman</label>
+    <input type="text" id="f-search" name="q" value="{{ search }}" placeholder="Dərman adı...">
+  </div>
+  <button type="submit" class="btn btn-primary">Filtrlə</button>
+</form>
+
+<div class="ledger">
+  <div class="ledger-head">
+    <h2>Qaimə siyahısı</h2>
+    <span class="count">{{ record_count }} qaimə</span>
+  </div>
+  <div class="ledger-scroll">
+    <table class="ledger-table qaime-table">
+      <thead>
+        <tr>
+          <th class="col-doc">Qaimə №</th>
+          <th class="col-date">Tarix</th>
+          <th class="col-aptek">Aptek</th>
+          <th class="drug-name">Dərman</th>
+          <th class="num col-qty">Miqdar</th>
+          <th class="col-pdf">PDF</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if rows %}
+        {% for row in rows %}
+        <tr>
+          <td class="col-doc">{{ row.qaime_number }}</td>
+          <td class="col-date">{{ row.date|date:"d.m.Y" }}</td>
+          <td class="col-aptek">{{ row.aptek }}</td>
+          <td class="drug-name">
+            {{ row.drug_label }}
+            {% if row.drug_count > 1 %}<br><span style="font-size:12px;color:var(--ink-soft);font-weight:400;">{{ row.drug_count }} dərman</span>{% endif %}
+          </td>
+          <td class="num col-qty delta-out">{{ row.quantity|delta_out }}</td>
+          <td class="col-pdf">
+            {% if row.pdf_url %}<a href="{{ row.pdf_url }}" target="_blank" rel="noopener">PDF</a>{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="6" style="text-align:center;color:var(--ink-soft);padding:32px;">
+            Seçilmiş dövr üçün qaimə tapılmadı
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

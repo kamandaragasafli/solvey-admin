@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'payment',
     'regions',
     'doctors',
+    'aptek',
     'tracking',
     'vizit',
     'calculate',

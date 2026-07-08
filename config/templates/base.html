@@ -471,6 +471,11 @@
         <span>AI Assistant</span>
     </a>
 
+    <a href="{% url 'aptek:anbar_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'anbar_dashboard' %}active{% endif %}">
+        <i class="bi bi-house"></i>
+        <span>Anbar</span>
+    </a>
+
 
     <div class="prescription-divider"></div>
 
