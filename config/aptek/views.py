@@ -54,6 +54,24 @@ def _default_date_range(today=None):
     return date_from, date_to
 
 
+EXCLUDE_SESSION_KEY = 'aptek_exclude_ids'
+
+
+def _parse_exclude_ids(raw_values):
+    exclude_ids = []
+    for raw in raw_values:
+        for part in str(raw).split(','):
+            part = part.strip()
+            if part.isdigit():
+                exclude_ids.append(int(part))
+    return sorted(set(exclude_ids))
+
+
+def _get_session_exclude_ids(request):
+    raw = request.session.get(EXCLUDE_SESSION_KEY) or []
+    return _parse_exclude_ids(raw)
+
+
 def _ledger_filters(request):
     today = timezone.localdate()
     default_from, default_to = _default_date_range(today)
@@ -71,7 +89,18 @@ def _ledger_filters(request):
     if status_filter in (None, '', 'all'):
         status_filter = None
 
-    return date_from, date_to, aptek_id, status_filter
+    # İstisnalar sidebar səhifəsindən session-da saxlanılır
+    exclude_ids = _get_session_exclude_ids(request)
+    if aptek_id and int(aptek_id) in exclude_ids:
+        exclude_ids = [x for x in exclude_ids if x != int(aptek_id)]
+
+    return date_from, date_to, aptek_id, status_filter, exclude_ids
+
+
+def _exclude_query(exclude_ids):
+    if not exclude_ids:
+        return ''
+    return '&'.join(f'exclude={eid}' for eid in exclude_ids)
 
 
 def _return_filters(request):
@@ -224,6 +253,7 @@ def _qaimeler_context(request):
             drug_label = f"{', '.join(names[:2])} +{len(names) - 2}"
 
         rows.append({
+            'id': qaime.id,
             'date': qaime.doc_date,
             'aptek': qaime.aptek.name,
             'qaime_number': qaime.number,
@@ -308,7 +338,8 @@ def _sum_qty(qs):
     return qs.aggregate(total=Sum('quantity'))['total'] or Decimal('0')
 
 
-def _build_ledger(date_from, date_to, aptek_id=None, status_filter=None):
+def _build_ledger(date_from, date_to, aptek_id=None, status_filter=None, exclude_ids=None):
+    exclude_ids = exclude_ids or []
     drugs = Medical.objects.filter(status=True).order_by('position', 'med_name')
     rows = []
     totals = {
@@ -321,11 +352,16 @@ def _build_ledger(date_from, date_to, aptek_id=None, status_filter=None):
     for drug in drugs:
         base_qs = AnbarHereket.objects.filter(drug=drug)
 
-        evvel = _sum_qty(
-            base_qs.filter(movement_type=AnbarHereket.MOVEMENT_IN, date__lt=date_from)
-        ) - _sum_qty(
-            base_qs.filter(movement_type=AnbarHereket.MOVEMENT_OUT, date__lt=date_from)
+        # Əvvələ qalıq: istisna apteklərin keçmiş çıxışları da çıxarılır
+        in_before = base_qs.filter(
+            movement_type=AnbarHereket.MOVEMENT_IN, date__lt=date_from
         )
+        out_before = base_qs.filter(
+            movement_type=AnbarHereket.MOVEMENT_OUT, date__lt=date_from
+        )
+        if exclude_ids:
+            out_before = out_before.exclude(aptek_id__in=exclude_ids)
+        evvel = _sum_qty(in_before) - _sum_qty(out_before)
 
         gelen = _sum_qty(
             base_qs.filter(
@@ -342,6 +378,8 @@ def _build_ledger(date_from, date_to, aptek_id=None, status_filter=None):
         )
         if aptek_id:
             out_qs = out_qs.filter(aptek_id=aptek_id)
+        if exclude_ids:
+            out_qs = out_qs.exclude(aptek_id__in=exclude_ids)
         cixan = _sum_qty(out_qs)
 
         qalan = evvel + gelen - cixan
@@ -563,6 +601,78 @@ def qaimeler(request):
 
 
 @login_required
+def qaime_delete(request, pk):
+    if request.method != 'POST':
+        return redirect('aptek:qaimeler')
+
+    qaime = Qaime.objects.filter(pk=pk).select_related('aptek').first()
+    if not qaime:
+        messages.error(request, 'Qaimə tapılmadı.')
+        return redirect('aptek:qaimeler')
+
+    aptek_name = qaime.aptek.name
+    number = qaime.number
+    doc_type = qaime.document_type
+    doc_label = 'Geri qaytarma' if doc_type == Qaime.DOC_RETURN else 'Qaimə'
+    redirect_name = (
+        'aptek:geri_qaytarma' if doc_type == Qaime.DOC_RETURN else 'aptek:qaimeler'
+    )
+
+    with transaction.atomic():
+        # CASCADE hərəkətləri silir; anbar avtomatik güncəllənir
+        movement_count = AnbarHereket.objects.filter(qaime=qaime).count()
+        if qaime.pdf:
+            qaime.pdf.delete(save=False)
+        qaime.delete()
+
+    messages.success(
+        request,
+        f'{doc_label} №{number} ({aptek_name}) silindi — '
+        f'{movement_count} anbar hərəkəti ləğv olundu.',
+    )
+    return redirect(redirect_name)
+
+
+@login_required
+def istisnalar(request):
+    aptekler = Aptek.objects.all().order_by('name')
+    for aptek in aptekler:
+        clean_name = _clean_aptek_name(aptek.name)
+        if aptek.name != clean_name:
+            aptek.name = clean_name
+            aptek.save(update_fields=['name'])
+
+    if request.method == 'POST':
+        exclude_ids = _parse_exclude_ids(request.POST.getlist('exclude'))
+        # yalnız mövcud aptekləri saxla
+        valid_ids = set(Aptek.objects.filter(id__in=exclude_ids).values_list('id', flat=True))
+        exclude_ids = sorted(valid_ids)
+        request.session[EXCLUDE_SESSION_KEY] = exclude_ids
+        request.session.modified = True
+
+        if exclude_ids:
+            names = list(
+                Aptek.objects.filter(id__in=exclude_ids).order_by('name').values_list('name', flat=True)
+            )
+            messages.success(
+                request,
+                'İstisnalar yadda saxlanıldı: ' + ', '.join(names),
+            )
+        else:
+            messages.success(request, 'İstisna seçilməyib — bütün apteklər hesaba daxil edilir.')
+        return redirect('aptek:istisnalar')
+
+    exclude_ids = _get_session_exclude_ids(request)
+    context = {
+        'aptekler': aptekler,
+        'exclude_ids': [str(x) for x in exclude_ids],
+        'excluded_apteks': list(Aptek.objects.filter(id__in=exclude_ids).order_by('name')),
+        **_user_context(request),
+    }
+    return render(request, 'istisnalar.html', context)
+
+
+@login_required
 def aptekler(request):
     date_from, date_to, _, search_from_filters = _aptekler_filters(request)
     search = (request.GET.get('q') or search_from_filters or '').strip()
@@ -654,15 +764,120 @@ def aptekler(request):
 
 
 @login_required
+def aptek_detail(request, pk):
+    aptek = Aptek.objects.filter(pk=pk).first()
+    if not aptek:
+        messages.error(request, 'Aptek tapılmadı.')
+        return redirect('aptek:aptekler')
+
+    today = timezone.localdate()
+    default_from, default_to = _default_date_range(today)
+    date_from = _parse_date(request.GET.get('from'), default_from)
+    date_to = _parse_date(request.GET.get('to'), default_to)
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
+
+    search = (request.GET.get('q') or '').strip()
+    type_filter = request.GET.get('type') or 'all'
+    if type_filter not in {'all', 'out', 'in'}:
+        type_filter = 'all'
+
+    movements = (
+        AnbarHereket.objects.filter(
+            aptek=aptek,
+            date__gte=date_from,
+            date__lte=date_to,
+        )
+        .select_related('drug', 'qaime')
+        .order_by('-date', '-id')
+    )
+
+    if type_filter == 'out':
+        movements = movements.filter(movement_type=AnbarHereket.MOVEMENT_OUT)
+    elif type_filter == 'in':
+        movements = movements.filter(movement_type=AnbarHereket.MOVEMENT_IN)
+
+    if search:
+        movements = movements.filter(
+            Q(drug__med_name__icontains=search)
+            | Q(drug__med_full_name__icontains=search)
+            | Q(note__icontains=search)
+        )
+
+    rows = []
+    total_out = Decimal('0')
+    total_in = Decimal('0')
+    qaime_ids = set()
+    return_ids = set()
+
+    for movement in movements:
+        is_out = movement.movement_type == AnbarHereket.MOVEMENT_OUT
+        if is_out:
+            total_out += movement.quantity
+        else:
+            total_in += movement.quantity
+
+        if movement.qaime_id:
+            if movement.qaime.document_type == Qaime.DOC_RETURN:
+                return_ids.add(movement.qaime_id)
+            else:
+                qaime_ids.add(movement.qaime_id)
+
+        if movement.qaime:
+            if movement.qaime.document_type == Qaime.DOC_RETURN:
+                doc_label = f'Geri qaytarma №{movement.qaime.number}'
+            else:
+                doc_label = f'Qaimə №{movement.qaime.number}'
+        else:
+            doc_label = movement.note or '—'
+
+        rows.append({
+            'date': movement.date,
+            'type': movement.movement_type,
+            'type_label': 'Çıxış' if is_out else 'Giriş',
+            'doc_label': doc_label,
+            'drug': movement.drug.med_name,
+            'drug_full': movement.drug.med_full_name or '',
+            'quantity': movement.quantity,
+            'note': movement.note or '',
+            'pdf_url': movement.qaime.pdf.url if movement.qaime and movement.qaime.pdf else '',
+            'qaime_id': movement.qaime_id,
+        })
+
+    context = {
+        'aptek': aptek,
+        'rows': rows,
+        'date_from': date_from.isoformat(),
+        'date_to': date_to.isoformat(),
+        'search': search,
+        'type_filter': type_filter,
+        'period_label': _date_range_label(date_from, date_to),
+        'record_count': len(rows),
+        'qaime_count': len(qaime_ids),
+        'return_count': len(return_ids),
+        'total_out': total_out,
+        'total_in': total_in,
+        **_user_context(request),
+    }
+    return render(request, 'aptek_detail.html', context)
+
+
+@login_required
 def export_ledger_excel(request):
-    date_from, date_to, aptek_id, status_filter = _ledger_filters(request)
-    rows, totals = _build_ledger(date_from, date_to, aptek_id, status_filter)
+    date_from, date_to, aptek_id, status_filter, exclude_ids = _ledger_filters(request)
+    rows, totals = _build_ledger(date_from, date_to, aptek_id, status_filter, exclude_ids)
 
     aptek_label = 'Bütün apteklər'
     if aptek_id:
         aptek = Aptek.objects.filter(pk=aptek_id).first()
         if aptek:
             aptek_label = aptek.name
+    if exclude_ids:
+        names = list(
+            Aptek.objects.filter(id__in=exclude_ids).order_by('name').values_list('name', flat=True)
+        )
+        if names:
+            aptek_label = f'{aptek_label} (istisna: {", ".join(names)})'
 
     wb = Workbook()
     ws = wb.active
@@ -882,9 +1097,9 @@ def aptek_list(request):
             })
             return redirect(f"{reverse('aptek:anbar_dashboard')}?{params}")
 
-    date_from, date_to, aptek_id, status_filter = _ledger_filters(request)
+    date_from, date_to, aptek_id, status_filter, exclude_ids = _ledger_filters(request)
     today = timezone.localdate()
-    rows, totals = _build_ledger(date_from, date_to, aptek_id, status_filter)
+    rows, totals = _build_ledger(date_from, date_to, aptek_id, status_filter, exclude_ids)
     aptekler = Aptek.objects.all()
     for aptek in aptekler:
         clean_name = _clean_aptek_name(aptek.name)
@@ -894,6 +1109,8 @@ def aptek_list(request):
     last_qaime_qs = Qaime.objects.filter(document_type=Qaime.DOC_QAIME)
     if aptek_id:
         last_qaime_qs = last_qaime_qs.filter(aptek_id=aptek_id)
+    if exclude_ids:
+        last_qaime_qs = last_qaime_qs.exclude(aptek_id__in=exclude_ids)
     last_qaime = last_qaime_qs.select_related('aptek').order_by('-doc_date', '-id').first()
 
     month_label = AZ_MONTHS.get(date_from.month, '')
@@ -907,11 +1124,16 @@ def aptek_list(request):
     if user.email:
         user_label = user.email
 
+    excluded_apteks = list(Aptek.objects.filter(id__in=exclude_ids).order_by('name'))
+
     context = {
         'rows': rows,
         'totals': totals,
         'aptekler': aptekler,
         'selected_aptek': str(aptek_id) if aptek_id else '',
+        'exclude_ids': [str(x) for x in exclude_ids],
+        'excluded_apteks': excluded_apteks,
+        'exclude_query': _exclude_query(exclude_ids),
         'date_from': date_from.isoformat(),
         'date_to': date_to.isoformat(),
         'status_filter': status_filter or 'all',

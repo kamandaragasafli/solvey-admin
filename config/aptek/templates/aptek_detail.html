@@ -1,0 +1,154 @@
+{% extends "anbar_base.html" %}
+{% load aptek_extras %}
+
+{% block title %}{{ aptek.name }} — Hərəkətlər{% endblock %}
+
+{% block extra_css %}
+  .detail-stats{
+    display:flex;
+    gap:14px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .detail-stats .stat-card{min-width:140px;}
+  .detail-table .col-date{min-width:110px;white-space:nowrap;}
+  .detail-table .col-type{min-width:80px;text-align:center;}
+  .detail-table .col-doc{min-width:160px;}
+  .detail-table .col-qty{min-width:88px;text-align:right;}
+  .detail-table .col-pdf{min-width:64px;text-align:center;}
+  .detail-table tbody td.col-pdf a{
+    font-size:12px;
+    color:var(--primary-color);
+    text-decoration:none;
+    font-weight:600;
+  }
+  .detail-table tbody td.col-pdf a:hover{text-decoration:underline;}
+  .type-pill{
+    display:inline-block;
+    padding:3px 9px;
+    border-radius:4px;
+    font-size:12px;
+    font-weight:700;
+  }
+  .type-pill.out{background:#fee2e2;color:#b91c1c;}
+  .type-pill.in{background:#d1fae5;color:#047857;}
+  .back-link{
+    display:inline-block;
+    margin-bottom:8px;
+    font-size:13px;
+    color:var(--primary-color);
+    text-decoration:none;
+    font-weight:500;
+  }
+  .back-link:hover{text-decoration:underline;}
+  .filters .field.search{flex:1;min-width:200px;}
+  .filters .field.search input{min-width:200px;width:100%;}
+{% endblock %}
+
+{% block content %}
+<a class="back-link" href="{% url 'aptek:aptekler' %}?from={{ date_from }}&to={{ date_to }}">← Apteklər siyahısı</a>
+
+<div class="topbar">
+  <div>
+    <h1>{{ aptek.name }}</h1>
+    <div class="sub">{{ period_label }} — bu aptekə aid anbar hərəkətləri</div>
+  </div>
+</div>
+
+<div class="detail-stats">
+  <div class="stat-card">
+    <div class="k">Hərəkət sayı</div>
+    <div class="v">{{ record_count }}</div>
+  </div>
+  <div class="stat-card out">
+    <div class="k">Qaimə sayı</div>
+    <div class="v">{{ qaime_count }}</div>
+  </div>
+  <div class="stat-card in">
+    <div class="k">Geri qaytarma</div>
+    <div class="v">{{ return_count }}</div>
+  </div>
+  <div class="stat-card out">
+    <div class="k">Çıxış miqdarı</div>
+    <div class="v">{{ total_out|qty_az }}</div>
+  </div>
+  <div class="stat-card in">
+    <div class="k">Giriş miqdarı</div>
+    <div class="v">{{ total_in|qty_az }}</div>
+  </div>
+</div>
+
+<form class="filters" method="get">
+  <div class="field">
+    <label for="f-from">Tarixdən</label>
+    <input type="date" id="f-from" name="from" value="{{ date_from }}">
+  </div>
+  <div class="field">
+    <label for="f-to">Tarixə</label>
+    <input type="date" id="f-to" name="to" value="{{ date_to }}">
+  </div>
+  <div class="field">
+    <label for="f-type">Növ</label>
+    <select id="f-type" name="type">
+      <option value="all" {% if type_filter == 'all' %}selected{% endif %}>Hamısı</option>
+      <option value="out" {% if type_filter == 'out' %}selected{% endif %}>Çıxış</option>
+      <option value="in" {% if type_filter == 'in' %}selected{% endif %}>Giriş</option>
+    </select>
+  </div>
+  <div class="field search">
+    <label for="f-search">Dərman / qeyd</label>
+    <input type="text" id="f-search" name="q" value="{{ search }}" placeholder="Dərman və ya qeyd...">
+  </div>
+  <button type="submit" class="btn btn-primary">Filtrlə</button>
+</form>
+
+<div class="ledger">
+  <div class="ledger-head">
+    <h2>Hərəkət siyahısı</h2>
+    <span class="count">{{ record_count }} sətir</span>
+  </div>
+  <div class="ledger-scroll">
+    <table class="ledger-table detail-table">
+      <thead>
+        <tr>
+          <th class="col-date">Tarix</th>
+          <th class="col-type">Növ</th>
+          <th class="col-doc">Sənəd</th>
+          <th class="drug-name">Dərman</th>
+          <th class="num col-qty">Miqdar</th>
+          <th class="col-pdf">PDF</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if rows %}
+        {% for row in rows %}
+        <tr>
+          <td class="col-date">{{ row.date|date:"d.m.Y" }}</td>
+          <td class="col-type">
+            <span class="type-pill {% if row.type == 'out' %}out{% else %}in{% endif %}">{{ row.type_label }}</span>
+          </td>
+          <td class="col-doc">{{ row.doc_label }}</td>
+          <td class="drug-name">
+            {{ row.drug }}
+            {% if row.drug_full %}<br><span style="font-size:12px;color:var(--ink-soft);font-weight:400;">{{ row.drug_full }}</span>{% endif %}
+          </td>
+          <td class="num col-qty {% if row.type == 'out' %}delta-out{% else %}delta-in{% endif %}">
+            {% if row.type == 'out' %}{{ row.quantity|delta_out }}{% else %}{{ row.quantity|delta_in }}{% endif %}
+          </td>
+          <td class="col-pdf">
+            {% if row.pdf_url %}<a href="{{ row.pdf_url }}" target="_blank" rel="noopener">PDF</a>{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="6" style="text-align:center;color:var(--ink-soft);padding:32px;">
+            Seçilmiş dövr üçün hərəkət tapılmadı
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

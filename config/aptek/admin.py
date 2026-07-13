@@ -22,6 +22,18 @@ class QaimeAdmin(admin.ModelAdmin):
     search_fields = ('number', 'aptek__name')
     inlines = [AnbarHereketInline]
 
+    def delete_model(self, request, obj):
+        # CASCADE anbar hərəkətlərini silir; PDF faylı da təmizlə
+        if obj.pdf:
+            obj.pdf.delete(save=False)
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        for obj in queryset:
+            if obj.pdf:
+                obj.pdf.delete(save=False)
+        super().delete_queryset(request, queryset)
+
 
 @admin.register(AnbarHereket)
 class AnbarHereketAdmin(admin.ModelAdmin):

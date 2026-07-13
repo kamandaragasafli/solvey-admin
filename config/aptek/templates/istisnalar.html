@@ -1,0 +1,122 @@
+{% extends "anbar_base.html" %}
+
+{% block title %}İstisnalar — Solvey Pharma{% endblock %}
+
+{% block extra_css %}
+  .istisna-lead{
+    color:var(--ink-soft);
+    font-size:13.5px;
+    margin-bottom:18px;
+    max-width:720px;
+  }
+  .istisna-box{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px;
+    max-width:720px;
+  }
+  .istisna-box h2{
+    font-size:16px;
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  .istisna-box .hint{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:14px;
+  }
+  .istisna-list{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    max-height:420px;
+    overflow:auto;
+    border:1px solid #e5e7eb;
+    border-radius:8px;
+    padding:6px;
+    background:#fff;
+  }
+  .istisna-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:500;
+    color:#1f2937;
+  }
+  .istisna-item:hover{background:#f8fafc;}
+  .istisna-item input{
+    width:16px;
+    height:16px;
+    accent-color:#ef4444;
+    cursor:pointer;
+  }
+  .istisna-actions{
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+    flex-wrap:wrap;
+  }
+  .active-note{
+    margin-top:18px;
+    max-width:720px;
+    font-size:13px;
+    color:#b45309;
+    background:#fffbeb;
+    border:1px solid #fde68a;
+    border-radius:6px;
+    padding:10px 12px;
+  }
+  .active-note a{color:var(--primary-color);font-weight:600;text-decoration:none;}
+  .active-note a:hover{text-decoration:underline;}
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1>İstisnalar</h1>
+    <div class="sub">Seçilmiş apteklərin çıxışı Anbara Nəzarətdə hesaba daxil edilmir</div>
+  </div>
+</div>
+
+<p class="istisna-lead">
+  Burada seçdiyiniz apteklər (məsələn Nəsib depo) «Çıxan» sütunundan və anbar qalığı hesabından çıxarılır.
+  Heç nə seçməsəniz, Anbara Nəzarət səhifəsində istisna göstərilmir və bütün apteklər hesablanır.
+</p>
+
+<form class="istisna-box" method="post">
+  {% csrf_token %}
+  <h2>İstisna apteklər</h2>
+  <div class="hint">Birdən çox aptek seçə bilərsiniz</div>
+  <div class="istisna-list">
+    {% for aptek in aptekler %}
+    <label class="istisna-item">
+      <input
+        type="checkbox"
+        name="exclude"
+        value="{{ aptek.id }}"
+        {% if aptek.id|stringformat:"s" in exclude_ids %}checked{% endif %}
+      >
+      {{ aptek.name }}
+    </label>
+    {% empty %}
+    <div style="padding:16px;color:var(--ink-soft);">Hələ aptek yoxdur</div>
+    {% endfor %}
+  </div>
+  <div class="istisna-actions">
+    <button type="submit" class="btn btn-primary">Yadda saxla</button>
+    <a href="{% url 'aptek:anbar_dashboard' %}" class="btn btn-ghost">Anbara Nəzarət</a>
+  </div>
+</form>
+
+{% if excluded_apteks %}
+<div class="active-note">
+  Aktiv istisnalar: {% for a in excluded_apteks %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+  <a href="{% url 'aptek:anbar_dashboard' %}">Nəticəyə bax →</a>
+</div>
+{% endif %}
+{% endblock %}

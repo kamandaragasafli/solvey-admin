@@ -573,7 +573,8 @@
       <a href="{% url 'aptek:anbara_elave_form' %}" class="{% if request.resolver_match.url_name == 'anbara_elave_form' or request.resolver_match.url_name == 'anbara_elave_siyahi' %}active{% endif %}"><span class="num">03</span> Anbara əlavə</a>
       <a href="{% url 'aptek:geri_qaytarma' %}" class="{% if request.resolver_match.url_name == 'geri_qaytarma' %}active{% endif %}"><span class="num">04</span> Geri qaytarmalar</a>
       <a href="{% url 'aptek:qaimeler' %}" class="{% if request.resolver_match.url_name == 'qaimeler' %}active{% endif %}"><span class="num">05</span> Qaimələr</a>
-      <a href="{% url 'aptek:aptekler' %}" class="{% if request.resolver_match.url_name == 'aptekler' %}active{% endif %}"><span class="num">06</span> Apteklər</a>
+      <a href="{% url 'aptek:aptekler' %}" class="{% if request.resolver_match.url_name == 'aptekler' or request.resolver_match.url_name == 'aptek_detail' %}active{% endif %}"><span class="num">06</span> Apteklər</a>
+      <a href="{% url 'aptek:istisnalar' %}" class="{% if request.resolver_match.url_name == 'istisnalar' %}active{% endif %}"><span class="num">07</span> İstisnalar</a>
     </nav>
 
     <div class="sidebar-foot">

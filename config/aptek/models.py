@@ -64,7 +64,7 @@ class AnbarHereket(models.Model):
         Aptek, on_delete=models.SET_NULL, null=True, blank=True, related_name='anbar_hereketleri'
     )
     qaime = models.ForeignKey(
-        Qaime, on_delete=models.SET_NULL, null=True, blank=True, related_name='hereketler'
+        Qaime, on_delete=models.CASCADE, null=True, blank=True, related_name='hereketler'
     )
     note = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)

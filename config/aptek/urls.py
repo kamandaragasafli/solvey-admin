@@ -12,5 +12,8 @@ urlpatterns = [
     path('anbara-elave/siyahi/', views.anbara_elave_siyahi, name='anbara_elave_siyahi'),
     path('geri-qaytarma/', views.geri_qaytarma, name='geri_qaytarma'),
     path('qaimeler/', views.qaimeler, name='qaimeler'),
+    path('qaimeler/<int:pk>/sil/', views.qaime_delete, name='qaime_delete'),
     path('aptekler/', views.aptekler, name='aptekler'),
+    path('aptekler/<int:pk>/', views.aptek_detail, name='aptek_detail'),
+    path('istisnalar/', views.istisnalar, name='istisnalar'),
 ]

@@ -17,6 +17,15 @@
   .aptek-table .col-qty{min-width:110px;text-align:right;}
   .aptek-table .col-date{min-width:130px;white-space:nowrap;}
   .aptek-table .col-actions{min-width:220px;text-align:center;}
+  .aptek-table tbody td.col-name a{
+    color:#111827;
+    text-decoration:none;
+    font-weight:600;
+  }
+  .aptek-table tbody td.col-name a:hover{
+    color:var(--primary-color);
+    text-decoration:underline;
+  }
   .aptek-table tbody td.col-actions a{
     font-size:12px;
     color:var(--primary-color);
@@ -82,7 +91,6 @@
         <tr>
           <th class="col-idx">#</th>
           <th class="col-name">Aptek adı</th>
-          <th class="col-num">Qaimə</th>
           <th class="col-num">Geri qaytarma</th>
           <th class="col-qty">Çıxış miqdarı</th>
           <th class="col-qty">Qaytarma miqdarı</th>
@@ -94,8 +102,9 @@
         {% for row in rows %}
         <tr>
           <td class="col-idx">{{ forloop.counter }}</td>
-          <td class="drug-name col-name">{{ row.name }}</td>
-          <td class="col-num">{{ row.qaime_count }}</td>
+          <td class="drug-name col-name">
+            <a href="{% url 'aptek:aptek_detail' row.id %}?from={{ date_from }}&to={{ date_to }}">{{ row.name }}</a>
+          </td>
           <td class="col-num">{{ row.return_count }}</td>
           <td class="num col-qty delta-out">{{ row.out_qty|delta_out }}</td>
           <td class="num col-qty delta-in">{{ row.in_return_qty|delta_in }}</td>
@@ -103,7 +112,7 @@
             {% if row.last_activity %}{{ row.last_activity|date:"d.m.Y" }}{% else %}—{% endif %}
           </td>
           <td class="col-actions">
-            <a href="{% url 'aptek:anbar_dashboard' %}?aptek={{ row.id }}&from={{ date_from }}&to={{ date_to }}">Anbar</a>
+            <a href="{% url 'aptek:aptek_detail' row.id %}?from={{ date_from }}&to={{ date_to }}">Hərəkətlər</a>
             <a href="{% url 'aptek:qaimeler' %}?aptek={{ row.id }}&from={{ date_from }}&to={{ date_to }}">Qaimələr</a>
             <a href="{% url 'aptek:geri_qaytarma' %}?aptek={{ row.id }}&from={{ date_from }}&to={{ date_to }}">Qaytarmalar</a>
           </td>
