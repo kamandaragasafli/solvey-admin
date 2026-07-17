@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Count, Max, Prefetch, Q, Sum
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -17,7 +18,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 
 from medicine.models import Medical
 
-from .models import AnbarHereket, Aptek, Qaime
+from .models import AnbarHereket, Aptek, Depo, DrugPrice, Qaime
 from .pdf_import import QaimeParseError, _clean_aptek_name
 from .services import import_qaime_pdf
 
@@ -55,6 +56,35 @@ def _default_date_range(today=None):
 
 
 EXCLUDE_SESSION_KEY = 'aptek_exclude_ids'
+ACTIVE_DEPO_SESSION_KEY = 'aptek_active_depo_id'
+
+
+def _ensure_default_depo():
+    depo = Depo.objects.filter(is_default=True).first()
+    if depo:
+        return depo
+    depo = Depo.objects.order_by('id').first()
+    if depo:
+        if not depo.is_default:
+            depo.is_default = True
+            depo.save(update_fields=['is_default'])
+        return depo
+    return Depo.objects.create(name='Əsas depo', is_default=True)
+
+
+def _get_active_depo(request):
+    depo_id = request.session.get(ACTIVE_DEPO_SESSION_KEY)
+    depo = Depo.objects.filter(pk=depo_id).first() if depo_id else None
+    if not depo:
+        depo = _ensure_default_depo()
+        request.session[ACTIVE_DEPO_SESSION_KEY] = depo.id
+        request.session.modified = True
+    return depo
+
+
+def _set_active_depo(request, depo):
+    request.session[ACTIVE_DEPO_SESSION_KEY] = depo.id
+    request.session.modified = True
 
 
 def _parse_exclude_ids(raw_values):
@@ -149,9 +179,11 @@ def _date_range_label(date_from, date_to):
 
 def _document_movement_context(request, *, doc_type, movement_type, note_prefix):
     date_from, date_to, aptek_id, search = _return_filters(request)
+    depo = _get_active_depo(request)
 
     movements = (
         AnbarHereket.objects.filter(
+            depo=depo,
             movement_type=movement_type,
             date__gte=date_from,
             date__lte=date_to,
@@ -194,7 +226,7 @@ def _document_movement_context(request, *, doc_type, movement_type, note_prefix)
 
     return {
         'rows': rows,
-        'aptekler': Aptek.objects.all(),
+        'aptekler': Aptek.objects.filter(depo=depo),
         'selected_aptek': str(aptek_id) if aptek_id else '',
         'date_from': date_from.isoformat(),
         'date_to': date_to.isoformat(),
@@ -208,14 +240,16 @@ def _document_movement_context(request, *, doc_type, movement_type, note_prefix)
 
 def _qaimeler_context(request):
     date_from, date_to, aptek_id, search = _return_filters(request)
+    depo = _get_active_depo(request)
 
     hereket_qs = (
-        AnbarHereket.objects.filter(movement_type=AnbarHereket.MOVEMENT_OUT)
+        AnbarHereket.objects.filter(depo=depo, movement_type=AnbarHereket.MOVEMENT_OUT)
         .select_related('drug')
         .order_by('id')
     )
     qaime_qs = (
         Qaime.objects.filter(
+            depo=depo,
             document_type=Qaime.DOC_QAIME,
             doc_date__gte=date_from,
             doc_date__lte=date_to,
@@ -265,7 +299,7 @@ def _qaimeler_context(request):
 
     return {
         'rows': rows,
-        'aptekler': Aptek.objects.all(),
+        'aptekler': Aptek.objects.filter(depo=depo),
         'selected_aptek': str(aptek_id) if aptek_id else '',
         'date_from': date_from.isoformat(),
         'date_to': date_to.isoformat(),
@@ -279,9 +313,11 @@ def _qaimeler_context(request):
 
 def _anbara_elave_context(request):
     date_from, date_to, aptek_id, search = _return_filters(request)
+    depo = _get_active_depo(request)
 
     movements = (
         AnbarHereket.objects.filter(
+            depo=depo,
             movement_type=AnbarHereket.MOVEMENT_IN,
             date__gte=date_from,
             date__lte=date_to,
@@ -322,7 +358,7 @@ def _anbara_elave_context(request):
 
     return {
         'rows': rows,
-        'aptekler': Aptek.objects.all(),
+        'aptekler': Aptek.objects.filter(depo=depo),
         'selected_aptek': str(aptek_id) if aptek_id else '',
         'date_from': date_from.isoformat(),
         'date_to': date_to.isoformat(),
@@ -338,7 +374,7 @@ def _sum_qty(qs):
     return qs.aggregate(total=Sum('quantity'))['total'] or Decimal('0')
 
 
-def _build_ledger(date_from, date_to, aptek_id=None, status_filter=None, exclude_ids=None):
+def _build_ledger(date_from, date_to, aptek_id=None, status_filter=None, exclude_ids=None, depo=None):
     exclude_ids = exclude_ids or []
     drugs = Medical.objects.filter(status=True).order_by('position', 'med_name')
     rows = []
@@ -351,6 +387,8 @@ def _build_ledger(date_from, date_to, aptek_id=None, status_filter=None, exclude
 
     for drug in drugs:
         base_qs = AnbarHereket.objects.filter(drug=drug)
+        if depo is not None:
+            base_qs = base_qs.filter(depo=depo)
 
         # Əvvələ qalıq: istisna apteklərin keçmiş çıxışları da çıxarılır
         in_before = base_qs.filter(
@@ -431,14 +469,18 @@ def _user_context(request):
     user_label = user.get_full_name() or user.username
     if user.email:
         user_label = user.email
+    active_depo = _get_active_depo(request)
     return {
         'today': today.strftime('%d.%m.%Y'),
         'user_label': user_label,
+        'active_depo': active_depo,
+        'depolar': Depo.objects.all(),
     }
 
 
 @login_required
 def evvele_qaliq(request):
+    depo = _get_active_depo(request)
     today = timezone.localdate()
     year, month = _parse_month(request.GET.get('month') or request.POST.get('month'), today.year, today.month)
     opening_date = _opening_date_for_month(year, month)
@@ -447,12 +489,6 @@ def evvele_qaliq(request):
 
     if request.method == 'POST':
         with transaction.atomic():
-            AnbarHereket.objects.filter(
-                note=EVVEL_NOTE,
-                date=opening_date,
-                movement_type=AnbarHereket.MOVEMENT_IN,
-            ).delete()
-
             saved = 0
             for drug in Medical.objects.filter(status=True):
                 raw = request.POST.get(f'qty_{drug.id}', '').strip().replace(',', '.')
@@ -464,7 +500,9 @@ def evvele_qaliq(request):
                     continue
                 if qty <= 0:
                     continue
+                # Əvvəlki qeydlər silinmir — yalnız yeni giriş əlavə olunur
                 AnbarHereket.objects.create(
+                    depo=depo,
                     drug=drug,
                     movement_type=AnbarHereket.MOVEMENT_IN,
                     quantity=qty,
@@ -475,22 +513,26 @@ def evvele_qaliq(request):
 
         messages.success(
             request,
-            f'{month_label} {year} — əvvələ qalıq yadda saxlanıldı ({saved} dərman).',
+            f'{month_label} {year} — qalıq düzəlişi əlavə olundu ({saved} dərman). Əvvəlki qeydlər saxlanıldı.',
         )
         return redirect(f"{reverse('aptek:evvele_qaliq')}?month={selected_month}")
 
-    existing = {
-        row['drug_id']: row['quantity']
-        for row in AnbarHereket.objects.filter(
+    existing = {}
+    for row in (
+        AnbarHereket.objects.filter(
+            depo=depo,
             note=EVVEL_NOTE,
             date=opening_date,
             movement_type=AnbarHereket.MOVEMENT_IN,
-        ).values('drug_id', 'quantity')
-    }
+        )
+        .values('drug_id')
+        .annotate(total=Sum('quantity'))
+    ):
+        existing[row['drug_id']] = row['total'] or Decimal('0')
 
     drugs = []
     for drug in Medical.objects.filter(status=True).order_by('position', 'med_name'):
-        drug.qty = existing.get(drug.id, Decimal('0'))
+        drug.current_qty = existing.get(drug.id, Decimal('0'))
         drugs.append(drug)
 
     context = {
@@ -505,6 +547,7 @@ def evvele_qaliq(request):
 
 @login_required
 def anbara_elave_form(request):
+    depo = _get_active_depo(request)
     today = timezone.localdate()
     selected_date = _parse_date(
         request.GET.get('date') or request.POST.get('date'),
@@ -517,6 +560,7 @@ def anbara_elave_form(request):
     if request.method == 'POST':
         with transaction.atomic():
             AnbarHereket.objects.filter(
+                depo=depo,
                 movement_type=AnbarHereket.MOVEMENT_IN,
                 date=selected_date,
                 note=note,
@@ -535,6 +579,7 @@ def anbara_elave_form(request):
                 if qty <= 0:
                     continue
                 AnbarHereket.objects.create(
+                    depo=depo,
                     drug=drug,
                     movement_type=AnbarHereket.MOVEMENT_IN,
                     quantity=qty,
@@ -553,6 +598,7 @@ def anbara_elave_form(request):
     existing = {
         row['drug_id']: row['quantity']
         for row in AnbarHereket.objects.filter(
+            depo=depo,
             movement_type=AnbarHereket.MOVEMENT_IN,
             date=selected_date,
             note=note,
@@ -605,7 +651,8 @@ def qaime_delete(request, pk):
     if request.method != 'POST':
         return redirect('aptek:qaimeler')
 
-    qaime = Qaime.objects.filter(pk=pk).select_related('aptek').first()
+    depo = _get_active_depo(request)
+    qaime = Qaime.objects.filter(pk=pk, depo=depo).select_related('aptek').first()
     if not qaime:
         messages.error(request, 'Qaimə tapılmadı.')
         return redirect('aptek:qaimeler')
@@ -619,7 +666,6 @@ def qaime_delete(request, pk):
     )
 
     with transaction.atomic():
-        # CASCADE hərəkətləri silir; anbar avtomatik güncəllənir
         movement_count = AnbarHereket.objects.filter(qaime=qaime).count()
         if qaime.pdf:
             qaime.pdf.delete(save=False)
@@ -635,7 +681,8 @@ def qaime_delete(request, pk):
 
 @login_required
 def istisnalar(request):
-    aptekler = Aptek.objects.all().order_by('name')
+    depo = _get_active_depo(request)
+    aptekler = Aptek.objects.filter(depo=depo).order_by('name')
     for aptek in aptekler:
         clean_name = _clean_aptek_name(aptek.name)
         if aptek.name != clean_name:
@@ -644,8 +691,9 @@ def istisnalar(request):
 
     if request.method == 'POST':
         exclude_ids = _parse_exclude_ids(request.POST.getlist('exclude'))
-        # yalnız mövcud aptekləri saxla
-        valid_ids = set(Aptek.objects.filter(id__in=exclude_ids).values_list('id', flat=True))
+        valid_ids = set(
+            Aptek.objects.filter(depo=depo, id__in=exclude_ids).values_list('id', flat=True)
+        )
         exclude_ids = sorted(valid_ids)
         request.session[EXCLUDE_SESSION_KEY] = exclude_ids
         request.session.modified = True
@@ -666,14 +714,333 @@ def istisnalar(request):
     context = {
         'aptekler': aptekler,
         'exclude_ids': [str(x) for x in exclude_ids],
-        'excluded_apteks': list(Aptek.objects.filter(id__in=exclude_ids).order_by('name')),
+        'excluded_apteks': list(Aptek.objects.filter(depo=depo, id__in=exclude_ids).order_by('name')),
         **_user_context(request),
     }
     return render(request, 'istisnalar.html', context)
 
 
+LOW_STOCK_QTY = Decimal('5')
+_DEPO_COLORS = ('cyan', 'purple', 'green', 'pink', 'blue')
+
+
+def _format_money(value):
+    num = Decimal(str(value or 0))
+    quantized = num.quantize(Decimal('0.01'))
+    text = f'{quantized:,.2f}'.replace(',', ' ')
+    return f'{text} ₼'
+
+
+def _depo_stock_rows(depo):
+    """Dərman üzrə cari qalıq (giriş − çıxış) seçilmiş depo üçün."""
+    rows = (
+        AnbarHereket.objects.filter(depo=depo)
+        .values('drug_id', 'drug__med_name', 'drug__med_price')
+        .annotate(
+            qty_in=Coalesce(
+                Sum('quantity', filter=Q(movement_type=AnbarHereket.MOVEMENT_IN)),
+                Decimal('0'),
+            ),
+            qty_out=Coalesce(
+                Sum('quantity', filter=Q(movement_type=AnbarHereket.MOVEMENT_OUT)),
+                Decimal('0'),
+            ),
+        )
+        .order_by('drug__med_name')
+    )
+    stock = []
+    for row in rows:
+        qty = (row['qty_in'] or Decimal('0')) - (row['qty_out'] or Decimal('0'))
+        if qty == 0:
+            continue
+        price = row['drug__med_price'] or Decimal('0')
+        stock.append({
+            'name': row['drug__med_name'],
+            'sku': f'DRM-{row["drug_id"]:04d}',
+            'qty': qty,
+            'min': LOW_STOCK_QTY,
+            'unit': 'əd',
+            'value': qty * price,
+            'low': qty <= LOW_STOCK_QTY,
+        })
+    return stock
+
+
+@login_required
+def depolar(request):
+    if request.method == 'POST':
+        action = request.POST.get('action') or 'create'
+        if action == 'switch':
+            depo = Depo.objects.filter(pk=request.POST.get('depo_id')).first()
+            if not depo:
+                messages.error(request, 'Depo tapılmadı.')
+            else:
+                _set_active_depo(request, depo)
+                messages.success(request, f'Aktiv depo: {depo.name}')
+            next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or reverse('aptek:anbar_dashboard')
+            return redirect(next_url)
+
+        name = (request.POST.get('name') or '').strip()
+        if not name:
+            messages.error(request, 'Depo adı daxil edin.')
+            return redirect('aptek:depolar')
+        if Depo.objects.filter(name__iexact=name).exists():
+            messages.error(request, 'Bu adda depo artıq var.')
+            return redirect('aptek:depolar')
+
+        depo = Depo.objects.create(name=name, is_default=False)
+        _set_active_depo(request, depo)
+        messages.success(
+            request,
+            f'"{depo.name}" əlavə olundu. Bu depo boş başlayır (bütün miqdarlar 0).',
+        )
+        return redirect('aptek:depolar')
+
+    active = _get_active_depo(request)
+    warehouses = []
+    total_sku = 0
+    total_low = 0
+    total_value = Decimal('0')
+
+    for idx, depo in enumerate(Depo.objects.all()):
+        stock = _depo_stock_rows(depo)
+        sku_count = len(stock)
+        low_count = sum(1 for item in stock if item['low'])
+        ok_count = sku_count - low_count
+        value = sum((item['value'] for item in stock), Decimal('0'))
+        fill_pct = int(round((ok_count / sku_count) * 100)) if sku_count else 0
+
+        if depo.id == active.id:
+            status = 'aktiv'
+        elif depo.is_default:
+            status = 'əsas'
+        elif sku_count == 0:
+            status = 'boş'
+        else:
+            status = 'hazır'
+
+        aptek_count = Aptek.objects.filter(depo=depo).count()
+        qaime_count = Qaime.objects.filter(depo=depo).count()
+
+        warehouses.append({
+            'id': depo.id,
+            'name': depo.name,
+            'code': f'DEP-{depo.id:03d}',
+            'color': _DEPO_COLORS[idx % len(_DEPO_COLORS)],
+            'status': status,
+            'is_default': depo.is_default,
+            'is_active': depo.id == active.id,
+            'address': f'{aptek_count} aptek · {qaime_count} qaimə',
+            'sku_count': sku_count,
+            'low_count': low_count,
+            'ok_count': ok_count,
+            'value': _format_money(value),
+            'fill_pct': fill_pct,
+            'stock': stock,
+        })
+
+        total_sku += sku_count
+        total_low += low_count
+        total_value += value
+
+    stats = {
+        'total': len(warehouses),
+        'sku': total_sku,
+        'low': total_low,
+        'value': _format_money(total_value),
+    }
+
+    context = {
+        'warehouses': warehouses,
+        'stats': stats,
+        **_user_context(request),
+    }
+    return render(request, 'depolar.html', context)
+
+
+def _qty_map_for_depo(depo, drug_ids=None):
+    qs = AnbarHereket.objects.filter(depo=depo)
+    if drug_ids is not None:
+        qs = qs.filter(drug_id__in=drug_ids)
+    rows = qs.values('drug_id').annotate(
+        qty_in=Coalesce(
+            Sum('quantity', filter=Q(movement_type=AnbarHereket.MOVEMENT_IN)),
+            Decimal('0'),
+        ),
+        qty_out=Coalesce(
+            Sum('quantity', filter=Q(movement_type=AnbarHereket.MOVEMENT_OUT)),
+            Decimal('0'),
+        ),
+    )
+    return {
+        row['drug_id']: (row['qty_in'] or Decimal('0')) - (row['qty_out'] or Decimal('0'))
+        for row in rows
+    }
+
+
+def _drug_status(qty, expiry_date, today):
+    if expiry_date and expiry_date < today:
+        return 'expired'
+    if qty <= 0:
+        return 'expired'
+    if expiry_date and expiry_date <= today + timedelta(days=90):
+        return 'soon'
+    if qty <= LOW_STOCK_QTY:
+        return 'low'
+    return 'ok'
+
+
+@login_required
+def dermanlar(request):
+    depo = _get_active_depo(request)
+    today = timezone.localdate()
+    _THUMB = ('cyan', 'purple', 'green', 'pink', 'blue')
+
+    if request.method == 'POST':
+        drug_id = request.POST.get('drug_id')
+        drug = Medical.objects.filter(pk=drug_id, status=True).first()
+        if not drug:
+            messages.error(request, 'Dərman seçin.')
+            return redirect('aptek:dermanlar')
+
+        try:
+            price = Decimal(str(request.POST.get('price') or '').replace(',', '.'))
+        except Exception:
+            messages.error(request, 'Qiymət düzgün deyil.')
+            return redirect('aptek:dermanlar')
+
+        expiry_raw = (request.POST.get('expiry_date') or '').strip()
+        expiry_date = None
+        if expiry_raw:
+            try:
+                expiry_date = date.fromisoformat(expiry_raw)
+            except ValueError:
+                messages.error(request, 'SKT tarixi düzgün deyil.')
+                return redirect('aptek:dermanlar')
+
+        DrugPrice.objects.update_or_create(
+            depo=depo,
+            drug=drug,
+            defaults={
+                'price': price,
+                'expiry_date': expiry_date,
+            },
+        )
+        messages.success(request, f'{drug.med_name} qiyməti yadda saxlanıldı.')
+        return redirect('aptek:dermanlar')
+
+    default_depo = Depo.objects.filter(is_default=True).first() or depo
+    DrugPrice.objects.filter(depo__isnull=True).update(depo=default_depo)
+
+    drugs = Medical.objects.filter(status=True).order_by('position', 'med_name')
+    price_by_drug = {
+        dp.drug_id: dp
+        for dp in DrugPrice.objects.filter(depo=depo).select_related('drug')
+    }
+    qty_map = _qty_map_for_depo(depo, list(drugs.values_list('id', flat=True)))
+
+    medicines = []
+    total_value = Decimal('0')
+    low_count = 0
+    expiring_count = 0
+
+    for idx, drug in enumerate(drugs):
+        dp = price_by_drug.get(drug.id)
+        qty = qty_map.get(drug.id, Decimal('0'))
+        price = dp.price if dp else None
+        expiry = dp.expiry_date if dp else None
+        status = _drug_status(qty, expiry, today)
+        if status == 'low':
+            low_count += 1
+        if status == 'soon':
+            expiring_count += 1
+        if qty > 0 and price is not None:
+            total_value += qty * price
+
+        parts = drug.med_name.split()
+        initials = (parts[0][:1] + (parts[1][:1] if len(parts) > 1 else '')).upper() or '?'
+
+        medicines.append({
+            'id': drug.id,
+            'name': drug.med_name,
+            'sku': f'DRM-{drug.id:04d}',
+            'category': '—',
+            'price': _format_money(price) if price is not None else '—',
+            'quantity': qty,
+            'expiry': expiry.strftime('%d.%m.%Y') if expiry else '—',
+            'warehouse': depo.name,
+            'status': status,
+            'color': _THUMB[idx % len(_THUMB)],
+            'initials': initials,
+            'has_price': price is not None,
+        })
+
+    priced_ids = set(price_by_drug.keys())
+    available_drugs = drugs.exclude(pk__in=priced_ids)
+
+    context = {
+        'medicines': medicines,
+        'stats': {
+            'total': len(medicines),
+            'low': low_count,
+            'expiring': expiring_count,
+            'value': _format_money(total_value),
+        },
+        'available_drugs': available_drugs,
+        **_user_context(request),
+    }
+    return render(request, 'dermanlar.html', context)
+
+
+@login_required
+def derman_detail(request, pk):
+    depo = _get_active_depo(request)
+    drug = Medical.objects.filter(pk=pk, status=True).first()
+    if not drug:
+        messages.error(request, 'Dərman tapılmadı.')
+        return redirect('aptek:dermanlar')
+
+    today = timezone.localdate()
+    dp = DrugPrice.objects.filter(depo=depo, drug=drug).first()
+    qty = _qty_map_for_depo(depo, [drug.id]).get(drug.id, Decimal('0'))
+    expiry = dp.expiry_date if dp else None
+    status = _drug_status(qty, expiry, today)
+
+    movements = (
+        AnbarHereket.objects.filter(depo=depo, drug=drug)
+        .select_related('aptek', 'qaime')
+        .order_by('-date', '-id')[:100]
+    )
+    out_total = _sum_qty(
+        AnbarHereket.objects.filter(
+            depo=depo, drug=drug, movement_type=AnbarHereket.MOVEMENT_OUT
+        )
+    )
+
+    context = {
+        'item': dp,
+        'medicine': {
+            'name': drug.med_name,
+            'sku': f'DRM-{drug.id:04d}',
+            'expiry_date': expiry.strftime('%d.%m.%Y') if expiry else None,
+            'form': None,
+        },
+        'stats': {
+            'stock': qty,
+            'out': out_total,
+            'warehouses': 1,
+            'status': status,
+            'price': _format_money(dp.price) if dp else '—',
+        },
+        'movements': movements,
+        **_user_context(request),
+    }
+    return render(request, 'derman_detail.html', context)
+
+
 @login_required
 def aptekler(request):
+    depo = _get_active_depo(request)
     date_from, date_to, _, search_from_filters = _aptekler_filters(request)
     search = (request.GET.get('q') or search_from_filters or '').strip()
 
@@ -683,7 +1050,7 @@ def aptekler(request):
     )
 
     aptek_qs = (
-        Aptek.objects.annotate(
+        Aptek.objects.filter(depo=depo).annotate(
             qaime_count=Count(
                 'anbar_hereketleri__qaime',
                 filter=date_filter
@@ -765,7 +1132,8 @@ def aptekler(request):
 
 @login_required
 def aptek_detail(request, pk):
-    aptek = Aptek.objects.filter(pk=pk).first()
+    depo = _get_active_depo(request)
+    aptek = Aptek.objects.filter(pk=pk, depo=depo).first()
     if not aptek:
         messages.error(request, 'Aptek tapılmadı.')
         return redirect('aptek:aptekler')
@@ -784,6 +1152,7 @@ def aptek_detail(request, pk):
 
     movements = (
         AnbarHereket.objects.filter(
+            depo=depo,
             aptek=aptek,
             date__gte=date_from,
             date__lte=date_to,
@@ -864,8 +1233,9 @@ def aptek_detail(request, pk):
 
 @login_required
 def export_ledger_excel(request):
+    depo = _get_active_depo(request)
     date_from, date_to, aptek_id, status_filter, exclude_ids = _ledger_filters(request)
-    rows, totals = _build_ledger(date_from, date_to, aptek_id, status_filter, exclude_ids)
+    rows, totals = _build_ledger(date_from, date_to, aptek_id, status_filter, exclude_ids, depo=depo)
 
     aptek_label = 'Bütün apteklər'
     if aptek_id:
@@ -987,11 +1357,12 @@ def export_ledger_excel(request):
 
 @login_required
 def aptek_list(request):
+    depo = _get_active_depo(request)
     if request.method == 'POST':
         if request.FILES.get('pdf_file'):
             pdf_file = request.FILES['pdf_file']
             try:
-                result = import_qaime_pdf(pdf_file)
+                result = import_qaime_pdf(pdf_file, depo)
                 messages.success(request, result['message'])
                 if result['missing_drugs']:
                     messages.warning(
@@ -1018,7 +1389,9 @@ def aptek_list(request):
             aptek_id = request.POST.get('manual_aptek') or ''
             doc_date_raw = request.POST.get('manual_doc_date') or ''
             doc_date = _parse_date(doc_date_raw, None)
-            aptek = Aptek.objects.filter(pk=aptek_id).first() if aptek_id else None
+            aptek = (
+                Aptek.objects.filter(pk=aptek_id, depo=depo).first() if aptek_id else None
+            )
 
             if not aptek:
                 messages.error(request, 'Aptek seçilməyib.')
@@ -1053,13 +1426,16 @@ def aptek_list(request):
 
             with transaction.atomic():
                 qaime_number = (
-                    Qaime.objects.filter(aptek=aptek, document_type=Qaime.DOC_QAIME)
+                    Qaime.objects.filter(
+                        depo=depo, aptek=aptek, document_type=Qaime.DOC_QAIME
+                    )
                     .order_by('-number')
                     .values_list('number', flat=True)
                     .first() or 0
                 ) + 1
 
                 qaime = Qaime.objects.create(
+                    depo=depo,
                     aptek=aptek,
                     number=qaime_number,
                     document_type=Qaime.DOC_QAIME,
@@ -1070,6 +1446,7 @@ def aptek_list(request):
                 total_qty = Decimal('0')
                 for drug, qty in items:
                     AnbarHereket.objects.create(
+                        depo=depo,
                         drug=drug,
                         movement_type=AnbarHereket.MOVEMENT_OUT,
                         quantity=qty,
@@ -1099,14 +1476,16 @@ def aptek_list(request):
 
     date_from, date_to, aptek_id, status_filter, exclude_ids = _ledger_filters(request)
     today = timezone.localdate()
-    rows, totals = _build_ledger(date_from, date_to, aptek_id, status_filter, exclude_ids)
-    aptekler = Aptek.objects.all()
+    rows, totals = _build_ledger(
+        date_from, date_to, aptek_id, status_filter, exclude_ids, depo=depo
+    )
+    aptekler = Aptek.objects.filter(depo=depo)
     for aptek in aptekler:
         clean_name = _clean_aptek_name(aptek.name)
         if aptek.name != clean_name:
             aptek.name = clean_name
             aptek.save(update_fields=['name'])
-    last_qaime_qs = Qaime.objects.filter(document_type=Qaime.DOC_QAIME)
+    last_qaime_qs = Qaime.objects.filter(depo=depo, document_type=Qaime.DOC_QAIME)
     if aptek_id:
         last_qaime_qs = last_qaime_qs.filter(aptek_id=aptek_id)
     if exclude_ids:
@@ -1119,12 +1498,10 @@ def aptek_list(request):
             f'{date_from.strftime("%d.%m.%Y")} — {date_to.strftime("%d.%m.%Y")}'
         )
 
-    user = request.user
-    user_label = user.get_full_name() or user.username
-    if user.email:
-        user_label = user.email
-
-    excluded_apteks = list(Aptek.objects.filter(id__in=exclude_ids).order_by('name'))
+    excluded_apteks = list(
+        Aptek.objects.filter(depo=depo, id__in=exclude_ids).order_by('name')
+    )
+    user_ctx = _user_context(request)
 
     context = {
         'rows': rows,
@@ -1142,7 +1519,6 @@ def aptek_list(request):
         'last_qaime': last_qaime,
         'manual_drugs': Medical.objects.filter(status=True).order_by('position', 'med_name'),
         'manual_default_date': today.isoformat(),
-        'today': today.strftime('%d.%m.%Y'),
-        'user_label': user_label,
+        **user_ctx,
     }
     return render(request, 'anbar_dashboard.html', context)

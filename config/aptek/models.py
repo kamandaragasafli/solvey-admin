@@ -3,13 +3,36 @@ from django.db import models
 from medicine.models import Medical
 
 
+class Depo(models.Model):
+    name = models.CharField(max_length=250, verbose_name='Depo adı')
+    is_default = models.BooleanField(default=False, verbose_name='Əsas depo')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Depo'
+        verbose_name_plural = 'Depolar'
+        ordering = ['-is_default', 'name']
+
+    def __str__(self):
+        return self.name
+
+
 class Aptek(models.Model):
+    depo = models.ForeignKey(
+        Depo, on_delete=models.CASCADE, related_name='aptekler', null=True, blank=True
+    )
     name = models.CharField(max_length=250, verbose_name='Aptek adı')
 
     class Meta:
         verbose_name = 'Aptek'
         verbose_name_plural = 'Apteklər'
         ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['depo', 'name'],
+                name='unique_depo_aptek_name',
+            ),
+        ]
 
     def __str__(self):
         return self.name
@@ -23,6 +46,9 @@ class Qaime(models.Model):
         (DOC_RETURN, 'Geri qaytarma'),
     ]
 
+    depo = models.ForeignKey(
+        Depo, on_delete=models.CASCADE, related_name='qaimeler', null=True, blank=True
+    )
     aptek = models.ForeignKey(Aptek, on_delete=models.CASCADE, related_name='qaimeler')
     number = models.PositiveIntegerField(verbose_name='Qaimə №')
     document_type = models.CharField(
@@ -39,8 +65,8 @@ class Qaime(models.Model):
         ordering = ['-doc_date', '-id']
         constraints = [
             models.UniqueConstraint(
-                fields=['aptek', 'number', 'document_type'],
-                name='unique_aptek_qaime_number_type',
+                fields=['depo', 'aptek', 'number', 'document_type'],
+                name='unique_depo_aptek_qaime_number_type',
             ),
         ]
 
@@ -56,6 +82,9 @@ class AnbarHereket(models.Model):
         (MOVEMENT_OUT, 'Çıxış'),
     ]
 
+    depo = models.ForeignKey(
+        Depo, on_delete=models.CASCADE, related_name='hereketler', null=True, blank=True
+    )
     drug = models.ForeignKey(Medical, on_delete=models.CASCADE, related_name='anbar_hereketleri')
     movement_type = models.CharField(max_length=3, choices=MOVEMENT_TYPES)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
@@ -77,3 +106,33 @@ class AnbarHereket(models.Model):
     def __str__(self):
         sign = '+' if self.movement_type == self.MOVEMENT_IN else '−'
         return f'{self.drug.med_name} {sign}{self.quantity} ({self.date})'
+
+
+
+class DrugPrice(models.Model):
+    depo = models.ForeignKey(
+        Depo,
+        on_delete=models.CASCADE,
+        related_name='drug_prices',
+        null=True,
+        blank=True,
+        verbose_name='Anbar',
+    )
+    drug = models.ForeignKey(Medical, on_delete=models.CASCADE, related_name='drug_prices')
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Qiymət')
+    expiry_date = models.DateField(null=True, blank=True, verbose_name='SKT')
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        verbose_name = 'Dərman qiyməti'
+        verbose_name_plural = 'Dərman qiymətləri'
+        ordering = ['drug__med_name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['depo', 'drug'],
+                name='unique_depo_drug_price',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.drug.med_name} — {self.price}'

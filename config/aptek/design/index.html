@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard — Anbar Nəzarət{% endblock %}
+
+{% block content %}
+
+<!-- ========== 1. STAT KARTLARI (4 ədəd) ========== -->
+<section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+
+  <!-- Ümumi məhsul -->
+  <article class="stat-card">
+    <div class="flex items-start justify-between">
+      <div>
+        <p class="stat-label">Ümumi Məhsul</p>
+        <p class="stat-value">24.8K</p>
+        <p class="stat-change text-emerald-400">▲ +28.5%</p>
+      </div>
+      <div class="stat-icon glow-purple">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+        </svg>
+      </div>
+    </div>
+    <div id="spark-products" class="sparkline mt-3"></div>
+  </article>
+
+  <!-- Sifarişlər -->
+  <article class="stat-card">
+    <div class="flex items-start justify-between">
+      <div>
+        <p class="stat-label">Sifarişlər</p>
+        <p class="stat-value">1,248</p>
+        <p class="stat-change text-emerald-400">▲ +12.3%</p>
+      </div>
+      <div class="stat-icon glow-cyan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+          <rect x="9" y="3" width="6" height="4" rx="1"/>
+        </svg>
+      </div>
+    </div>
+    <div id="spark-orders" class="sparkline mt-3"></div>
+  </article>
+
+  <!-- Stok azalma -->
+  <article class="stat-card">
+    <div class="flex items-start justify-between">
+      <div>
+        <p class="stat-label">Azalan Stok</p>
+        <p class="stat-value">3.2%</p>
+        <p class="stat-change text-emerald-400">▼ -4.1%</p>
+      </div>
+      <div class="stat-icon glow-green">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+    </div>
+    <div id="spark-stock" class="sparkline mt-3"></div>
+  </article>
+
+  <!-- Orta çatdırılma -->
+  <article class="stat-card">
+    <div class="flex items-start justify-between">
+      <div>
+        <p class="stat-label">Ort. Çatdırılma</p>
+        <p class="stat-value">2.4g</p>
+        <p class="stat-change text-emerald-400">▲ +8.7%</p>
+      </div>
+      <div class="stat-icon glow-blue">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+    </div>
+    <div id="spark-delivery" class="sparkline mt-3"></div>
+  </article>
+</section>
+
+<!-- ========== 2. ANALİTİKA + ANBAR SKORU ========== -->
+<section class="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-5">
+
+  <!-- Analitika xətt qrafiki -->
+  <article class="glass-card xl:col-span-8 p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div>
+        <h2 class="text-sm font-semibold">Analitika İcmalı</h2>
+        <p class="text-[11px] text-anbar-muted mt-0.5">Anbar hərəkəti — son 30 gün</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-4 text-[11px]">
+          <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-cyan-400"></span> Giriş</span>
+          <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-violet-400"></span> Çıxış</span>
+        </div>
+        <select class="rounded-lg border border-anbar-border bg-anbar-card px-2.5 py-1.5 text-xs text-anbar-muted outline-none">
+          <option>Son 30 gün</option>
+          <option>Son 7 gün</option>
+          <option>Bu il</option>
+        </select>
+      </div>
+    </div>
+    <div id="chart-analytics" class="w-full" style="min-height:280px"></div>
+  </article>
+
+  <!-- Anbar sağlamlıq skoru (radial) -->
+  <article class="glass-card xl:col-span-4 p-5">
+    <h2 class="text-sm font-semibold mb-1">Anbar Skoru</h2>
+    <p class="text-[11px] text-anbar-muted mb-2">Ümumi performans</p>
+    <div id="chart-score" class="mx-auto" style="max-width:200px"></div>
+    <ul class="mt-2 space-y-3">
+      <li>
+        <div class="flex justify-between text-[11px] mb-1">
+          <span class="text-anbar-muted">Stok dəqiqliyi</span>
+          <span class="font-medium text-emerald-400">96%</span>
+        </div>
+        <div class="progress-track"><div class="progress-bar" style="width:96%"></div></div>
+      </li>
+      <li>
+        <div class="flex justify-between text-[11px] mb-1">
+          <span class="text-anbar-muted">Sifariş sürəti</span>
+          <span class="font-medium text-emerald-400">88%</span>
+        </div>
+        <div class="progress-track"><div class="progress-bar" style="width:88%"></div></div>
+      </li>
+      <li>
+        <div class="flex justify-between text-[11px] mb-1">
+          <span class="text-anbar-muted">Aptek keyfiyyəti</span>
+          <span class="font-medium text-emerald-400">91%</span>
+        </div>
+        <div class="progress-track"><div class="progress-bar" style="width:91%"></div></div>
+      </li>
+      <li>
+        <div class="flex justify-between text-[11px] mb-1">
+          <span class="text-anbar-muted">Çatdırılma</span>
+          <span class="font-medium text-emerald-400">85%</span>
+        </div>
+        <div class="progress-track"><div class="progress-bar" style="width:85%"></div></div>
+      </li>
+    </ul>
+  </article>
+</section>
+
+<!-- ========== 3. ANBAR AXINI (workflow) ========== -->
+<section class="glass-card p-5 mb-5">
+  <h2 class="text-sm font-semibold mb-4">Anbar Proses Axını</h2>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+
+    <div class="flow-step">
+      <div class="flow-icon glow-cyan">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+        </svg>
+      </div>
+      <span class="flow-label">Yeni Mədaxil</span>
+    </div>
+
+    <span class="flow-arrow">→</span>
+
+    <div class="flow-step">
+      <div class="flow-icon glow-purple">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+      </div>
+      <span class="flow-label">Yoxlama</span>
+    </div>
+
+    <span class="flow-arrow">→</span>
+
+    <div class="flow-step">
+      <div class="flow-icon glow-pink">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+      </div>
+      <span class="flow-label">Bildiriş</span>
+    </div>
+
+    <span class="flow-arrow">→</span>
+
+    <div class="flow-step">
+      <div class="flow-icon glow-green">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+          <line x1="7" y1="7" x2="7.01" y2="7"/>
+        </svg>
+      </div>
+      <span class="flow-label">Etiketlə</span>
+    </div>
+
+    <span class="flow-arrow">→</span>
+
+    <div class="flow-step">
+      <div class="flow-icon glow-blue">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+        </svg>
+      </div>
+      <span class="flow-label">Anbara Yaz</span>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 4. ALT SƏTİR — 3 KOLON ========== -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+
+  <!-- Son məhsullar -->
+  <article class="glass-card p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold">Son Məhsullar</h2>
+      <a href="{% url 'inventar' %}" class="text-[11px] text-cyan-400 hover:underline">Hamısı →</a>
+    </div>
+    <ul class="space-y-3">
+      <li class="flex items-center gap-3">
+        <div class="thumb thumb-cyan">AM</div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium truncate">Amoxicillin 500mg</p>
+          <p class="text-[11px] text-anbar-muted">SKU-1042</p>
+        </div>
+        <span class="badge-ok">Stokda</span>
+      </li>
+      <li class="flex items-center gap-3">
+        <div class="thumb thumb-purple">IB</div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium truncate">Ibuprofen 200mg</p>
+          <p class="text-[11px] text-anbar-muted">SKU-2088</p>
+        </div>
+        <span class="badge-ok">Stokda</span>
+      </li>
+      <li class="flex items-center gap-3">
+        <div class="thumb thumb-green">PR</div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium truncate">Paracetamol 500mg</p>
+          <p class="text-[11px] text-anbar-muted">SKU-3011</p>
+        </div>
+        <span class="badge-ok">Stokda</span>
+      </li>
+      <li class="flex items-center gap-3">
+        <div class="thumb thumb-pink">VT</div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium truncate">Vitamin C 1000mg</p>
+          <p class="text-[11px] text-anbar-muted">SKU-4450</p>
+        </div>
+        <span class="badge-warn">Az qalıb</span>
+      </li>
+    </ul>
+  </article>
+
+  <!-- Ən çox hərəkət -->
+  <article class="glass-card p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold">Ən Aktiv SKU-lar</h2>
+      <a href="{% url 'hesabatlar' %}" class="text-[11px] text-cyan-400 hover:underline">Hesabat →</a>
+    </div>
+    <ul class="space-y-4">
+      <li>
+        <div class="flex justify-between text-xs mb-1.5">
+          <span class="text-anbar-muted font-mono">/AMOX-500</span>
+          <span class="font-semibold">8.4K</span>
+        </div>
+        <div class="progress-track"><div class="progress-bar bg-cyan-400" style="width:92%"></div></div>
+      </li>
+      <li>
+        <div class="flex justify-between text-xs mb-1.5">
+          <span class="text-anbar-muted font-mono">/IBU-200</span>
+          <span class="font-semibold">6.1K</span>
+        </div>
+        <div class="progress-track"><div class="progress-bar bg-violet-400" style="width:74%"></div></div>
+      </li>
+      <li>
+        <div class="flex justify-between text-xs mb-1.5">
+          <span class="text-anbar-muted font-mono">/PARA-500</span>
+          <span class="font-semibold">5.2K</span>
+        </div>
+        <div class="progress-track"><div class="progress-bar bg-emerald-400" style="width:62%"></div></div>
+      </li>
+      <li>
+        <div class="flex justify-between text-xs mb-1.5">
+          <span class="text-anbar-muted font-mono">/VITC-1000</span>
+          <span class="font-semibold">3.8K</span>
+        </div>
+        <div class="progress-track"><div class="progress-bar bg-sky-400" style="width:45%"></div></div>
+      </li>
+      <li>
+        <div class="flex justify-between text-xs mb-1.5">
+          <span class="text-anbar-muted font-mono">/ASP-100</span>
+          <span class="font-semibold">2.1K</span>
+        </div>
+        <div class="progress-track"><div class="progress-bar bg-rose-400" style="width:28%"></div></div>
+      </li>
+    </ul>
+  </article>
+
+  <!-- AI / Asistent paneli -->
+  <article class="glass-card p-5 flex flex-col">
+    <h2 class="text-sm font-semibold mb-4">Anbar Asistent</h2>
+    <ul class="flex-1 space-y-3 mb-4">
+      <li class="flex items-start gap-2.5 text-xs">
+        <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">✓</span>
+        <span class="text-anbar-muted"><span class="text-white">12 məhsul</span> yeniləndi — stok sinxronu tamamlandı</span>
+      </li>
+      <li class="flex items-start gap-2.5 text-xs">
+        <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">✓</span>
+        <span class="text-anbar-muted"><span class="text-white">Vitamin C</span> üçün az stok xəbərdarlığı göndərildi</span>
+      </li>
+      <li class="flex items-start gap-2.5 text-xs">
+        <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-cyan-400">…</span>
+        <span class="text-anbar-muted">Aptek sifarişi hazırlanır…</span>
+      </li>
+    </ul>
+    <form class="ai-input flex items-center gap-2 rounded-xl border border-anbar-border bg-[#0B0E14] px-3 py-2" onsubmit="return false;">
+      <input type="text" placeholder="Anbar asistəndən soruş…"
+             class="flex-1 bg-transparent text-xs text-white placeholder:text-anbar-muted outline-none" />
+      <button type="submit" class="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-400 text-slate-900 hover:bg-cyan-300 transition">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </form>
+  </article>
+</section>
+
+<!-- ========== 5. ALT BANNER ========== -->
+<section class="banner-ai relative overflow-hidden rounded-2xl p-6 md:p-8 mb-2">
+  <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6">
+    <!-- Sol ikon -->
+    <div class="banner-cube shrink-0">
+      <span class="text-lg font-bold text-cyan-300">AI</span>
+    </div>
+
+    <div class="flex-1">
+      <h2 class="text-lg md:text-xl font-semibold tracking-tight">
+        Anbarı AI ilə idarə et, optimallaşdır və böyüt.
+      </h2>
+      <p class="mt-1 text-sm text-anbar-muted max-w-lg">
+        Stok proqnozları, avtomatik sifarişlər və real-vaxt analitika bir yerdə.
+      </p>
+    </div>
+
+    <button type="button" class="btn-cyan shrink-0 rounded-xl bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-cyan-300 transition shadow-cyan">
+      AI ilə Başla
+    </button>
+
+    <!-- Sağ checklist -->
+    <ul class="hidden lg:block text-xs text-anbar-muted space-y-1.5 shrink-0">
+      <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Avtomatik stok</li>
+      <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Proqnoz hesabat</li>
+      <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Real-vaxt sync</li>
+    </ul>
+  </div>
+</section>
+
+{% endblock %}

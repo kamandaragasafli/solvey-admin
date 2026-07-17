@@ -1,0 +1,419 @@
+{% extends "anbar_base.html" %}
+
+{% block title %}Anbarlar — Solvey Pharma{% endblock %}
+
+{% block extra_css %}
+  .anbar-stats{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:16px;
+    margin-bottom:20px;
+  }
+  .anbar-stat{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px 20px;
+    transition:border-color .2s, box-shadow .2s;
+  }
+  .anbar-stat:hover{
+    border-color:rgba(34,211,238,0.25);
+    box-shadow:0 0 20px rgba(34,211,238,0.06);
+  }
+  .anbar-stat-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .anbar-stat .label{
+    font-size:11px;
+    font-weight:600;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+  }
+  .anbar-stat .value{
+    font-size:26px;
+    font-weight:700;
+    letter-spacing:-0.02em;
+    margin-top:6px;
+    line-height:1.15;
+    color:#fff;
+  }
+  .anbar-stat .hint{
+    font-size:11px;
+    font-weight:600;
+    color:#FBBF24;
+    margin-top:4px;
+  }
+  .stat-icon{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:36px;
+    height:36px;
+    border-radius:10px;
+    flex-shrink:0;
+  }
+  .glow-cyan{color:#22D3EE;background:rgba(34,211,238,0.12);box-shadow:0 0 14px rgba(34,211,238,0.25);}
+  .glow-purple{color:#A78BFA;background:rgba(167,139,250,0.12);box-shadow:0 0 14px rgba(167,139,250,0.25);}
+  .glow-green{color:#34D399;background:rgba(52,211,153,0.12);box-shadow:0 0 14px rgba(52,211,153,0.25);}
+  .glow-pink{color:#F472B6;background:rgba(244,114,182,0.12);box-shadow:0 0 14px rgba(244,114,182,0.25);}
+  .glow-blue{color:#60A5FA;background:rgba(96,165,250,0.12);box-shadow:0 0 14px rgba(96,165,250,0.25);}
+
+  .glass-card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:16px;
+    overflow:hidden;
+  }
+  .warehouse-list{display:flex;flex-direction:column;gap:18px;}
+  .warehouse-head{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:18px 20px;
+    border-bottom:1px solid var(--line);
+  }
+  .warehouse-title{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    min-width:0;
+  }
+  .warehouse-title h2{
+    font-size:16px;
+    font-weight:600;
+    color:#fff;
+  }
+  .warehouse-meta{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+    margin-top:2px;
+  }
+  .warehouse-code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .warehouse-sub{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:4px;
+  }
+  .warehouse-metrics{
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px 28px;
+    font-size:14px;
+  }
+  .warehouse-metrics .m-label{
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-soft);
+  }
+  .warehouse-metrics .m-value{
+    font-weight:600;
+    margin-top:2px;
+    color:#fff;
+  }
+  .warehouse-metrics .m-value.warn{color:#FBBF24;}
+  .warehouse-metrics .m-value.cyan{color:#67E8F9;}
+  .fill-wrap{min-width:140px;}
+  .fill-top{
+    display:flex;
+    justify-content:space-between;
+    font-size:10px;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .progress-track{
+    height:5px;
+    border-radius:999px;
+    background:var(--line);
+    overflow:hidden;
+  }
+  .progress-bar{
+    height:100%;
+    border-radius:999px;
+    background:#22D3EE;
+    box-shadow:0 0 8px rgba(34,211,238,0.4);
+  }
+  .progress-bar.warn{
+    background:#FBBF24;
+    box-shadow:0 0 8px rgba(251,191,36,0.4);
+  }
+
+  .badge-ok,.badge-warn,.badge-danger,.badge-off,.badge-active{
+    display:inline-block;
+    font-size:11px;
+    font-weight:600;
+    padding:3px 9px;
+    border-radius:999px;
+    white-space:nowrap;
+  }
+  .badge-ok{background:rgba(52,211,153,0.12);color:#34D399;}
+  .badge-warn{background:rgba(251,191,36,0.12);color:#FBBF24;}
+  .badge-danger{background:rgba(244,63,94,0.12);color:#FB7185;}
+  .badge-off{background:rgba(139,149,168,0.12);color:#8B95A8;}
+  .badge-active{background:rgba(34,211,238,0.12);color:#22D3EE;border:1px solid rgba(34,211,238,0.3);}
+
+  .customers-table{width:100%;border-collapse:collapse;}
+  .customers-table th{
+    font-size:11px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--ink-soft);
+    text-align:left;
+    padding:12px 20px;
+    border-bottom:1px solid rgba(30,37,51,0.8);
+  }
+  .customers-table td{
+    padding:12px 20px;
+    border-bottom:1px solid rgba(30,37,51,0.45);
+    font-size:14px;
+    vertical-align:middle;
+  }
+  .customers-table tbody tr:hover{background:rgba(255,255,255,0.02);}
+  .customers-table .name{font-weight:500;color:#fff;}
+  .customers-table .sku{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .customers-table .qty{font-weight:600;}
+  .customers-table .qty.ok{color:#fff;}
+  .customers-table .qty.low{color:#FBBF24;}
+  .customers-table .qty.zero{color:#FB7185;}
+  .customers-table .muted{color:var(--ink-soft);}
+  .empty-stock{
+    padding:32px 20px;
+    text-align:center;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+
+  .create-card{
+    margin-bottom:20px;
+    padding:18px 20px;
+  }
+  .create-card h2{
+    font-size:15px;
+    font-weight:600;
+    color:#fff;
+    margin-bottom:4px;
+  }
+  .create-card .hint{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:14px;
+  }
+  .create-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:flex-end;
+  }
+  .create-row .field{flex:1;min-width:220px;margin-bottom:0;}
+  .warehouse-actions{display:flex;gap:8px;align-items:center;}
+
+  @media(max-width:1100px){
+    .anbar-stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+  }
+  @media(max-width:640px){
+    .anbar-stats{grid-template-columns:1fr;}
+  }
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1>Anbarlar</h1>
+    <div class="sub">Anbarlar və hər anbardakı stok qalıqları</div>
+  </div>
+</div>
+
+<section class="anbar-stats">
+  <article class="anbar-stat">
+    <div class="anbar-stat-top">
+      <div>
+        <p class="label">Anbar sayı</p>
+        <p class="value">{{ stats.total }}</p>
+      </div>
+      <div class="stat-icon glow-cyan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+
+  <article class="anbar-stat">
+    <div class="anbar-stat-top">
+      <div>
+        <p class="label">Ümumi SKU</p>
+        <p class="value">{{ stats.sku }}</p>
+      </div>
+      <div class="stat-icon glow-purple">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+
+  <article class="anbar-stat">
+    <div class="anbar-stat-top">
+      <div>
+        <p class="label">Az qalıq</p>
+        <p class="value">{{ stats.low }}</p>
+        {% if stats.low %}<p class="hint">⚠ diqqət</p>{% endif %}
+      </div>
+      <div class="stat-icon glow-pink">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+
+  <article class="anbar-stat">
+    <div class="anbar-stat-top">
+      <div>
+        <p class="label">Ümumi dəyər</p>
+        <p class="value" style="font-size:22px;">{{ stats.value }}</p>
+      </div>
+      <div class="stat-icon glow-green">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+</section>
+
+<form class="glass-card create-card" method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="create">
+  <h2>Yeni anbar</h2>
+  <div class="hint">Yeni anbarda aptek, qaimə və miqdarlar 0-dan başlayır.</div>
+  <div class="create-row">
+    <div class="field">
+      <label for="depo-name">Anbar adı</label>
+      <input id="depo-name" type="text" name="name" placeholder="Məs: Sumqayıt depo" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Anbar əlavə et</button>
+  </div>
+</form>
+
+<div class="warehouse-list">
+  {% for wh in warehouses %}
+  <article class="glass-card warehouse-card" data-wh="{{ wh.id }}">
+    <div class="warehouse-head">
+      <div class="warehouse-title">
+        <div class="stat-icon glow-{{ wh.color }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div>
+          <div class="warehouse-meta">
+            <h2>{{ wh.name }}</h2>
+            {% if wh.is_active %}<span class="badge-active">Aktiv</span>{% endif %}
+            {% if wh.is_default %}<span class="badge-ok">Əsas</span>{% endif %}
+            {% if wh.status == 'boş' %}<span class="badge-off">Boş</span>{% endif %}
+            <span class="warehouse-code">{{ wh.code }}</span>
+          </div>
+          <p class="warehouse-sub">{{ wh.address }}</p>
+        </div>
+      </div>
+
+      <div class="warehouse-metrics">
+        <div>
+          <p class="m-label">SKU</p>
+          <p class="m-value">{{ wh.sku_count }}</p>
+        </div>
+        <div>
+          <p class="m-label">Az qalıq</p>
+          <p class="m-value {% if wh.low_count %}warn{% endif %}">{{ wh.low_count }}</p>
+        </div>
+        <div>
+          <p class="m-label">Dəyər</p>
+          <p class="m-value cyan">{{ wh.value }}</p>
+        </div>
+        <div class="fill-wrap">
+          <div class="fill-top">
+            <span>Stok OK</span>
+            <span>{{ wh.ok_count }} / {{ wh.sku_count }}</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-bar {% if wh.fill_pct < 50 and wh.sku_count %}warn{% endif %}"
+                 style="width: {{ wh.fill_pct }}%"></div>
+          </div>
+        </div>
+        <div class="warehouse-actions">
+          {% if not wh.is_active %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="switch">
+            <input type="hidden" name="depo_id" value="{{ wh.id }}">
+            <button type="submit" class="btn btn-ghost" style="padding:8px 14px;">Bu anbara keç</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="customers-table">
+        <thead>
+          <tr>
+            <th>Məhsul</th>
+            <th>SKU</th>
+            <th>Qalıq</th>
+            <th>Min. stok</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in wh.stock %}
+          <tr>
+            <td class="name">{{ item.name }}</td>
+            <td class="sku">{{ item.sku }}</td>
+            <td class="qty {% if item.qty == 0 %}zero{% elif item.low %}low{% else %}ok{% endif %}">
+              {{ item.qty }} {{ item.unit }}
+            </td>
+            <td class="muted">{{ item.min }} {{ item.unit }}</td>
+            <td>
+              {% if item.qty == 0 %}
+                <span class="badge-danger">Bitib</span>
+              {% elif item.low %}
+                <span class="badge-warn">Az qalıb</span>
+              {% else %}
+                <span class="badge-ok">Kifayət</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="empty-stock">Bu anbarda qalıq yoxdur</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+  {% empty %}
+  <div class="glass-card empty-stock">Anbar tapılmadı</div>
+  {% endfor %}
+</div>
+{% endblock %}

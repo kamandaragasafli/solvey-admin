@@ -1,0 +1,120 @@
+{% extends "anbar_base.html" %}
+
+{% block title %}{{ medicine.name }} — Solvey Pharma{% endblock %}
+
+{% block extra_css %}
+  .glass-card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:16px;
+    margin-bottom:18px;
+  }
+  .head-card{
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+    gap:16px;padding:20px;
+  }
+  .head-card h2{font-size:18px;font-weight:650;color:#fff;}
+  .head-card .meta{font-size:12px;color:var(--ink-soft);margin-top:4px;font-family:'IBM Plex Mono',monospace;}
+  .metrics{display:flex;flex-wrap:wrap;gap:20px;}
+  .metrics .k{font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-soft);}
+  .metrics .v{font-weight:650;margin-top:2px;color:#67E8F9;}
+  .section-title{padding:14px 20px;border-bottom:1px solid var(--line);}
+  .section-title h3{font-size:14px;font-weight:650;color:#fff;}
+  .section-title p{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+  .customers-table{width:100%;border-collapse:collapse;}
+  .customers-table th{
+    font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+    color:var(--ink-soft);text-align:left;padding:12px 20px;border-bottom:1px solid var(--line);
+  }
+  .customers-table td{
+    padding:12px 20px;border-bottom:1px solid rgba(30,37,51,0.5);font-size:13.5px;
+  }
+  .muted{color:var(--ink-soft);}
+  .badge-ok{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(52,211,153,0.12);color:#34D399;}
+  .badge-warn{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(251,191,36,0.12);color:#FBBF24;}
+  .badge-danger{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(244,63,94,0.12);color:#FB7185;}
+  .empty{padding:28px;text-align:center;color:var(--ink-soft);font-size:13px;}
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1>{{ medicine.name }}</h1>
+    <div class="sub">Günbəgün çıxış / giriş və anbar izləməsi</div>
+  </div>
+  <a href="{% url 'aptek:dermanlar' %}" class="btn btn-ghost">← Dərmanlar</a>
+</div>
+
+<section class="glass-card head-card">
+  <div>
+    <h2>{{ medicine.name }}</h2>
+    <p class="meta">
+      {{ medicine.sku }}
+      {% if medicine.form %} · {{ medicine.form }}{% endif %}
+      {% if medicine.expiry_date %} · SKT: {{ medicine.expiry_date }}{% endif %}
+    </p>
+  </div>
+  <div class="metrics">
+    <div>
+      <p class="k">Qiymət</p>
+      <p class="v">{{ stats.price }}</p>
+    </div>
+    <div>
+      <p class="k">Ümumi qalıq</p>
+      <p class="v">{{ stats.stock }}</p>
+    </div>
+    <div>
+      <p class="k">Ümumi çıxış</p>
+      <p class="v" style="color:#FB7185;">{{ stats.out }}</p>
+    </div>
+    <div>
+      <p class="k">Status</p>
+      <p class="v">
+        {% if stats.status == 'ok' %}<span class="badge-ok">Stokda</span>
+        {% elif stats.status == 'low' %}<span class="badge-warn">Az qalıb</span>
+        {% elif stats.status == 'soon' %}<span class="badge-warn">SKT yaxın</span>
+        {% else %}<span class="badge-danger">Bitib</span>{% endif %}
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="glass-card" style="overflow:hidden;">
+  <div class="section-title">
+    <h3>Hərəkətlər</h3>
+    <p>Aktiv anbar: {{ active_depo.name }}</p>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="customers-table">
+      <thead>
+        <tr>
+          <th>Tarix</th>
+          <th>Növ</th>
+          <th>Miqdar</th>
+          <th>Aptek</th>
+          <th>Qeyd</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mv in movements %}
+        <tr>
+          <td>{{ mv.date|date:"d.m.Y" }}</td>
+          <td>
+            {% if mv.movement_type == 'in' %}
+              <span class="badge-ok">Giriş</span>
+            {% else %}
+              <span class="badge-danger">Çıxış</span>
+            {% endif %}
+          </td>
+          <td>{{ mv.quantity }}</td>
+          <td class="muted">{% if mv.aptek %}{{ mv.aptek.name }}{% else %}—{% endif %}</td>
+          <td class="muted">{{ mv.note|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="empty">Hərəkət yoxdur</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

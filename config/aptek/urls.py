@@ -16,4 +16,7 @@ urlpatterns = [
     path('aptekler/', views.aptekler, name='aptekler'),
     path('aptekler/<int:pk>/', views.aptek_detail, name='aptek_detail'),
     path('istisnalar/', views.istisnalar, name='istisnalar'),
+    path('depolar/', views.depolar, name='depolar'),
+    path('dermanlar/', views.dermanlar, name='dermanlar'),
+    path('dermanlar/<int:pk>/', views.derman_detail, name='derman_detail'),
 ]

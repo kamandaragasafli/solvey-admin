@@ -1,11 +1,26 @@
 from django.contrib import admin
 
-from .models import AnbarHereket, Aptek, Qaime
+from .models import AnbarHereket, Aptek, Depo, DrugPrice, Qaime
+
+
+@admin.register(Depo)
+class DepoAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_default', 'created_at')
+    list_filter = ('is_default',)
+    search_fields = ('name',)
+
+
+@admin.register(DrugPrice)
+class DrugPriceAdmin(admin.ModelAdmin):
+    list_display = ('drug', 'depo', 'price', 'expiry_date')
+    search_fields = ('drug__med_name',)
+    raw_id_fields = ('drug',)
 
 
 @admin.register(Aptek)
 class AptekAdmin(admin.ModelAdmin):
-    list_display = ('name',)
+    list_display = ('name', 'depo')
+    list_filter = ('depo',)
     search_fields = ('name',)
 
 
@@ -17,8 +32,8 @@ class AnbarHereketInline(admin.TabularInline):
 
 @admin.register(Qaime)
 class QaimeAdmin(admin.ModelAdmin):
-    list_display = ('number', 'document_type', 'aptek', 'doc_date', 'total', 'created_at')
-    list_filter = ('document_type', 'aptek', 'doc_date', 'created_at')
+    list_display = ('number', 'document_type', 'depo', 'aptek', 'doc_date', 'total', 'created_at')
+    list_filter = ('document_type', 'depo', 'aptek', 'doc_date', 'created_at')
     search_fields = ('number', 'aptek__name')
     inlines = [AnbarHereketInline]
 
@@ -37,7 +52,7 @@ class QaimeAdmin(admin.ModelAdmin):
 
 @admin.register(AnbarHereket)
 class AnbarHereketAdmin(admin.ModelAdmin):
-    list_display = ('drug', 'movement_type', 'quantity', 'date', 'aptek', 'qaime')
-    list_filter = ('movement_type', 'date', 'aptek')
+    list_display = ('drug', 'movement_type', 'quantity', 'date', 'depo', 'aptek', 'qaime')
+    list_filter = ('movement_type', 'depo', 'date', 'aptek')
     search_fields = ('drug__med_name', 'note')
     date_hierarchy = 'date'

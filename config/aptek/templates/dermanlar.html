@@ -1,0 +1,357 @@
+{% extends "anbar_base.html" %}
+
+{% block title %}Dərmanlar — Solvey Pharma{% endblock %}
+
+{% block extra_css %}
+  .anbar-stats{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:16px;
+    margin-bottom:20px;
+  }
+  .anbar-stat{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px 20px;
+    transition:border-color .2s, box-shadow .2s;
+  }
+  .anbar-stat:hover{
+    border-color:rgba(34,211,238,0.25);
+    box-shadow:0 0 20px rgba(34,211,238,0.06);
+  }
+  .anbar-stat-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .anbar-stat .label{
+    font-size:11px;font-weight:600;color:var(--ink-soft);
+    text-transform:uppercase;letter-spacing:0.06em;
+  }
+  .anbar-stat .value{
+    font-size:26px;font-weight:700;letter-spacing:-0.02em;
+    margin-top:6px;line-height:1.15;color:#fff;
+  }
+  .anbar-stat .hint{font-size:11px;font-weight:600;margin-top:4px;}
+  .anbar-stat .hint.warn{color:#FBBF24;}
+  .anbar-stat .hint.ok{color:#34D399;}
+  .stat-icon{
+    display:flex;align-items:center;justify-content:center;
+    width:36px;height:36px;border-radius:10px;flex-shrink:0;
+  }
+  .glow-cyan{color:#22D3EE;background:rgba(34,211,238,0.12);box-shadow:0 0 14px rgba(34,211,238,0.25);}
+  .glow-purple{color:#A78BFA;background:rgba(167,139,250,0.12);box-shadow:0 0 14px rgba(167,139,250,0.25);}
+  .glow-green{color:#34D399;background:rgba(52,211,153,0.12);box-shadow:0 0 14px rgba(52,211,153,0.25);}
+  .glow-pink{color:#F472B6;background:rgba(244,114,182,0.12);box-shadow:0 0 14px rgba(244,114,182,0.25);}
+
+  .glass-card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:16px;
+  }
+  .toolbar{
+    display:flex;flex-wrap:wrap;gap:12px;
+    align-items:center;justify-content:space-between;
+    padding:16px 18px;margin-bottom:20px;
+  }
+  .toolbar-left{display:flex;flex-wrap:wrap;gap:10px;flex:1;min-width:0;}
+  .search-wrap{position:relative;flex:1;min-width:200px;max-width:420px;}
+  .search-wrap svg{
+    position:absolute;left:12px;top:50%;transform:translateY(-50%);
+    color:var(--ink-soft);pointer-events:none;
+  }
+  .search-wrap input{
+    width:100%;padding:10px 12px 10px 38px;
+    border-radius:10px;border:1px solid var(--line);
+    background:#0B0E14;color:#fff;font-size:13.5px;
+  }
+  .search-wrap input:focus{outline:none;border-color:rgba(34,211,238,0.5);}
+  .toolbar select{
+    border-radius:10px;border:1px solid var(--line);
+    background:#0B0E14;color:var(--ink-soft);
+    padding:10px 12px;font-size:13.5px;
+  }
+  .btn-cyan{
+    display:inline-flex;align-items:center;gap:6px;
+    border:none;border-radius:10px;
+    background:#22D3EE;color:#0B0E14;
+    padding:10px 16px;font-size:13.5px;font-weight:650;
+    cursor:pointer;box-shadow:0 0 18px rgba(34,211,238,0.35);
+  }
+  .btn-cyan:hover{background:#67E8F9;}
+
+  .badge-ok,.badge-warn,.badge-danger{
+    display:inline-block;font-size:11px;font-weight:600;
+    padding:3px 9px;border-radius:999px;white-space:nowrap;
+  }
+  .badge-ok{background:rgba(52,211,153,0.12);color:#34D399;}
+  .badge-warn{background:rgba(251,191,36,0.12);color:#FBBF24;}
+  .badge-danger{background:rgba(244,63,94,0.12);color:#FB7185;}
+
+  .thumb{
+    display:flex;align-items:center;justify-content:center;
+    width:36px;height:36px;border-radius:8px;
+    font-size:11px;font-weight:700;flex-shrink:0;
+  }
+  .thumb-cyan{background:rgba(34,211,238,0.15);color:#22D3EE;}
+  .thumb-purple{background:rgba(167,139,250,0.15);color:#A78BFA;}
+  .thumb-green{background:rgba(52,211,153,0.15);color:#34D399;}
+  .thumb-pink{background:rgba(244,114,182,0.15);color:#F472B6;}
+  .thumb-blue{background:rgba(96,165,250,0.15);color:#60A5FA;}
+
+  .customers-table{width:100%;border-collapse:collapse;}
+  .customers-table th{
+    font-size:11px;font-weight:600;text-transform:uppercase;
+    letter-spacing:0.05em;color:var(--ink-soft);text-align:left;
+    padding:14px 20px;border-bottom:1px solid var(--line);
+  }
+  .customers-table td{
+    padding:14px 20px;border-bottom:1px solid rgba(30,37,51,0.55);
+    font-size:14px;vertical-align:middle;
+  }
+  .customers-table tbody tr:hover{background:rgba(255,255,255,0.02);}
+  .drug-cell{display:flex;align-items:center;gap:12px;min-width:0;}
+  .drug-cell .name{font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .drug-cell .sku{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);margin-top:2px;}
+  .price-cell{font-weight:600;color:#67E8F9;}
+  .muted{color:var(--ink-soft);}
+  .link-bax{color:var(--ink-soft);text-decoration:none;font-size:12px;font-weight:600;}
+  .link-bax:hover{color:#22D3EE;}
+  .empty-row{padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:13px;}
+  .text-right{text-align:right;}
+
+  .modal-backdrop{
+    display:none;position:fixed;inset:0;z-index:100;
+    background:rgba(0,0,0,0.55);align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal-box{
+    width:100%;max-width:460px;background:#12161F;
+    border:1px solid var(--line);border-radius:16px;padding:22px;
+  }
+  .modal-box h3{font-size:16px;font-weight:650;color:#fff;margin-bottom:4px;}
+  .modal-box .hint{font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;}
+  .modal-box .field{margin-bottom:12px;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px;}
+
+  @media(max-width:1100px){.anbar-stats{grid-template-columns:repeat(2,minmax(0,1fr));}}
+  @media(max-width:640px){.anbar-stats{grid-template-columns:1fr;}}
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1>Dərmanlar</h1>
+    <div class="sub">Qiymət, miqdar və son istifadə tarixi — aktiv anbar: {{ active_depo.name }}</div>
+  </div>
+</div>
+
+<section class="anbar-stats">
+  <article class="anbar-stat">
+    <div class="anbar-stat-top">
+      <div>
+        <p class="label">Ümumi dərman</p>
+        <p class="value">{{ stats.total }}</p>
+      </div>
+      <div class="stat-icon glow-cyan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.5 20.5L3.5 13.5a4.95 4.95 0 017-7l7 7a4.95 4.95 0 01-7 7z"/>
+          <path d="M8.5 8.5l7 7"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+  <article class="anbar-stat">
+    <div class="anbar-stat-top">
+      <div>
+        <p class="label">Az stok</p>
+        <p class="value">{{ stats.low }}</p>
+        {% if stats.low %}<p class="hint warn">⚠ diqqət</p>{% endif %}
+      </div>
+      <div class="stat-icon glow-pink">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+  <article class="anbar-stat">
+    <div class="anbar-stat-top">
+      <div>
+        <p class="label">SKT yaxınlaşır</p>
+        <p class="value">{{ stats.expiring }}</p>
+        <p class="hint warn">90 gün ərzində</p>
+      </div>
+      <div class="stat-icon glow-purple">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+  <article class="anbar-stat">
+    <div class="anbar-stat-top">
+      <div>
+        <p class="label">Stok dəyəri</p>
+        <p class="value" style="font-size:22px;">{{ stats.value }}</p>
+      </div>
+      <div class="stat-icon glow-green">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+</section>
+
+<section class="glass-card toolbar">
+  <div class="toolbar-left">
+    <div class="search-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input id="medicine-search" type="search" placeholder="Ad, SKU və ya kateqoriya axtar…">
+    </div>
+    <select id="medicine-filter">
+      <option value="all">Bütün statuslar</option>
+      <option value="ok">Stokda</option>
+      <option value="low">Az stok</option>
+      <option value="soon">SKT yaxın</option>
+      <option value="expired">Bitib</option>
+    </select>
+  </div>
+  <button type="button" class="btn-cyan" id="open-drug-modal">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    Qiymət təyin et
+  </button>
+</section>
+
+<section class="glass-card" style="overflow:hidden;">
+  <div style="overflow-x:auto;">
+    <table class="customers-table">
+      <thead>
+        <tr>
+          <th>Dərman</th>
+         
+          <th>Qiymət</th>
+          <th>Miqdar</th>
+        
+          <th>Anbar</th>
+          <th>Status</th>
+          <th class="text-right">Əməliyyat</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in medicines %}
+        <tr class="medicine-row"
+            data-search="{{ m.name }} {{ m.sku }} {{ m.category }}"
+            data-status="{{ m.status }}">
+          <td>
+            <div class="drug-cell">
+              <div class="thumb thumb-{{ m.color }}">{{ m.initials }}</div>
+              <div style="min-width:0;">
+                <p class="name">{{ m.name }}</p>
+                <p class="sku">{{ m.sku }}</p>
+              </div>
+            </div>
+          </td>
+          <td class="price-cell">{{ m.price }}</td>
+          <td>{{ m.quantity }}</td>
+          <td class="muted" style="white-space:nowrap;">{{ m.expiry }}</td>
+          <td class="muted">{{ m.warehouse }}</td>
+          <td>
+            {% if m.status == 'ok' %}
+              <span class="badge-ok">Stokda</span>
+            {% elif m.status == 'low' %}
+              <span class="badge-warn">Az qalıb</span>
+            {% elif m.status == 'soon' %}
+              <span class="badge-warn">SKT yaxın</span>
+            {% else %}
+              <span class="badge-danger">Bitib</span>
+            {% endif %}
+          </td>
+          <td class="text-right">
+            <a class="link-bax" href="{% url 'aptek:derman_detail' m.id %}">Bax</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="empty-row">Dərman yoxdur</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="modal-backdrop" id="drug-modal" role="dialog" aria-modal="true">
+  <form class="modal-box" method="post">
+    {% csrf_token %}
+    <h3>Qiymət təyin et</h3>
+    <p class="hint">Dərman Medical siyahısından gəlir; qiymət DrugPrice-da saxlanılır ({{ active_depo.name }}).</p>
+    <div class="field">
+      <label for="drug_id">Dərman</label>
+      <select id="drug_id" name="drug_id" required>
+        <option value="">Seçin…</option>
+        {% for d in available_drugs %}
+        <option value="{{ d.id }}" data-price="{{ d.med_price }}">{{ d.med_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="price">Qiymət (₼)</label>
+      <input id="price" type="number" name="price" step="0.01" min="0" required>
+    </div>
+    <div class="field">
+      <label for="expiry_date">SKT</label>
+      <input id="expiry_date" type="date" name="expiry_date">
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="close-drug-modal">Ləğv et</button>
+      <button type="submit" class="btn btn-primary">Əlavə et</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var search = document.getElementById('medicine-search');
+  var filter = document.getElementById('medicine-filter');
+  function apply() {
+    if (!search || !filter) return;
+    var q = search.value.trim().toLowerCase();
+    var status = filter.value;
+    document.querySelectorAll('.medicine-row').forEach(function (row) {
+      var hay = (row.getAttribute('data-search') || '').toLowerCase();
+      var st = row.getAttribute('data-status') || '';
+      var okSearch = !q || hay.indexOf(q) !== -1;
+      var okStatus = status === 'all' || st === status;
+      row.style.display = okSearch && okStatus ? '' : 'none';
+    });
+  }
+  if (search) search.addEventListener('input', apply);
+  if (filter) filter.addEventListener('change', apply);
+
+  var modal = document.getElementById('drug-modal');
+  var openBtn = document.getElementById('open-drug-modal');
+  var closeBtn = document.getElementById('close-drug-modal');
+  if (openBtn && modal) openBtn.addEventListener('click', function () { modal.classList.add('open'); });
+  if (closeBtn && modal) closeBtn.addEventListener('click', function () { modal.classList.remove('open'); });
+  if (modal) modal.addEventListener('click', function (e) {
+    if (e.target === modal) modal.classList.remove('open');
+  });
+
+  var drugSelect = document.getElementById('drug_id');
+  var priceInput = document.getElementById('price');
+  if (drugSelect && priceInput) {
+    drugSelect.addEventListener('change', function () {
+      var opt = drugSelect.options[drugSelect.selectedIndex];
+      var p = opt && opt.getAttribute('data-price');
+      if (p && !priceInput.value) priceInput.value = p;
+    });
+  }
+})();
+</script>
+{% endblock %}

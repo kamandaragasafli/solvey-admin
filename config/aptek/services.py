@@ -1,15 +1,15 @@
 from decimal import Decimal
 from django.db import transaction
 
-from .models import AnbarHereket, Aptek, Qaime
+from .models import AnbarHereket, Aptek, Depo, Qaime
 from .pdf_import import QaimeParseError, _clean_aptek_name, find_drug, parse_qaime_pdf
 
 
-def _get_or_create_aptek(name: str) -> Aptek:
+def _get_or_create_aptek(name: str, depo: Depo) -> Aptek:
     normalized = _clean_aptek_name(name)
-    aptek = Aptek.objects.filter(name__iexact=normalized).first()
+    aptek = Aptek.objects.filter(depo=depo, name__iexact=normalized).first()
     if not aptek:
-        for candidate in Aptek.objects.all():
+        for candidate in Aptek.objects.filter(depo=depo):
             if _clean_aptek_name(candidate.name) == normalized:
                 aptek = candidate
                 break
@@ -18,12 +18,12 @@ def _get_or_create_aptek(name: str) -> Aptek:
             aptek.name = normalized
             aptek.save(update_fields=['name'])
         return aptek
-    return Aptek.objects.create(name=normalized)
+    return Aptek.objects.create(depo=depo, name=normalized)
 
 
-def _next_qaime_number(aptek: Aptek, document_type: str) -> int:
+def _next_qaime_number(aptek: Aptek, document_type: str, depo: Depo) -> int:
     last = (
-        Qaime.objects.filter(aptek=aptek, document_type=document_type)
+        Qaime.objects.filter(depo=depo, aptek=aptek, document_type=document_type)
         .order_by('-number')
         .values_list('number', flat=True)
         .first()
@@ -32,9 +32,9 @@ def _next_qaime_number(aptek: Aptek, document_type: str) -> int:
 
 
 @transaction.atomic
-def import_qaime_pdf(uploaded_file):
+def import_qaime_pdf(uploaded_file, depo: Depo):
     parsed = parse_qaime_pdf(uploaded_file)
-    aptek = _get_or_create_aptek(parsed.aptek_name)
+    aptek = _get_or_create_aptek(parsed.aptek_name, depo)
 
     movement_type = (
         AnbarHereket.MOVEMENT_IN
@@ -42,10 +42,11 @@ def import_qaime_pdf(uploaded_file):
         else AnbarHereket.MOVEMENT_OUT
     )
     doc_label = 'Geri qaytarma' if parsed.document_type == Qaime.DOC_RETURN else 'Qaimə'
-    qaime_number = _next_qaime_number(aptek, parsed.document_type)
+    qaime_number = _next_qaime_number(aptek, parsed.document_type, depo)
     movement_date = parsed.doc_date
 
     qaime = Qaime.objects.create(
+        depo=depo,
         aptek=aptek,
         number=qaime_number,
         document_type=parsed.document_type,
@@ -66,6 +67,7 @@ def import_qaime_pdf(uploaded_file):
             continue
 
         AnbarHereket.objects.create(
+            depo=depo,
             drug=drug,
             movement_type=movement_type,
             quantity=item.quantity,
@@ -97,7 +99,7 @@ def import_qaime_pdf(uploaded_file):
         'missing_drugs': missing_drugs,
         'created': True,
         'message': (
-            f'{doc_label} — {aptek.name} əlavə olundu. '
+            f'{doc_label} — {aptek.name} ({depo.name}) əlavə olundu. '
             f'{movement_count} dərman {warehouse_action}.'
         ),
     }

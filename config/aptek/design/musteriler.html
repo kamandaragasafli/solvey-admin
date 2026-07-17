@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Müştərilər — Anbar Nəzarət{% endblock %}
+
+{% block page_sub %}Bütün müştəri qeydləri və sifariş tarixçəsi{% endblock %}
+
+{% block content %}
+
+<!-- ========== Stat kartları ========== -->
+<section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+  <article class="stat-card">
+    <div class="flex items-start justify-between">
+      <div>
+        <p class="stat-label">Ümumi Müştəri</p>
+        <p class="stat-value">{{ stats.total }}</p>
+        <p class="stat-change text-emerald-400">▲ +6.2%</p>
+      </div>
+      <div class="stat-icon glow-cyan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <div class="flex items-start justify-between">
+      <div>
+        <p class="stat-label">Aktiv</p>
+        <p class="stat-value">{{ stats.active }}</p>
+        <p class="stat-change text-emerald-400">▲ +3.1%</p>
+      </div>
+      <div class="stat-icon glow-green">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <div class="flex items-start justify-between">
+      <div>
+        <p class="stat-label">Bu ay yeni</p>
+        <p class="stat-value">{{ stats.new_month }}</p>
+        <p class="stat-change text-emerald-400">▲ +2</p>
+      </div>
+      <div class="stat-icon glow-purple">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <div class="flex items-start justify-between">
+      <div>
+        <p class="stat-label">Ümumi gəlir</p>
+        <p class="stat-value text-2xl">{{ stats.revenue }}</p>
+        <p class="stat-change text-emerald-400">▲ +11.4%</p>
+      </div>
+      <div class="stat-icon glow-blue">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+        </svg>
+      </div>
+    </div>
+  </article>
+</section>
+
+<!-- ========== Axtarış + əlavə et ========== -->
+<section class="glass-card p-4 mb-5 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+  <div class="relative flex-1 max-w-md">
+    <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-anbar-muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input id="customer-search" type="search" placeholder="Ad, email və ya telefon axtar…"
+           class="w-full rounded-lg border border-anbar-border bg-[#0B0E14] py-2.5 pl-10 pr-3 text-sm text-white placeholder:text-anbar-muted outline-none focus:border-cyan-500/50" />
+  </div>
+  <button type="button" class="btn-cyan inline-flex items-center justify-center gap-1.5 rounded-lg bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-cyan-300 transition shadow-cyan">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    Yeni Müştəri
+  </button>
+</section>
+
+<!-- ========== Müştəri cədvəli ========== -->
+<section class="glass-card overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="customers-table w-full text-left">
+      <thead>
+        <tr class="border-b border-anbar-border text-[11px] uppercase tracking-wider text-anbar-muted">
+          <th class="px-5 py-3.5 font-semibold">Müştəri</th>
+          <th class="px-5 py-3.5 font-semibold">Telefon</th>
+          <th class="px-5 py-3.5 font-semibold">Sifariş</th>
+          <th class="px-5 py-3.5 font-semibold">Ümumi</th>
+          <th class="px-5 py-3.5 font-semibold">Status</th>
+          <th class="px-5 py-3.5 font-semibold text-right">Əməliyyat</th>
+        </tr>
+      </thead>
+      <tbody id="customers-tbody">
+        {% for c in customers %}
+        <tr class="customer-row border-b border-anbar-border/60 hover:bg-white/[0.02] transition" data-search="{{ c.name }} {{ c.email }} {{ c.phone }}">
+          <td class="px-5 py-4">
+            <div class="flex items-center gap-3">
+              <div class="thumb thumb-{{ c.color }}">{{ c.initials }}</div>
+              <div class="min-w-0">
+                <p class="text-sm font-medium truncate">{{ c.name }}</p>
+                <p class="text-[11px] text-anbar-muted truncate">{{ c.email }}</p>
+              </div>
+            </div>
+          </td>
+          <td class="px-5 py-4 text-sm text-anbar-muted whitespace-nowrap">{{ c.phone }}</td>
+          <td class="px-5 py-4 text-sm font-medium">{{ c.orders }}</td>
+          <td class="px-5 py-4 text-sm font-semibold text-cyan-300">{{ c.total }}</td>
+          <td class="px-5 py-4">
+            {% if c.status == 'aktiv' %}
+              <span class="badge-ok">Aktiv</span>
+            {% elif c.status == 'gozleyen' %}
+              <span class="badge-warn">Gözləyən</span>
+            {% else %}
+              <span class="badge-off">Passiv</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-4 text-right">
+            <button type="button" class="text-anbar-muted hover:text-cyan-400 transition text-xs font-medium">Bax</button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-5 py-10 text-center text-sm text-anbar-muted">Müştəri tapılmadı</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  /* Müştəri axtarışı — cədvəl sətirlərini filtrləyir */
+  (function () {
+    var input = document.getElementById('customer-search');
+    if (!input) return;
+    input.addEventListener('input', function () {
+      var q = input.value.trim().toLowerCase();
+      document.querySelectorAll('.customer-row').forEach(function (row) {
+        var hay = (row.getAttribute('data-search') || '').toLowerCase();
+        row.style.display = !q || hay.indexOf(q) !== -1 ? '' : 'none';
+      });
+    });
+  })();
+</script>
+{% endblock %}

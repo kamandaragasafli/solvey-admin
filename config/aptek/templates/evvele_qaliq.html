@@ -59,7 +59,7 @@
 <div class="topbar">
   <div>
     <h1>Qalıq Düzəlişləri</h1>
-    <div class="sub">{{ month_label }} ayı üçün anbarın başlanğıc qalığı</div>
+    <div class="sub">{{ month_label }} ayı — yalnız əlavə düzəliş (köhnə qalıq silinmir)</div>
   </div>
 </div>
 
@@ -86,9 +86,10 @@
       <div class="drug-name">
         {{ drug.med_name }}
         {% if drug.med_full_name %}<small>{{ drug.med_full_name }}</small>{% endif %}
+        <small>Mövcud əvvələ qalıq: {{ drug.current_qty }}</small>
       </div>
       <input type="number" name="qty_{{ drug.id }}" class="qty-input" min="0" step="0.01"
-             value="{% if drug.qty %}{{ drug.qty }}{% endif %}" placeholder="0">
+             value="" placeholder="+ əlavə">
     </div>
     {% empty %}
     <div class="empty-hint">Aktiv dərman tapılmadı</div>
@@ -96,8 +97,8 @@
   </div>
 
   <div class="actions">
-    <button type="submit" class="btn btn-primary">Yadda saxla</button>
-    <button type="reset" class="btn btn-ghost">Sıfırla</button>
+    <button type="submit" class="btn btn-primary">Əlavə et</button>
+    <button type="reset" class="btn btn-ghost">Təmizlə</button>
     <button type="button" class="btn btn-ghost" id="loadMonth">Ayı yüklə</button>
   </div>
 </form>

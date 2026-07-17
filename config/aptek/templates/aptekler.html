@@ -10,20 +10,60 @@
     margin-bottom:22px;
     flex-wrap:wrap;
   }
-  .aptek-stats .stat-card{min-width:160px;}
+  .aptek-stats .stat-card{
+    min-width:180px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .aptek-stats .stat-card .icon{
+    width:40px; height:40px;
+    flex-shrink:0;
+    border-radius:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(59,130,246,0.1);
+    color:var(--primary-color);
+  }
+  .aptek-stats .stat-card.out .icon{background:var(--red-soft); color:var(--red);}
+  .aptek-stats .stat-card.in .icon{background:var(--green-soft); color:var(--green);}
+
   .aptek-table .col-idx{min-width:48px;width:48px;text-align:center;}
-  .aptek-table .col-name{min-width:220px;}
+  .aptek-table .col-name{min-width:240px;}
   .aptek-table .col-num{min-width:100px;text-align:center;}
   .aptek-table .col-qty{min-width:110px;text-align:right;}
   .aptek-table .col-date{min-width:130px;white-space:nowrap;}
+  .aptek-table .col-status{min-width:100px;text-align:center;}
   .aptek-table .col-actions{min-width:220px;text-align:center;}
+
+  .aptek-name-cell{display:flex; align-items:center; gap:12px;}
+  .aptek-thumb{
+    width:36px; height:36px;
+    flex-shrink:0;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    font-weight:600;
+    color:#fff;
+  }
+  .aptek-thumb.c0{background:linear-gradient(145deg,#3b82f6,#1d4ed8);}
+  .aptek-thumb.c1{background:linear-gradient(145deg,#10b981,#047857);}
+  .aptek-thumb.c2{background:linear-gradient(145deg,#f59e0b,#b45309);}
+  .aptek-thumb.c3{background:linear-gradient(145deg,#ef4444,#b91c1c);}
+  .aptek-thumb.c4{background:linear-gradient(145deg,#8b5cf6,#6d28d9);}
+  .aptek-thumb.c5{background:linear-gradient(145deg,#06b6d4,#0e7490);}
+
   .aptek-table tbody td.col-name a{
-    color:#111827;
+    color:#fff;
     text-decoration:none;
     font-weight:600;
   }
   .aptek-table tbody td.col-name a:hover{
-    color:var(--primary-color);
+    color:var(--anbar-cyan);
     text-decoration:underline;
   }
   .aptek-table tbody td.col-actions a{
@@ -34,8 +74,35 @@
     margin:0 6px;
   }
   .aptek-table tbody td.col-actions a:hover{text-decoration:underline;}
-  .filters .field.search{flex:1;min-width:220px;}
-  .filters .field.search input{min-width:220px;width:100%;}
+
+  .status-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    padding:4px 10px;
+    border-radius:20px;
+    font-size:11px;
+    font-weight:600;
+  }
+  .status-badge::before{
+    content:"";
+    width:6px; height:6px;
+    border-radius:50%;
+  }
+  .status-badge.ok{background:var(--green-soft); color:var(--success-color);}
+  .status-badge.ok::before{background:var(--success-color);}
+  .status-badge.off{background:#f3f4f6; color:var(--text-muted);}
+  .status-badge.off::before{background:var(--text-muted);}
+
+  .filters .field.search{flex:1;min-width:220px; position:relative;}
+  .filters .field.search input{min-width:220px;width:100%; padding-left:34px;}
+  .filters .field.search .search-icon{
+    position:absolute;
+    left:10px;
+    bottom:9px;
+    color:var(--ink-soft);
+    pointer-events:none;
+  }
 {% endblock %}
 
 {% block content %}
@@ -48,16 +115,40 @@
 
 <div class="aptek-stats">
   <div class="stat-card">
-    <div class="k">Aptek sayı</div>
-    <div class="v">{{ aptek_count }}</div>
+    <div class="icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </div>
+    <div>
+      <div class="k">Aptek sayı</div>
+      <div class="v">{{ aptek_count }}</div>
+    </div>
   </div>
   <div class="stat-card out">
-    <div class="k">Ümumi qaimə</div>
-    <div class="v">{{ total_qaime }}</div>
+    <div class="icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+    </div>
+    <div>
+      <div class="k">Ümumi qaimə</div>
+      <div class="v">{{ total_qaime }}</div>
+    </div>
   </div>
   <div class="stat-card in">
-    <div class="k">Ümumi geri qaytarma</div>
-    <div class="v">{{ total_return }}</div>
+    <div class="icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="1 4 1 10 7 10"/>
+        <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+      </svg>
+    </div>
+    <div>
+      <div class="k">Ümumi geri qaytarma</div>
+      <div class="v">{{ total_return }}</div>
+    </div>
   </div>
 </div>
 
@@ -72,6 +163,9 @@
   </div>
   <div class="field search">
     <label for="f-search">Aptek adı</label>
+    <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
     <input type="text" id="f-search" name="q" value="{{ search }}" placeholder="Aptek adı ilə axtar...">
   </div>
   <button type="submit" class="btn btn-primary">Filtrlə</button>
@@ -95,6 +189,7 @@
           <th class="col-qty">Çıxış miqdarı</th>
           <th class="col-qty">Qaytarma miqdarı</th>
           <th class="col-date">Son hərəkət</th>
+          <th class="col-status">Status</th>
           <th class="col-actions">Baxış</th>
         </tr>
       </thead>
@@ -103,13 +198,24 @@
         <tr>
           <td class="col-idx">{{ forloop.counter }}</td>
           <td class="drug-name col-name">
-            <a href="{% url 'aptek:aptek_detail' row.id %}?from={{ date_from }}&to={{ date_to }}">{{ row.name }}</a>
+            <div class="aptek-name-cell">
+              {% cycle 'c0' 'c1' 'c2' 'c3' 'c4' 'c5' as thumb_color silent %}
+              <div class="aptek-thumb {{ thumb_color }}">{{ row.name|slice:":2"|upper }}</div>
+              <a href="{% url 'aptek:aptek_detail' row.id %}?from={{ date_from }}&to={{ date_to }}">{{ row.name }}</a>
+            </div>
           </td>
           <td class="col-num">{{ row.return_count }}</td>
           <td class="num col-qty delta-out">{{ row.out_qty|delta_out }}</td>
           <td class="num col-qty delta-in">{{ row.in_return_qty|delta_in }}</td>
           <td class="col-date">
             {% if row.last_activity %}{{ row.last_activity|date:"d.m.Y" }}{% else %}—{% endif %}
+          </td>
+          <td class="col-status">
+            {% if row.last_activity %}
+              <span class="status-badge ok">Aktiv</span>
+            {% else %}
+              <span class="status-badge off">Passiv</span>
+            {% endif %}
           </td>
           <td class="col-actions">
             <a href="{% url 'aptek:aptek_detail' row.id %}?from={{ date_from }}&to={{ date_to }}">Hərəkətlər</a>
