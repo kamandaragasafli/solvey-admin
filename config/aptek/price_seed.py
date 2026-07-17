@@ -94,13 +94,21 @@ def seed_drug_prices(depo=None):
             continue
         price = Decimal(price_str)
         expiry = _end_of_month(*skt) if skt else None
+        defaults = {
+            'price': price,
+            'expiry_date': expiry,
+        }
+        # Köhnə sxemada (migrate 0012) category/min_stock NOT NULL ola bilər
+        field_names = {f.name for f in DrugPrice._meta.fields}
+        if 'category' in field_names:
+            defaults['category'] = ''
+        if 'min_stock' in field_names:
+            defaults['min_stock'] = Decimal('5')
+
         obj, was_created = DrugPrice.objects.update_or_create(
             depo=depo,
             drug=drug,
-            defaults={
-                'price': price,
-                'expiry_date': expiry,
-            },
+            defaults=defaults,
         )
         if was_created:
             created += 1
