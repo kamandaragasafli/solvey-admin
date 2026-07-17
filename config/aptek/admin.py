@@ -32,8 +32,8 @@ class AnbarHereketInline(admin.TabularInline):
 
 @admin.register(Qaime)
 class QaimeAdmin(admin.ModelAdmin):
-    list_display = ('number', 'document_type', 'depo', 'aptek', 'doc_date', 'total', 'created_at')
-    list_filter = ('document_type', 'depo', 'aptek', 'doc_date', 'created_at')
+    list_display = ('number', 'document_type', 'is_official', 'depo', 'aptek', 'doc_date', 'total', 'created_at')
+    list_filter = ('document_type', 'is_official', 'depo', 'aptek', 'doc_date', 'created_at')
     search_fields = ('number', 'aptek__name')
     inlines = [AnbarHereketInline]
 

@@ -104,6 +104,8 @@ DATABASES = {
 
 CRONJOBS = [
     ('0 2 * * 1', 'export.utils.avtomatik_backup'),
+    # Hər gün saat 03:00 — 1 aydan köhnə qaimə PDF fayllarını sil (DB qalır)
+    ('0 3 * * *', 'aptek.services.cleanup_expired_qaime_pdfs'),
 ]
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -139,6 +141,10 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 BACKUP_DIR = os.path.join(MEDIA_ROOT, 'backups')
+
+# Qaimə PDF diskdə saxlanır; 30 gündən (1 ay) köhnələr silinə bilər
+APTEK_KEEP_QAIME_PDF = True
+APTEK_QAIME_PDF_RETENTION_DAYS = 30
 
 LOGIN_REDIRECT_URL = 'index'
 LOGOUT_REDIRECT_URL = 'login'

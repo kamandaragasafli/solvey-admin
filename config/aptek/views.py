@@ -291,6 +291,7 @@ def _qaimeler_context(request):
             'date': qaime.doc_date,
             'aptek': qaime.aptek.name,
             'qaime_number': qaime.number,
+            'is_official': qaime.is_official,
             'drug_label': drug_label,
             'drug_count': len(names),
             'quantity': qty,
@@ -1361,8 +1362,9 @@ def aptek_list(request):
     if request.method == 'POST':
         if request.FILES.get('pdf_file'):
             pdf_file = request.FILES['pdf_file']
+            is_official = (request.POST.get('pdf_kind') or '').strip() == 'official'
             try:
-                result = import_qaime_pdf(pdf_file, depo)
+                result = import_qaime_pdf(pdf_file, depo, is_official=is_official)
                 messages.success(request, result['message'])
                 if result['missing_drugs']:
                     messages.warning(
@@ -1389,6 +1391,7 @@ def aptek_list(request):
             aptek_id = request.POST.get('manual_aptek') or ''
             doc_date_raw = request.POST.get('manual_doc_date') or ''
             doc_date = _parse_date(doc_date_raw, None)
+            is_official = (request.POST.get('manual_kind') or '').strip() == 'official'
             aptek = (
                 Aptek.objects.filter(pk=aptek_id, depo=depo).first() if aptek_id else None
             )
@@ -1424,6 +1427,7 @@ def aptek_list(request):
                 messages.error(request, 'Ən azı bir dərman və miqdar daxil edin.')
                 return redirect('aptek:anbar_dashboard')
 
+            kind_label = 'rəsmi' if is_official else 'qeyri rəsmi'
             with transaction.atomic():
                 qaime_number = (
                     Qaime.objects.filter(
@@ -1441,6 +1445,7 @@ def aptek_list(request):
                     document_type=Qaime.DOC_QAIME,
                     doc_date=doc_date,
                     total=Decimal('0'),
+                    is_official=is_official,
                 )
 
                 total_qty = Decimal('0')
@@ -1453,7 +1458,7 @@ def aptek_list(request):
                         date=doc_date,
                         aptek=aptek,
                         qaime=qaime,
-                        note=f'Qaimə №{qaime_number}',
+                        note=f'Qaimə №{qaime_number} ({kind_label})',
                     )
                     total_qty += qty
 
@@ -1462,7 +1467,7 @@ def aptek_list(request):
 
             messages.success(
                 request,
-                f'Manuel qaimə №{qaime_number} əlavə olundu ({len(items)} dərman).',
+                f'Manuel qaimə №{qaime_number} ({kind_label}) əlavə olundu ({len(items)} dərman).',
             )
             month_start = date(doc_date.year, doc_date.month, 1)
             _, month_last = monthrange(doc_date.year, doc_date.month)
@@ -1503,6 +1508,9 @@ def aptek_list(request):
     )
     user_ctx = _user_context(request)
 
+    manual_drugs = list(
+        Medical.objects.filter(status=True).order_by('position', 'med_name')
+    )
     context = {
         'rows': rows,
         'totals': totals,
@@ -1517,7 +1525,10 @@ def aptek_list(request):
         'month_label': month_label,
         'record_count': len(rows),
         'last_qaime': last_qaime,
-        'manual_drugs': Medical.objects.filter(status=True).order_by('position', 'med_name'),
+        'manual_drugs': manual_drugs,
+        'manual_drugs_json': [
+            {'id': d.id, 'name': d.med_name} for d in manual_drugs
+        ],
         'manual_default_date': today.isoformat(),
         **user_ctx,
     }

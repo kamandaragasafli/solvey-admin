@@ -105,6 +105,7 @@ DATABASES = {
 
 CRONJOBS = [
     ('0 2 * * 1', 'export.utils.avtomatik_backup'),
+    ('0 3 * * *', 'aptek.services.cleanup_expired_qaime_pdfs'),
 ]
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -137,6 +138,9 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 BACKUP_DIR = os.path.join(MEDIA_ROOT, 'backups')
+
+APTEK_KEEP_QAIME_PDF = True
+APTEK_QAIME_PDF_RETENTION_DAYS = 30
 
 LOGIN_REDIRECT_URL = 'index'
 LOGOUT_REDIRECT_URL = 'login'

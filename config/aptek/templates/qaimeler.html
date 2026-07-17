@@ -107,6 +107,7 @@
           <th class="col-doc">Qaimə №</th>
           <th class="col-date">Tarix</th>
           <th class="col-aptek">Aptek</th>
+          <th class="col-kind">Növ</th>
           <th class="drug-name">Dərman</th>
           <th class="num col-qty">Miqdar</th>
           <th class="col-pdf">PDF</th>
@@ -120,6 +121,13 @@
           <td class="col-doc">{{ row.qaime_number }}</td>
           <td class="col-date">{{ row.date|date:"d.m.Y" }}</td>
           <td class="col-aptek">{{ row.aptek }}</td>
+          <td class="col-kind">
+            {% if row.is_official %}
+            <span style="color:#34D399;font-size:12px;font-weight:600;">Rəsmi</span>
+            {% else %}
+            <span style="color:#FBBF24;font-size:12px;font-weight:600;">Qeyri rəsmi</span>
+            {% endif %}
+          </td>
           <td class="drug-name">
             {{ row.drug_label }}
             {% if row.drug_count > 1 %}<br><span style="font-size:12px;color:var(--ink-soft);font-weight:400;">{{ row.drug_count }} dərman</span>{% endif %}
@@ -139,7 +147,7 @@
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="7" style="text-align:center;color:var(--ink-soft);padding:32px;">
+          <td colspan="8" style="text-align:center;color:var(--ink-soft);padding:32px;">
             Seçilmiş dövr üçün qaimə tapılmadı
           </td>
         </tr>

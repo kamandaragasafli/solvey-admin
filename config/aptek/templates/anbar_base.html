@@ -860,36 +860,32 @@
 </div>
 
 <script>
-    const pdfForm = document.getElementById('pdfUploadForm');
-    const pdfInput = document.getElementById('pdfInput');
-    const dropzone = document.getElementById('dropzone');
-    if (!pdfForm || !pdfInput || !dropzone) {
-      // PDF upload yalnız anbar səhifəsindədir
-    } else {
-    dropzone.addEventListener('click', function(){ pdfInput.click(); });
-  
-    dropzone.addEventListener('dragover', function(e){
-      e.preventDefault();
-      dropzone.style.borderColor = 'var(--primary-color)';
+    document.querySelectorAll('[data-pdf-drop]').forEach(function (form) {
+      var input = form.querySelector('input[type="file"]');
+      if (!input) return;
+      form.addEventListener('click', function (e) {
+        if (e.target === input) return;
+        input.click();
+      });
+      form.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        form.style.borderColor = 'var(--primary-color)';
+      });
+      form.addEventListener('dragleave', function () {
+        form.style.borderColor = '';
+      });
+      form.addEventListener('drop', function (e) {
+        e.preventDefault();
+        form.style.borderColor = '';
+        if (e.dataTransfer.files.length) {
+          input.files = e.dataTransfer.files;
+          form.submit();
+        }
+      });
+      input.addEventListener('change', function () {
+        if (input.files && input.files.length) form.submit();
+      });
     });
-    dropzone.addEventListener('dragleave', function(){
-      dropzone.style.borderColor = '';
-    });
-    dropzone.addEventListener('drop', function(e){
-      e.preventDefault();
-      dropzone.style.borderColor = '';
-      if(e.dataTransfer.files.length){
-        pdfInput.files = e.dataTransfer.files;
-        pdfForm.submit();
-      }
-    });
-  
-    pdfInput.addEventListener('change', function(e){
-      if(e.target.files[0]){
-        pdfForm.submit();
-      }
-    });
-    }
 </script>
 {% block extra_js %}{% endblock %}
 

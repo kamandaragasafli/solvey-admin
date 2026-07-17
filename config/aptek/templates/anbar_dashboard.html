@@ -23,11 +23,23 @@
   }
   .manual-close:hover{background:#161b26; color:#fff;}
   .manual-grid{
-    display:grid; grid-template-columns:1.2fr 1fr auto; gap:12px; margin-bottom:12px;
+    display:grid; grid-template-columns:1.1fr 1fr 1fr auto; gap:12px; margin-bottom:12px;
   }
   .manual-grid .field select,
   .manual-grid .field input{
     min-width:0;
+  }
+  .manual-kind{
+    display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .manual-kind label.kind-opt{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:8px 12px; border:1px solid var(--line); border-radius:8px;
+    background:#0B0E14; color:var(--ink-soft); cursor:pointer; font-size:13px; font-weight:600;
+  }
+  .manual-kind input{accent-color:#22D3EE;}
+  .manual-kind label.kind-opt:has(input:checked){
+    border-color:rgba(34,211,238,.45); color:#fff; background:rgba(34,211,238,.08);
   }
   .manual-table{
     width:100%; border-collapse:separate; border-spacing:0; overflow:hidden;
@@ -101,7 +113,31 @@
     border-radius:999px;
     padding:2px 9px;
   }
-  @media(max-width:880px){
+  .import-dropzones{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    flex:1;
+    min-width:min(100%, 520px);
+  }
+  .dropzone.dropzone-unofficial{border-color:rgba(251,191,36,0.35);}
+  .dropzone.dropzone-unofficial:hover{border-color:rgba(251,191,36,0.65);}
+  .dropzone.dropzone-unofficial .icon{
+    color:#FBBF24;
+    background:rgba(251,191,36,0.12);
+    border-color:rgba(251,191,36,0.35);
+    box-shadow:0 0 14px rgba(251,191,36,0.2);
+  }
+  .dropzone.dropzone-official{border-color:rgba(52,211,153,0.35);}
+  .dropzone.dropzone-official:hover{border-color:rgba(52,211,153,0.65);}
+  .dropzone.dropzone-official .icon{
+    color:#34D399;
+    background:rgba(52,211,153,0.12);
+    border-color:rgba(52,211,153,0.35);
+    box-shadow:0 0 14px rgba(52,211,153,0.2);
+  }
+  @media(max-width:900px){
+    .import-dropzones{grid-template-columns:1fr; min-width:100%;}
     .manual-modal{padding:14px 12px;}
     .manual-head h3{font-size:20px;}
     .manual-grid{grid-template-columns:1fr;}
@@ -123,15 +159,28 @@
     </div>
 
     <!-- Import row -->
-    <form class="import-row" id="pdfUploadForm" method="post" enctype="multipart/form-data">
-      {% csrf_token %}
-      <div class="dropzone" id="dropzone">
-        <div class="icon">PDF</div>
-        <div class="txt">
-          <b>Qaimə və ya geriqaytarma PDF-i buraya atın</b>
-          <span>Qaimə → anbardan çıxış · Geriqaytarma → anbara giriş</span>
-        </div>
-        <input type="file" id="pdfInput" name="pdf_file" accept="application/pdf" hidden>
+    <div class="import-row">
+      <div class="import-dropzones">
+        <form class="dropzone dropzone-unofficial" id="pdfFormUnofficial" method="post" enctype="multipart/form-data" data-pdf-drop>
+          {% csrf_token %}
+          <input type="hidden" name="pdf_kind" value="unofficial">
+          <div class="icon">PDF</div>
+          <div class="txt">
+            <b>Qeyri rəsmi</b>
+            <span>PDF buraya atın və ya seçin</span>
+          </div>
+          <input type="file" name="pdf_file" accept="application/pdf" hidden>
+        </form>
+        <form class="dropzone dropzone-official" id="pdfFormOfficial" method="post" enctype="multipart/form-data" data-pdf-drop>
+          {% csrf_token %}
+          <input type="hidden" name="pdf_kind" value="official">
+          <div class="icon">PDF</div>
+          <div class="txt">
+            <b>Rəsmi</b>
+            <span>Elektron qaimə / geri qaytarma · mal + miqdar</span>
+          </div>
+          <input type="file" name="pdf_file" accept="application/pdf" hidden>
+        </form>
       </div>
       <div class="stat-card in">
         <div class="k">Ay ərzində gələn</div>
@@ -145,7 +194,7 @@
         <div class="k">Anbarda qalıq</div>
         <div class="v">{{ totals.qalan|qty_az }}</div>
       </div>
-    </form>
+    </div>
 
     <!-- Filters -->
     <form class="filters" method="get" id="ledgerFilterForm">
@@ -175,7 +224,7 @@
         </select>
       </div>
       <button type="submit" class="btn btn-primary">Filtrlə</button>
-      <button type="button" class="btn btn-primary" id="openManualQaime">Qaimə əlavə et</button>
+      <button type="button" class="btn btn-primary" id="openManualQaime">Manuel qaimə əlavə et</button>
       <a href="{% url 'aptek:export_ledger' %}?from={{ date_from }}&to={{ date_to }}&aptek={{ selected_aptek|default:'all' }}&status={{ status_filter }}" class="btn btn-ghost">Excel-ə çıxar</a>
     </form>
 
@@ -215,6 +264,19 @@
               <input type="date" id="manual_doc_date" name="manual_doc_date" value="{{ manual_default_date }}" required>
             </div>
             <div class="field">
+              <label>Növ</label>
+              <div class="manual-kind">
+                <label class="kind-opt">
+                  <input type="radio" name="manual_kind" value="unofficial" checked>
+                  Qeyri rəsmi
+                </label>
+                <label class="kind-opt">
+                  <input type="radio" name="manual_kind" value="official">
+                  Rəsmi
+                </label>
+              </div>
+            </div>
+            <div class="field">
               <label>&nbsp;</label>
               <button type="button" class="btn btn-ghost manual-btn" id="addManualRow">+ Sətir əlavə et</button>
             </div>
@@ -238,6 +300,8 @@
         </form>
       </div>
     </div>
+
+    {{ manual_drugs_json|json_script:"manual-drugs-data" }}
 
     <!-- Ledger table -->
     <div class="ledger">
@@ -294,30 +358,48 @@
 {% block extra_js %}
 <script>
   (function () {
-    const modal = document.getElementById('manualQaimeModal');
-    const openBtn = document.getElementById('openManualQaime');
-    const closeBtn = document.getElementById('closeManualQaime');
-    const cancelBtn = document.getElementById('cancelManualQaime');
-    const addRowBtn = document.getElementById('addManualRow');
-    const rowsBody = document.getElementById('manualQaimeRows');
+    var modal = document.getElementById('manualQaimeModal');
+    var openBtn = document.getElementById('openManualQaime');
+    var closeBtn = document.getElementById('closeManualQaime');
+    var cancelBtn = document.getElementById('cancelManualQaime');
+    var addRowBtn = document.getElementById('addManualRow');
+    var rowsBody = document.getElementById('manualQaimeRows');
+    var drugsData = document.getElementById('manual-drugs-data');
 
     if (!modal || !openBtn || !rowsBody) return;
 
-    const drugOptions = `{% for drug in manual_drugs %}<option value="{{ drug.id }}">{{ drug.med_name }}</option>{% endfor %}`;
+    var drugs = [];
+    try {
+      drugs = drugsData ? JSON.parse(drugsData.textContent) : [];
+    } catch (e) {
+      drugs = [];
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function drugOptionsHtml() {
+      return drugs.map(function (d) {
+        return '<option value="' + d.id + '">' + escapeHtml(d.name) + '</option>';
+      }).join('');
+    }
 
     function rowHtml() {
-      return `
-        <tr>
-          <td>
-            <select name="manual_drug_id" required>
-              <option value="">Seçin...</option>
-              ${drugOptions}
-            </select>
-          </td>
-          <td><input type="number" name="manual_qty" min="0.01" step="0.01" placeholder="0" required></td>
-          <td style="text-align:center;"><button type="button" class="manual-remove remove-row">×</button></td>
-        </tr>
-      `;
+      return (
+        '<tr>' +
+          '<td><select name="manual_drug_id" required>' +
+            '<option value="">Seçin...</option>' +
+            drugOptionsHtml() +
+          '</select></td>' +
+          '<td><input type="number" name="manual_qty" min="0.01" step="0.01" placeholder="0" required></td>' +
+          '<td style="text-align:center;"><button type="button" class="manual-remove remove-row" aria-label="Sil">×</button></td>' +
+        '</tr>'
+      );
     }
 
     function addRow() {
@@ -333,17 +415,22 @@
       modal.classList.remove('show');
     }
 
-    openBtn.addEventListener('click', openModal);
-    closeBtn && closeBtn.addEventListener('click', closeModal);
-    cancelBtn && cancelBtn.addEventListener('click', closeModal);
-    addRowBtn && addRowBtn.addEventListener('click', addRow);
+    openBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      openModal();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    if (addRowBtn) addRowBtn.addEventListener('click', addRow);
     modal.addEventListener('click', function (e) {
       if (e.target === modal) closeModal();
     });
     rowsBody.addEventListener('click', function (e) {
       if (e.target.classList.contains('remove-row')) {
-        const row = e.target.closest('tr');
+        var row = e.target.closest('tr');
         if (row) row.remove();
+        if (!rowsBody.children.length) addRow();
       }
     });
   })();

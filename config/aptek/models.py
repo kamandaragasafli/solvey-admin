@@ -57,6 +57,7 @@ class Qaime(models.Model):
     total = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     pdf = models.FileField(upload_to='qaimeler/', null=True, blank=True)
     doc_date = models.DateField(verbose_name='Sənəd tarixi', null=True, blank=True)
+    is_official = models.BooleanField(default=False, verbose_name='Rəsmi')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
