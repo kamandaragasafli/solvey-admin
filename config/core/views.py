@@ -1245,8 +1245,8 @@ def export_excel_ayliq_baki(request):
             cell.border = thin_border
             cell.fill = header_fill
 
-    # Aşağıda cəm
-    total_row = len(baku_region) + 3
+    # Aşağıda cəm (regionlar 4-dən başlayır → son sətir = n+3, cəm = n+4)
+    total_row = len(baku_region) + 4
     ws.cell(row=total_row, column=1).value = "Cəm"
     ws.cell(row=total_row, column=1).font = bold_font
     ws.cell(row=total_row, column=1).alignment = center_alignment

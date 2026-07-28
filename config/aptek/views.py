@@ -488,56 +488,118 @@ def evvele_qaliq(request):
     selected_month = f'{year:04d}-{month:02d}'
     month_label = AZ_MONTHS.get(month, '')
 
+    def _current_evvel_map():
+        result = {}
+        for row in (
+            AnbarHereket.objects.filter(
+                depo=depo,
+                note=EVVEL_NOTE,
+                date=opening_date,
+            )
+            .values('drug_id')
+            .annotate(
+                total_in=Coalesce(
+                    Sum('quantity', filter=Q(movement_type=AnbarHereket.MOVEMENT_IN)),
+                    Decimal('0'),
+                ),
+                total_out=Coalesce(
+                    Sum('quantity', filter=Q(movement_type=AnbarHereket.MOVEMENT_OUT)),
+                    Decimal('0'),
+                ),
+            )
+        ):
+            result[row['drug_id']] = (row['total_in'] or Decimal('0')) - (row['total_out'] or Decimal('0'))
+        return result
+
     if request.method == 'POST':
+        action = (request.POST.get('action') or 'save').strip()
+
+        if action == 'delete':
+            movement_id = request.POST.get('movement_id')
+            movement = AnbarHereket.objects.filter(
+                pk=movement_id,
+                depo=depo,
+                note=EVVEL_NOTE,
+                date=opening_date,
+                qaime__isnull=True,
+            ).first()
+            if movement:
+                drug_name = movement.drug.med_name
+                movement.delete()
+                messages.success(request, f'Qalıq düzəlişi silindi: {drug_name}.')
+            else:
+                messages.error(request, 'Silinəcək qeyd tapılmadı.')
+            return redirect(f"{reverse('aptek:evvele_qaliq')}?month={selected_month}")
+
+        # Absolute update: input = istənilən qalıq; fərq əlavə/çıxış kimi yazılır
+        current_map = _current_evvel_map()
         with transaction.atomic():
-            saved = 0
+            changed = 0
             for drug in Medical.objects.filter(status=True):
                 raw = request.POST.get(f'qty_{drug.id}', '').strip().replace(',', '.')
-                if not raw:
+                if raw == '':
                     continue
                 try:
-                    qty = Decimal(raw)
+                    target = Decimal(raw)
                 except Exception:
                     continue
-                if qty <= 0:
+                if target < 0:
                     continue
-                # Əvvəlki qeydlər silinmir — yalnız yeni giriş əlavə olunur
+
+                current = current_map.get(drug.id, Decimal('0'))
+                diff = target - current
+                if diff == 0:
+                    continue
+
+                if diff > 0:
+                    movement_type = AnbarHereket.MOVEMENT_IN
+                    abs_qty = diff
+                else:
+                    movement_type = AnbarHereket.MOVEMENT_OUT
+                    abs_qty = abs(diff)
+
                 AnbarHereket.objects.create(
                     depo=depo,
                     drug=drug,
-                    movement_type=AnbarHereket.MOVEMENT_IN,
-                    quantity=qty,
+                    movement_type=movement_type,
+                    quantity=abs_qty,
                     date=opening_date,
                     note=EVVEL_NOTE,
                 )
-                saved += 1
+                changed += 1
 
         messages.success(
             request,
-            f'{month_label} {year} — qalıq düzəlişi əlavə olundu ({saved} dərman). Əvvəlki qeydlər saxlanıldı.',
+            f'{month_label} {year} — qalıq yeniləndi ({changed} dərman).',
         )
         return redirect(f"{reverse('aptek:evvele_qaliq')}?month={selected_month}")
 
-    existing = {}
-    for row in (
+    existing = _current_evvel_map()
+    drugs = []
+    for drug in Medical.objects.filter(status=True).order_by('position', 'med_name'):
+        qty = existing.get(drug.id, Decimal('0'))
+        drug.current_qty = qty
+        # type=number üçün nöqtəli format (lokal vergül inputu boş göstərir)
+        if qty == qty.to_integral_value():
+            drug.qty_display = str(int(qty))
+        else:
+            drug.qty_display = format(qty.normalize(), 'f')
+        drugs.append(drug)
+
+    corrections = (
         AnbarHereket.objects.filter(
             depo=depo,
             note=EVVEL_NOTE,
             date=opening_date,
-            movement_type=AnbarHereket.MOVEMENT_IN,
+            qaime__isnull=True,
         )
-        .values('drug_id')
-        .annotate(total=Sum('quantity'))
-    ):
-        existing[row['drug_id']] = row['total'] or Decimal('0')
-
-    drugs = []
-    for drug in Medical.objects.filter(status=True).order_by('position', 'med_name'):
-        drug.current_qty = existing.get(drug.id, Decimal('0'))
-        drugs.append(drug)
+        .select_related('drug')
+        .order_by('-created_at', '-id')[:200]
+    )
 
     context = {
         'drugs': drugs,
+        'corrections': corrections,
         'selected_month': selected_month,
         'month_label': month_label,
         'opening_date': opening_date,

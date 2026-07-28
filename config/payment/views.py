@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.utils.dateparse import parse_date
 from datetime import date
 from decimal import Decimal as D
@@ -329,7 +330,10 @@ def update_sale(request):
                 qs.delete()  # qty == 0 → sil
 
         messages.success(request, "Satış məlumatları yeniləndi.")
-        return redirect("sales")
+        return redirect(
+            f"{reverse('sales')}?month={month_start.month}&year={month_start.year}"
+            + (f"&region={region.id}" if selected_region_id else "")
+        )
 
     # Handle GET (load existing)
     try:
@@ -359,27 +363,32 @@ def sales(request):
     """
     Region × Drug sales matrix with filters.
     Filters: region_search (name contains), region (id), month, year.
+    İlk açılışda cari ay/il default; boş seçim (Hamısı) saxlanılır.
     """
-    all_region = Region.objects.all().order_by("id")
-    all_drug = Medical.objects.all().order_by("id")
+    today = date.today()
+    all_region = Region.objects.all().order_by("region_name")
+    all_drug = Medical.objects.all().order_by("position", "id")
 
-    # Years for dropdown (sorted desc)
     years = list(Sale.objects.dates("sale_date", "year").distinct())
     years = sorted([y.year for y in years], reverse=True)
-    # 2026-cı ili və cari ili əlavə et (hələ satış olmasa belə)
-    current_year = date.today().year
+    current_year = today.year
     if current_year not in years:
         years.insert(0, current_year)
     if 2026 not in years:
         years.insert(0, 2026)
-    # Yenidən sırala (azalan sırada)
     years = sorted(set(years), reverse=True)
 
-    # Filters
     region_search = request.GET.get("region_search", "").strip()
     region_id = request.GET.get("region", "").strip()
-    month = request.GET.get("month", "").strip()
-    year = request.GET.get("year", "").strip()
+    # İlk açılışda cari ay/il URL-ə yazılsın (Excel və bookmark üçün)
+    if "month" not in request.GET and "year" not in request.GET:
+        q = request.GET.copy()
+        q["month"] = str(today.month)
+        q["year"] = str(today.year)
+        return redirect(f"{request.path}?{q.urlencode()}")
+
+    month = (request.GET.get("month") or "").strip()
+    year = (request.GET.get("year") or "").strip()
 
     sales_queryset = Sale.objects.all()
 
@@ -396,46 +405,60 @@ def sales(request):
     else:
         region_id_int = None
 
+    month_int = None
     if month:
         try:
             month_int = int(month)
             sales_queryset = sales_queryset.filter(sale_date__month=month_int)
         except ValueError:
             month_int = None
-    else:
-        month_int = None
 
+    year_int = None
     if year:
         try:
             year_int = int(year)
             sales_queryset = sales_queryset.filter(sale_date__year=year_int)
         except ValueError:
             year_int = None
-    else:
-        year_int = None
 
-    # Build region × drug quantities
-    sales_dict = {}
-    totals_per_region = {}
-    totals_per_drug = {drug.id: 0 for drug in all_drug}
+    # Bir sorğu ilə region×drug cəmləri
+    sales_dict = {r.id: {d.id: 0 for d in all_drug} for r in all_region}
+    totals_per_region = {r.id: 0 for r in all_region}
+    totals_per_drug = {d.id: 0 for d in all_drug}
     grand_total = 0
 
-    for region in all_region:
-        sales_dict[region.id] = {}
-        region_total = 0
-        for drug in all_drug:
-            qty = (
-                sales_queryset.filter(region_id=region.id, drug_id=drug.id)
-                .aggregate(Sum("quantity"))["quantity__sum"]
-                or 0
-            )
-            sales_dict[region.id][drug.id] = qty
-            region_total += qty
-            totals_per_drug[drug.id] += qty
+    region_ids = list(all_region.values_list("id", flat=True))
+    agg = (
+        sales_queryset.filter(region_id__in=region_ids)
+        .values("region_id", "drug_id")
+        .annotate(total=Sum("quantity"))
+    )
+    for row in agg:
+        rid, did = row["region_id"], row["drug_id"]
+        qty = row["total"] or 0
+        if rid in sales_dict and did in sales_dict[rid]:
+            sales_dict[rid][did] = qty
+            totals_per_region[rid] += qty
+            totals_per_drug[did] += qty
             grand_total += qty
-        totals_per_region[region.id] = region_total
 
-    today_str = date.today().strftime("%Y-%m-%d")
+    month_names = {
+        1: "Yanvar", 2: "Fevral", 3: "Mart", 4: "Aprel",
+        5: "May", 6: "İyun", 7: "İyul", 8: "Avqust",
+        9: "Sentyabr", 10: "Oktyabr", 11: "Noyabr", 12: "Dekabr",
+    }
+    period_label = "Bütün dövrlər"
+    if month_int and year_int:
+        period_label = f"{month_names.get(month_int, month_int)} {year_int}"
+        edit_date = date(year_int, month_int, 1).strftime("%Y-%m-%d")
+    elif year_int:
+        period_label = str(year_int)
+        edit_date = date(year_int, today.month, 1).strftime("%Y-%m-%d")
+    elif month_int:
+        period_label = month_names.get(month_int, str(month_int))
+        edit_date = date(today.year, month_int, 1).strftime("%Y-%m-%d")
+    else:
+        edit_date = today.strftime("%Y-%m-%d")
 
     context = {
         "all_region": all_region,
@@ -449,20 +472,29 @@ def sales(request):
         "selected_month": month_int,
         "selected_year": year_int,
         "region_search": region_search,
-        "today": today_str,
+        "period_label": period_label,
+        "edit_date": edit_date,
+        "today": today.strftime("%Y-%m-%d"),
     }
     return render(request, "reports/sales.html", context)
 
 
 def export_sales_excel(request):
     """Aylıq Satışlar səhifəsinin Excel çıxarışı (reports/sales)."""
-    all_region = Region.objects.all().order_by("id")
-    all_drug = Medical.objects.all().order_by("id")
+    today = date.today()
+    all_region = Region.objects.all().order_by("region_name")
+    all_drug = Medical.objects.all().order_by("position", "id")
 
     region_search = request.GET.get("region_search", "").strip()
     region_id = request.GET.get("region", "").strip()
-    month = request.GET.get("month", "").strip()
-    year = request.GET.get("year", "").strip()
+    if "month" not in request.GET:
+        month = str(today.month)
+    else:
+        month = (request.GET.get("month") or "").strip()
+    if "year" not in request.GET:
+        year = str(today.year)
+    else:
+        year = (request.GET.get("year") or "").strip()
 
     sales_queryset = Sale.objects.all()
 
@@ -486,24 +518,24 @@ def export_sales_excel(request):
         except ValueError:
             pass
 
-    sales_dict = {}
-    totals_per_region = {}
+    sales_dict = {r.id: {d.id: 0 for d in all_drug} for r in all_region}
+    totals_per_region = {r.id: 0 for r in all_region}
     totals_per_drug = {d.id: 0 for d in all_drug}
     grand_total = 0
-    for region in all_region:
-        sales_dict[region.id] = {}
-        rt = 0
-        for drug in all_drug:
-            qty = (
-                sales_queryset.filter(region_id=region.id, drug_id=drug.id)
-                .aggregate(Sum("quantity"))["quantity__sum"]
-                or 0
-            )
-            sales_dict[region.id][drug.id] = qty
-            rt += qty
-            totals_per_drug[drug.id] += qty
+    region_ids = list(all_region.values_list("id", flat=True))
+    agg = (
+        sales_queryset.filter(region_id__in=region_ids)
+        .values("region_id", "drug_id")
+        .annotate(total=Sum("quantity"))
+    )
+    for row in agg:
+        rid, did = row["region_id"], row["drug_id"]
+        qty = row["total"] or 0
+        if rid in sales_dict and did in sales_dict[rid]:
+            sales_dict[rid][did] = qty
+            totals_per_region[rid] += qty
+            totals_per_drug[did] += qty
             grand_total += qty
-        totals_per_region[region.id] = rt
 
     wb = Workbook()
     ws = wb.active

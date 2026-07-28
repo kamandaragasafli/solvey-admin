@@ -10,8 +10,17 @@
  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-  <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=3">
   <link rel="icon" href="{% static 'img/solvey logo.png' %}" type="image/png">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('solvey-theme') === 'white') {
+          document.documentElement.classList.add('white-mode');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <style>
   /* Mobil top-bar — styles.css cache-dən asılı olmadan */
   @media (max-width: 992px) {
@@ -587,6 +596,11 @@
           <span>Əməliyyatlar</span>
         </button>
 
+        <button type="button" class="theme-toggle-btn" id="themeToggle" aria-label="Tema dəyiş" title="Ağ / Tünd rejim">
+          <i class="bi bi-sun-fill icon-sun"></i>
+          <i class="bi bi-moon-stars-fill icon-moon"></i>
+        </button>
+
 
     </div>
 
@@ -705,6 +719,18 @@ const closeBtn = document.getElementById('closeBtn');
 const sendBtn = document.getElementById('sendBtn');
 const msgInput = document.getElementById('msgInput');
 const chatBody = document.getElementById('chatBody');
+
+// White / Dark theme toggle
+(function () {
+  const btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  const root = document.documentElement;
+  const KEY = 'solvey-theme';
+  btn.addEventListener('click', function () {
+    const isWhite = root.classList.toggle('white-mode');
+    try { localStorage.setItem(KEY, isWhite ? 'white' : 'dark'); } catch (e) {}
+  });
+})();
 
 // Sidebar toggle (mobile)
 const sidebar = document.getElementById('sidebar');

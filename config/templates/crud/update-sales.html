@@ -33,7 +33,7 @@
         </div>
         <div class="col-md-3">
           <label for="tarix" class="form-label small">Tarix<span style="color:red">*</span></label>
-          <input type="date" name="date" value="{{ selected_date|default:default_date }}" class="form-control" />
+          <input type="date" id="sale-date" name="date" value="{{ selected_date|default:default_date }}" class="form-control" />
         </div>
       </div>
 
@@ -77,6 +77,8 @@
   document.addEventListener("DOMContentLoaded", function () {
     const inputs = document.querySelectorAll("input[type='number']");
     const totalCountEl = document.getElementById("total-count");
+    const regionSelect = document.getElementById("aptek-adi");
+    const dateInput = document.getElementById("sale-date");
 
     function updateTotal() {
       let total = 0;
@@ -89,10 +91,20 @@
       totalCountEl.textContent = total;
     }
 
-    // Hər input üçün dəyişiklik olduqda toplamı yenilə
     inputs.forEach(input => {
       input.addEventListener("input", updateTotal);
     });
+    updateTotal();
+
+    // Bölgə və ya tarix dəyişəndə həmin ayın mövcud satışlarını yüklə
+    function reloadForSelection() {
+      const params = new URLSearchParams();
+      if (regionSelect.value) params.set("region", regionSelect.value);
+      if (dateInput.value) params.set("date", dateInput.value);
+      window.location.href = "{% url 'update-sell' %}?" + params.toString();
+    }
+    regionSelect.addEventListener("change", reloadForSelection);
+    dateInput.addEventListener("change", reloadForSelection);
   });
 </script>
 

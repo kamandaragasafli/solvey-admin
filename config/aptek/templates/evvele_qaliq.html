@@ -4,13 +4,14 @@
 {% block main_class %} evvele-main{% endblock %}
 
 {% block extra_css %}
-  .main.evvele-main{max-width:900px;}
+  .main.evvele-main{max-width:960px;}
   .card{
     background:var(--paper-raised);
     border:1px solid var(--line);
     border-radius:var(--radius);
     padding:24px;
     box-shadow:var(--shadow);
+    margin-bottom:18px;
   }
   .toolbar{
     display:flex;
@@ -26,10 +27,15 @@
   .total-box{margin-left:auto;text-align:right;}
   .total-box .k{font-size:10.5px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:0.06em;}
   .total-box .v{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--primary-color);}
-  .drug-list{display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 340px);overflow-y:auto;}
+  .hint-box{
+    font-size:12.5px;color:var(--ink-soft);line-height:1.45;
+    background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.22);
+    border-radius:10px;padding:10px 12px;margin-bottom:16px;
+  }
+  .drug-list{display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 420px);overflow-y:auto;}
   .drug-row{
     display:grid;
-    grid-template-columns:1fr 110px;
+    grid-template-columns:1fr 120px;
     gap:12px;
     align-items:center;
     padding:10px 12px;
@@ -37,7 +43,7 @@
     border-radius:var(--radius);
     background:var(--paper);
   }
-  .drug-row:hover{border-color:#cbd5e1;}
+  .drug-row:hover{border-color:rgba(34,211,238,0.35);}
   .drug-name{font-size:13px;font-weight:500;color:var(--ink);}
   .drug-name small{display:block;font-size:11px;color:var(--ink-soft);font-weight:400;margin-top:2px;}
   .drug-row input{
@@ -48,10 +54,24 @@
     padding:8px 10px;
     width:100%;
     background:var(--paper-raised);
+    color:#fff;
   }
   .drug-row input:focus{outline:2px solid var(--primary-color);outline-offset:0;border-color:var(--primary-color);}
   .actions{display:flex;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line);}
   .empty-hint{text-align:center;padding:32px;color:var(--ink-soft);}
+  .corr-table{width:100%;border-collapse:collapse;}
+  .corr-table th{
+    font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--ink-soft);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);
+  }
+  .corr-table td{padding:10px 12px;border-bottom:1px solid rgba(30,37,51,.55);font-size:13px;}
+  .corr-in{color:#34D399;font-weight:600;}
+  .corr-out{color:#FB7185;font-weight:600;}
+  .btn-del{
+    border:1px solid rgba(244,63,94,.35);background:rgba(244,63,94,.1);
+    color:#FB7185;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .btn-del:hover{background:rgba(244,63,94,.2);}
   @media(max-width:880px){.drug-list{max-height:none;}}
 {% endblock %}
 
@@ -59,12 +79,13 @@
 <div class="topbar">
   <div>
     <h1>Qalıq Düzəlişləri</h1>
-    <div class="sub">{{ month_label }} ayı — yalnız əlavə düzəliş (köhnə qalıq silinmir)</div>
+    <div class="sub">{{ month_label }} ayı — inputda cari qalıq; dəyişib yadda saxlayın</div>
   </div>
 </div>
 
 <form class="card" method="post" id="evvelForm">
   {% csrf_token %}
+  <input type="hidden" name="action" value="save">
   <div class="toolbar">
     <div class="field">
       <label for="month">Ay</label>
@@ -75,9 +96,15 @@
       <input type="text" id="search" placeholder="Dərman adı ilə axtar...">
     </div>
     <div class="total-box">
-      <div class="k">Yekun miqdar</div>
+      <div class="k">Yekun qalıq</div>
       <div class="v" id="totalQty">0</div>
     </div>
+  </div>
+
+  <div class="hint-box">
+    Inputda <b style="color:#fff;">cari əvvələ qalıq</b> görünür.
+    Məsələn <b style="color:#fff;">10</b> ikən <b style="color:#22D3EE;">11</b> yazıb saxlasanız, sistem yalnız
+    <b style="color:#34D399;">+1</b> əlavə edir (update). Köhnə qeydlər silinmir.
   </div>
 
   <div class="drug-list" id="drugList">
@@ -86,10 +113,10 @@
       <div class="drug-name">
         {{ drug.med_name }}
         {% if drug.med_full_name %}<small>{{ drug.med_full_name }}</small>{% endif %}
-        <small>Mövcud əvvələ qalıq: {{ drug.current_qty }}</small>
       </div>
       <input type="number" name="qty_{{ drug.id }}" class="qty-input" min="0" step="0.01"
-             value="" placeholder="+ əlavə">
+             value="{{ drug.qty_display }}"
+             data-original="{{ drug.qty_display }}">
     </div>
     {% empty %}
     <div class="empty-hint">Aktiv dərman tapılmadı</div>
@@ -97,11 +124,63 @@
   </div>
 
   <div class="actions">
-    <button type="submit" class="btn btn-primary">Əlavə et</button>
-    <button type="reset" class="btn btn-ghost">Təmizlə</button>
+    <button type="submit" class="btn btn-primary">Yadda saxla</button>
+    <button type="button" class="btn btn-ghost" id="resetOriginal">Sıfırla</button>
     <button type="button" class="btn btn-ghost" id="loadMonth">Ayı yüklə</button>
   </div>
 </form>
+
+<div class="card">
+  <div class="ledger-head" style="padding:0 0 14px;border:none;margin:0;">
+    <h2 style="font-size:16px;color:#fff;">Bu ayın düzəliş qeydləri</h2>
+    <span class="count">{{ corrections|length }}</span>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="corr-table">
+      <thead>
+        <tr>
+          <th>Dərman</th>
+          <th>Növ</th>
+          <th>Miqdar</th>
+          <th>Tarix</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in corrections %}
+        <tr>
+          <td>{{ c.drug.med_name }}</td>
+          <td>
+            {% if c.movement_type == 'in' %}
+              <span class="corr-in">+ Artırma</span>
+            {% else %}
+              <span class="corr-out">− Azaltma</span>
+            {% endif %}
+          </td>
+          <td class="{% if c.movement_type == 'in' %}corr-in{% else %}corr-out{% endif %}">
+            {% if c.movement_type == 'in' %}+{% else %}−{% endif %}{{ c.quantity }}
+          </td>
+          <td style="color:var(--ink-soft);">{{ c.created_at|date:"d.m.Y H:i" }}</td>
+          <td>
+            <form method="post" style="display:inline;"
+                  onsubmit="return confirm('Bu düzəliş silinsin?');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="month" value="{{ selected_month }}">
+              <input type="hidden" name="movement_id" value="{{ c.id }}">
+              <button type="submit" class="btn-del">Sil</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="empty-hint">Bu ay üçün düzəliş qeydi yoxdur</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -113,7 +192,7 @@
 
   function updateTotal(){
     let t = 0;
-    qtyInputs.forEach(inp => { t += parseFloat(inp.value.replace(',','.')) || 0; });
+    qtyInputs.forEach(inp => { t += parseFloat(String(inp.value).replace(',','.')) || 0; });
     totalEl.textContent = t % 1 === 0 ? String(t) : t.toFixed(1).replace('.', ',');
   }
 
@@ -125,6 +204,13 @@
     document.querySelectorAll('.drug-row').forEach(row => {
       row.style.display = !q || row.dataset.name.includes(q) ? '' : 'none';
     });
+  });
+
+  document.getElementById('resetOriginal').addEventListener('click', function(){
+    qtyInputs.forEach(inp => {
+      inp.value = inp.getAttribute('data-original') || '0';
+    });
+    updateTotal();
   });
 
   document.getElementById('loadMonth').addEventListener('click', function(){

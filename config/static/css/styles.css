@@ -1,13 +1,5 @@
 /*================= ƏSAS STİLLƏR =================*/
 
-body {
-  background-color: #1f2937;
-  font-family: 'Segoe UI', sans-serif;
-  color: #333;
-  transition: all 0.3s ease;
-}
-
-
 :root {
   --primary-color: #3b82f6;
   --success-color: #10b981;
@@ -16,40 +8,229 @@ body {
   --info-color: #06b6d4;
   --dark-color: #1f2937;
   --secondary-color: #6b7280;
-  
+
+  /* Dark (default) */
+  --page-bg: #030b1a;
+  --bg-primary: #1f2937;
+  --bg-secondary: #111827;
+  --bg-card: #1f2937;
+  --text-primary: #f9fafb;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --sidebar-bg: #111827;
+  --sidebar-text: #f9fafb;
+  --sidebar-hover: rgba(255, 255, 255, 0.05);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --topbar-bg: #1f2937;
+  --input-bg: #273549;
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.35), 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.35), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.25);
+}
+
+/*================= WHITE MODE =================*/
+html.white-mode {
+  --page-bg: #f8fafc;
   --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
+  --bg-secondary: #f1f5f9;
   --bg-card: #ffffff;
   --text-primary: #1f2937;
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
   --border-color: #e5e7eb;
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #1f2937;
+  --sidebar-hover: #f1f5f9;
+  --sidebar-border: #e5e7eb;
+  --topbar-bg: #ffffff;
+  --input-bg: #ffffff;
+  --dark-color: #1f2937;
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
+html.white-mode body,
+html.white-mode .content {
+  background-color: var(--page-bg);
+  color: var(--text-primary);
+}
 
+html.white-mode .sidebar {
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  box-shadow: 4px 0 20px rgba(15, 23, 42, 0.08);
+  border-right: 1px solid var(--sidebar-border);
+}
 
-/* Reset and Base Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+html.white-mode .sidebar-header,
+html.white-mode .sidebar-footer {
+  border-color: var(--sidebar-border);
+}
+
+html.white-mode .nav-item,
+html.white-mode .logout-btn {
+  color: var(--sidebar-text);
+}
+
+html.white-mode .nav-item:hover,
+html.white-mode .logout-btn:hover {
+  background: var(--sidebar-hover);
+}
+
+html.white-mode .nav-item.active {
+  background: var(--primary-color);
+  color: #fff;
+}
+
+html.white-mode .top-bar-wrap {
+  background-color: var(--topbar-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow);
+}
+
+html.white-mode .user-profile,
+html.white-mode .user-name {
+  color: var(--text-secondary);
+}
+
+html.white-mode .sidebar-toggle {
+  border-color: var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+html.white-mode .stats-card,
+html.white-mode .stats-card-body,
+html.white-mode .chart-card,
+html.white-mode .chart-card-body,
+html.white-mode .activity-card,
+html.white-mode .quick-actions-card {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary);
+}
+
+html.white-mode .stat-label,
+html.white-mode .chart-card-header h3,
+html.white-mode .activity-title {
+  color: var(--text-secondary);
+}
+
+html.white-mode .stat-value,
+html.white-mode .card-title,
+html.white-mode h1,
+html.white-mode h2,
+html.white-mode h3,
+html.white-mode h4,
+html.white-mode h5 {
+  color: var(--text-primary);
+}
+
+html.white-mode .card,
+html.white-mode .table,
+html.white-mode .table-dark {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+html.white-mode .table-dark {
+  --bs-table-bg: var(--bg-card);
+  --bs-table-color: var(--text-primary);
+  --bs-table-striped-bg: #f8fafc;
+  --bs-table-hover-bg: #eff6ff;
+  --bs-table-border-color: var(--border-color);
+}
+
+html.white-mode input,
+html.white-mode select,
+html.white-mode textarea,
+html.white-mode .form-control,
+html.white-mode .form-select {
+  background-color: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+html.white-mode .theme-toggle-btn .icon-sun { display: none; }
+html.white-mode .theme-toggle-btn .icon-moon { display: inline-flex; }
+
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f9fafb;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+}
+.theme-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.theme-toggle-btn .icon-moon { display: none; }
+.theme-toggle-btn .icon-sun { display: inline-flex; }
+
+html.white-mode .theme-toggle-btn {
+  border-color: var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+html.white-mode .sales-card,
+html.white-mode .sales-table-wrap {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary);
+}
+html.white-mode .sales-title,
+html.white-mode .sales-table .col-region {
+  color: var(--text-primary) !important;
+}
+html.white-mode .sales-table thead th,
+html.white-mode .sales-table tfoot td,
+html.white-mode .sales-table tfoot .col-sticky {
+  background: #f1f5f9 !important;
+  color: var(--text-secondary) !important;
+}
+html.white-mode .sales-table tbody tr:nth-child(even) td,
+html.white-mode .sales-table tbody tr:nth-child(even) .col-sticky {
+  background: #f8fafc !important;
+}
+html.white-mode .sales-table tbody tr:nth-child(odd) td,
+html.white-mode .sales-table tbody tr:nth-child(odd) .col-sticky {
+  background: #ffffff !important;
+}
+html.white-mode .sales-field input,
+html.white-mode .sales-field select {
+  background: #fff !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
 }
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #030b1a;
+  background-color: var(--page-bg);
   color: var(--text-primary);
   line-height: 1.6;
-  transition: all 0.3s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 html, body {
   width: 100%;
   overflow-x: hidden;
-  background-color: #030b1a;
+  background-color: var(--page-bg);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .dashboard-container {
@@ -237,8 +418,8 @@ html, body {
     top: 0;
     width: 220px;
     height: 100%;
-    background: #111827; /* dark gradient silindi, daha tünd rəng */
-    color: #f9fafb;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
     display: flex;
     flex-direction: column;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
@@ -247,7 +428,7 @@ html, body {
 
 .sidebar-header {
     padding: 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--sidebar-border);
 }
 
 .sidebar a {
@@ -276,13 +457,13 @@ html, body {
     font-weight: 500;
     border: none;
     background: none;
-    color: #f9fafb;
+    color: var(--sidebar-text);
     width: 100%;
     text-align: left;
 }
 
 .nav-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--sidebar-hover);
     transform: translateX(4px);
 }
 
@@ -300,7 +481,7 @@ html, body {
 
 .sidebar-footer {
     padding: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--sidebar-border);
 }
 
 .logout-btn {
@@ -313,20 +494,19 @@ html, body {
     transition: all 0.2s;
     border: none;
     background: none;
-    color: #f9fafb;
+    color: var(--sidebar-text);
     width: 100%;
     font-weight: 500;
 }
 
 .logout-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--sidebar-hover);
 }
 
 .content {
   margin-left: 220px;
   padding: 30px;
-  background-color: #030b1a;
-
+  background-color: var(--page-bg);
 }
 
 /* Mobile sidebar toggle + overlay */
@@ -551,7 +731,7 @@ html, body {
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 20px;
-  background-color: #1f2937;
+  background-color: var(--topbar-bg);
   border-radius: 16px;
   padding: 10px 12px;
   position: relative;

@@ -1,163 +1,368 @@
 {% extends "base.html" %}
 {% load custom_filters %}
 
-
-
 {% block content %}
-<div class="card shadow-sm" style="width: 85%; margin: auto; background-color: #1f2937; color: #f9fafb; border-radius: 14px;">
-  <div class="card-body">
-    <h5 class="card-title mb-4">Aylıq Satışlar</h5>
-
-    <!-- Filter Section -->
-    <form method="GET" class="row g-3 align-items-end">
-      <div class="col-md-3">
-        <label for="searchInput" class="form-label small ">Bölgə Axtar</label>
-        <input type="text" id="searchInput" name="region_search" class="form-control" placeholder="Bölgə..." value="{{ request.GET.region_search }}" style="background-color: #273549; color: #f9fafb; border: none;">
+<div class="sales-page">
+  <div class="sales-card">
+    <div class="sales-header">
+      <div>
+        <h1 class="sales-title">Aylıq Satışlar</h1>
+        <p class="sales-period">{{ period_label }} · Yekun: <strong>{{ grand_total }}</strong></p>
       </div>
-      <div class="col-md-3">
-        <label for="regionSelect" class="form-label small">Bölgə Seç</label>
-        <select id="regionSelect" name="region" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
+      <div class="sales-actions">
+        <a href="{% url 'export_sales_excel' %}?{{ request.GET.urlencode }}" class="sales-btn sales-btn-excel">
+          <i class="bi bi-file-earmark-excel"></i> Excel
+        </a>
+        <a href="{% url 'update-sell' %}?date={{ edit_date }}" class="sales-btn sales-btn-add">
+          <i class="bi bi-pencil-square"></i> Redaktə
+        </a>
+      </div>
+    </div>
+
+    <form method="GET" class="sales-filters">
+      <div class="sales-field">
+        <label for="searchInput">Bölgə axtar</label>
+        <input type="text" id="searchInput" name="region_search" placeholder="Bölgə adı..." value="{{ region_search }}">
+      </div>
+      <div class="sales-field">
+        <label for="regionSelect">Bölgə</label>
+        <select id="regionSelect" name="region">
           <option value="">Hamısı</option>
           {% for region in all_region %}
-            <option value="{{ region.id }}" {% if request.GET.region == region.id|stringformat:"s" %}selected{% endif %}>{{ region.region_name }}</option>
+            <option value="{{ region.id }}" {% if selected_region == region.id %}selected{% endif %}>{{ region.region_name }}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="col-md-2">
-        <label for="monthSelect" class="form-label small ">Ay Seç</label>
-        <select id="monthSelect" name="month" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
-          <option value="">Hamısı</option>
-          <option value="1" {% if request.GET.month == "1" %}selected{% endif %}>Yanvar</option>
-          <option value="2" {% if request.GET.month == "2" %}selected{% endif %}>Fevral</option>
-          <option value="3" {% if request.GET.month == "3" %}selected{% endif %}>Mart</option>
-          <option value="4" {% if request.GET.month == "4" %}selected{% endif %}>Aprel</option>
-          <option value="5" {% if request.GET.month == "5" %}selected{% endif %}>May</option>
-          <option value="6" {% if request.GET.month == "6" %}selected{% endif %}>İyun</option>
-          <option value="7" {% if request.GET.month == "7" %}selected{% endif %}>İyul</option>
-          <option value="8" {% if request.GET.month == "8" %}selected{% endif %}>Avqust</option>
-          <option value="9" {% if request.GET.month == "9" %}selected{% endif %}>Sentyabr</option>
-          <option value="10" {% if request.GET.month == "10" %}selected{% endif %}>Oktyabr</option>
-          <option value="11" {% if request.GET.month == "11" %}selected{% endif %}>Noyabr</option>
-          <option value="12" {% if request.GET.month == "12" %}selected{% endif %}>Dekabr</option>
+      <div class="sales-field sales-field-sm">
+        <label for="monthSelect">Ay</label>
+        <select id="monthSelect" name="month">
+          <option value="" {% if not selected_month %}selected{% endif %}>Hamısı</option>
+          <option value="1" {% if selected_month == 1 %}selected{% endif %}>Yanvar</option>
+          <option value="2" {% if selected_month == 2 %}selected{% endif %}>Fevral</option>
+          <option value="3" {% if selected_month == 3 %}selected{% endif %}>Mart</option>
+          <option value="4" {% if selected_month == 4 %}selected{% endif %}>Aprel</option>
+          <option value="5" {% if selected_month == 5 %}selected{% endif %}>May</option>
+          <option value="6" {% if selected_month == 6 %}selected{% endif %}>İyun</option>
+          <option value="7" {% if selected_month == 7 %}selected{% endif %}>İyul</option>
+          <option value="8" {% if selected_month == 8 %}selected{% endif %}>Avqust</option>
+          <option value="9" {% if selected_month == 9 %}selected{% endif %}>Sentyabr</option>
+          <option value="10" {% if selected_month == 10 %}selected{% endif %}>Oktyabr</option>
+          <option value="11" {% if selected_month == 11 %}selected{% endif %}>Noyabr</option>
+          <option value="12" {% if selected_month == 12 %}selected{% endif %}>Dekabr</option>
         </select>
       </div>
-      <div class="col-md-2">
-        <label for="yearSelect" class="form-label small">İl Seç</label>
-        <select id="yearSelect" name="year" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
-          <option value="">Hamısı</option>
+      <div class="sales-field sales-field-sm">
+        <label for="yearSelect">İl</label>
+        <select id="yearSelect" name="year">
+          <option value="" {% if not selected_year %}selected{% endif %}>Hamısı</option>
           {% for year in years %}
-            <option value="{{ year }}" {% if request.GET.year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+            <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="col-md-1 d-grid">
-        <button type="submit" class="btn" style="background-color: #5b70f3; color: #f9fafb;">Filtrlə</button>
+      <div class="sales-field sales-field-btn">
+        <label>&nbsp;</label>
+        <button type="submit" class="sales-btn sales-btn-primary">Filtrlə</button>
       </div>
     </form>
 
-    <!-- Action Buttons -->
-    <div class="d-flex justify-content-end align-items-center mt-4 gap-2">
-      <a href="{% url 'export_sales_excel' %}?{{ request.GET.urlencode }}" id="excel-btn" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-file-earmark-excel"></i> Excel
-      </a>
-      <a href="#"><button class="btn btn-outline-danger btn-sm">
-        <i class="bi bi-file-earmark-pdf"></i> PDF
-      </button></a>
-      <a href="#"><button class="btn btn-outline-success btn-sm">
-        <i class="bi bi-plus"></i> Əlavə Et
-      </button></a>
-    </div>
-    <hr style="border-color: #374151;">
-
-    <!-- Table -->
-    <div class="table-responsive" style="max-height: auto; ">
-      <table class="table table-striped table-dark table-sm align-middle text-center" style="width: 100%; color: #f9fafb; border-collapse: separate; border-spacing: 0;">
-        <thead style="background-color: #374151; color: #b5bcc7; font-size: 0.75rem; position: sticky; top: 0; z-index: 1;">
+    <div class="sales-table-wrap">
+      <table class="sales-table">
+        <thead>
           <tr>
-            <th>#</th>
-            <th>Bölgə</th>
+            <th class="col-sticky col-num">#</th>
+            <th class="col-sticky col-region">Bölgə</th>
             {% for d in all_drug %}
-              <th  style="font-size:0.65rem">{{ d.med_name }}</th>
+              <th class="col-drug" title="{{ d.med_name }}"><span>{{ d.med_name }}</span></th>
             {% endfor %}
-            <th>Total</th>
-            <th>Yenilə</th>
+            <th class="col-total">Total</th>
+            <th class="col-edit">Yenilə</th>
           </tr>
         </thead>
-        <tbody id="table-body" style="font-size: 0.75rem;">
+        <tbody id="table-body">
           {% for region in all_region %}
-            <tr class="{% cycle 'row-even' 'row-odd' %}" style="transition: background 0.3s;">
-              <td>{{ forloop.counter }}</td>
-              <td style="font-size:0.65rem" data-region-id="{{ region.id }}">{{ region.region_name }}</td>
+            <tr>
+              <td class="col-sticky col-num">{{ forloop.counter }}</td>
+              <td class="col-sticky col-region" data-region-id="{{ region.id }}">{{ region.region_name }}</td>
               {% for drug in all_drug %}
                 {% with sales_dict|get_item:region.id|get_item:drug.id as qty %}
-                  {% if qty %}
-                    <td style="font-weight: bold;">{{ qty }}</td>
-                  {% else %}
-                    <td>0</td>
-                  {% endif %}
+                  <td class="{% if qty %}has-val{% endif %}">{{ qty|default:0 }}</td>
                 {% endwith %}
               {% endfor %}
-              <td style="font-weight: bold;">{{ totals_per_region|get_item:region.id }}</td>
-              <td>
-                <a
-                  class="btn btn-sm btn-outline-primary"
-                  href="{% url 'update-sell' %}?region={{ region.id }}&date={{ request.GET.date|default:today }}"
-                  title="Satışı redaktə et"
-                  style="padding: 4px 8px;"
-                >
+              <td class="col-total">{{ totals_per_region|get_item:region.id|default:0 }}</td>
+              <td class="col-edit">
+                <a class="edit-link" href="{% url 'update-sell' %}?region={{ region.id }}&date={{ edit_date }}" title="Satışı redaktə et">
                   <i class="bi bi-pencil-square"></i>
                 </a>
               </td>
             </tr>
+          {% empty %}
+            <tr>
+              <td colspan="{{ all_drug|length|add:4 }}" class="sales-empty">Bu dövr üçün satış tapılmadı.</td>
+            </tr>
           {% endfor %}
         </tbody>
+        {% if all_region %}
+        <tfoot>
+          <tr>
+            <td class="col-sticky col-num"></td>
+            <td class="col-sticky col-region">Cəmi</td>
+            {% for drug in all_drug %}
+              <td>{{ totals_per_drug|get_item:drug.id|default:0 }}</td>
+            {% endfor %}
+            <td class="col-total">{{ grand_total }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+        {% endif %}
       </table>
     </div>
   </div>
 </div>
 
 <style>
-  body {
-    background-color: #030b1a;
+  .sales-page {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 4px 24px;
+  }
+  .sales-card {
+    background: #1f2937;
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 14px;
+    padding: 20px 22px 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  }
+  .sales-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .sales-title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 650;
     color: #f9fafb;
-    font-family: "Inter", sans-serif;
+    letter-spacing: -0.02em;
   }
-  /* Table hover effekti */
-  table tbody tr:hover {
-    background-color: #396fe4ff !important;
+  .sales-period {
+    margin: 6px 0 0;
+    font-size: .85rem;
+    color: #94a3b8;
+  }
+  .sales-period strong { color: #60a5fa; font-weight: 650; }
+  .sales-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .sales-filters {
+    display: grid;
+    grid-template-columns: minmax(140px, 1.2fr) minmax(140px, 1.1fr) 130px 110px auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 16px;
+  }
+  .sales-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .sales-field label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #94a3b8;
+  }
+  .sales-field input,
+  .sales-field select {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 9px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: #273549;
     color: #f9fafb;
+    font-size: 13.5px;
+    outline: none;
+  }
+  .sales-field input:focus,
+  .sales-field select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,.2);
+  }
+  .sales-field select option { background: #1f2937; }
+  .sales-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 9px;
+    border: 1px solid transparent;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .sales-btn-primary { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+  .sales-btn-primary:hover { background: #2563eb; color: #fff; }
+  .sales-btn-excel { background: transparent; color: #34d399; border-color: rgba(52,211,153,.4); }
+  .sales-btn-excel:hover { background: rgba(52,211,153,.12); color: #6ee7b7; }
+  .sales-btn-add { background: transparent; color: #93c5fd; border-color: rgba(147,197,253,.35); }
+  .sales-btn-add:hover { background: rgba(59,130,246,.12); color: #bfdbfe; }
+
+  .sales-table-wrap {
+    overflow: auto;
+    max-height: calc(100vh - 280px);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    background: #111827;
+  }
+  .sales-table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: #e5e7eb;
+    font-size: 12.5px;
+  }
+  .sales-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #0f172a;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 650;
+    text-align: center;
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+    white-space: nowrap;
+  }
+  .sales-table .col-drug {
+    min-width: 72px;
+    max-width: 88px;
+    padding: 10px 6px;
+  }
+  .sales-table .col-drug span {
+    display: block;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    max-height: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 auto;
+    font-size: 11px;
+    letter-spacing: .02em;
+  }
+  .sales-table tbody td,
+  .sales-table tfoot td {
+    text-align: center;
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    white-space: nowrap;
+  }
+  .sales-table tbody tr:nth-child(even) td { background: #1a2332; }
+  .sales-table tbody tr:nth-child(odd) td { background: #111827; }
+  .sales-table tbody tr:hover td { background: #1e3a5f !important; }
+  .sales-table td.has-val { font-weight: 650; color: #f8fafc; }
+  .sales-table .col-sticky {
+    position: sticky;
+    z-index: 2;
+    text-align: left;
+  }
+  .sales-table thead .col-sticky { z-index: 4; background: #0f172a; }
+  .sales-table tbody .col-sticky,
+  .sales-table tfoot .col-sticky { background: inherit; }
+  .sales-table tbody tr:nth-child(even) .col-sticky { background: #1a2332; }
+  .sales-table tbody tr:nth-child(odd) .col-sticky { background: #111827; }
+  .sales-table tbody tr:hover .col-sticky { background: #1e3a5f !important; }
+  .sales-table .col-num {
+    left: 0;
+    width: 42px;
+    min-width: 42px;
+    text-align: center;
+    color: #64748b;
+    box-shadow: 1px 0 0 rgba(255,255,255,.06);
+  }
+  .sales-table .col-region {
+    left: 42px;
+    min-width: 140px;
+    max-width: 180px;
+    padding-left: 10px;
+    font-weight: 600;
+    color: #f1f5f9;
+    box-shadow: 2px 0 8px rgba(0,0,0,.25);
+  }
+  .sales-table .col-total {
+    font-weight: 700;
+    color: #60a5fa;
+    background: rgba(59,130,246,.08) !important;
+    min-width: 64px;
+  }
+  .sales-table .col-edit { min-width: 52px; }
+  .edit-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    color: #93c5fd;
+    border: 1px solid rgba(147,197,253,.3);
+    text-decoration: none;
+  }
+  .edit-link:hover { background: rgba(59,130,246,.15); color: #bfdbfe; }
+  .sales-table tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    background: #0f172a !important;
+    font-weight: 700;
+    border-top: 1px solid rgba(255,255,255,.12);
+    color: #e2e8f0;
+  }
+  .sales-table tfoot .col-sticky { background: #0f172a !important; }
+  .sales-empty {
+    padding: 36px 16px !important;
+    color: #94a3b8;
+    font-size: 14px;
   }
 
-  table td, table th {
-    border: none;
-    padding: 8px 10px;
+  @media (max-width: 992px) {
+    .sales-filters {
+      grid-template-columns: 1fr 1fr;
+    }
+    .sales-field-btn { grid-column: 1 / -1; }
+    .sales-table-wrap { max-height: none; }
   }
-
-  .row-even { background-color: #273549; }
-  .row-odd  { background-color: #1f2937; }
-
-
+  @media (max-width: 560px) {
+    .sales-filters { grid-template-columns: 1fr; }
+    .sales-card { padding: 14px; }
+  }
 </style>
 
-<!-- JavaScript for Client-Side Filtering -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const searchInput = document.getElementById('searchInput');
   const regionSelect = document.getElementById('regionSelect');
   const tableBody = document.getElementById('table-body');
+  if (!tableBody) return;
   const rows = Array.from(tableBody.getElementsByTagName('tr'));
 
   function filterTable() {
-    const searchText = searchInput.value.toLowerCase();
+    const searchText = (searchInput.value || '').toLowerCase();
     const selectedRegion = regionSelect.value;
-
     rows.forEach(row => {
-      const regionCell = row.cells[1].textContent.toLowerCase();
-      const regionId = row.cells[1].getAttribute('data-region-id') || regionCell;
-
-      const matchesSearch = regionCell.includes(searchText);
+      const regionCell = row.querySelector('[data-region-id]');
+      if (!regionCell) return;
+      const regionName = regionCell.textContent.toLowerCase();
+      const regionId = regionCell.getAttribute('data-region-id') || '';
+      const matchesSearch = regionName.includes(searchText);
       const matchesRegion = !selectedRegion || regionId === selectedRegion;
-
       row.style.display = (matchesSearch && matchesRegion) ? '' : 'none';
     });
   }
