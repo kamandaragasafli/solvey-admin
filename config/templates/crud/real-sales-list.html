@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="data-list-page">
+<div class="card p-4" style="max-width: 98%; margin: 0 auto;">
+  <div class="card-body px-4 pb-4 pt-0">
+    <h4 class="card-title mb-4 fw-semibold text-light d-flex align-items-center gap-2">
+      <i class="bi bi-cart-check" style="color: #64748b;"></i> Real Satışlar
+    </h4>
+
+    <form method="GET" class="row g-3 align-items-end" id="filter-form">
+      <div class="col-md-2">
+        <label for="region-select" class="form-label small text-secondary">Bölgə seçin</label>
+        <select id="region-select" name="region" class="form-select" required>
+          <option value="" disabled selected>Bölgə Seçin</option>
+          {% for r in region %}
+            <option value="{{ r.id }}" {% if request.GET.region == r.id|stringformat:"i" %}selected{% endif %}>{{ r.region_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label for="searchInput" class="form-label small text-secondary">Axtar</label>
+        <input type="text" id="searchInput" name="search" class="form-control bg-dark text-light border-0 rounded-3" placeholder="Həkim adı..." value="{{ request.GET.search }}">
+      </div>
+
+      <div class="col-md-2">
+        <label for="month-select" class="form-label small text-secondary">Ay Seçin</label>
+        <select id="month-select" name="month" class="form-select">
+          <option value="">Ay seçin</option>
+          <option value="1" {% if request.GET.month == "1" %}selected{% endif %}>Yanvar</option>
+          <option value="2" {% if request.GET.month == "2" %}selected{% endif %}>Fevral</option>
+          <option value="3" {% if request.GET.month == "3" %}selected{% endif %}>Mart</option>
+          <option value="4" {% if request.GET.month == "4" %}selected{% endif %}>Aprel</option>
+          <option value="5" {% if request.GET.month == "5" %}selected{% endif %}>May</option>
+          <option value="6" {% if request.GET.month == "6" %}selected{% endif %}>İyun</option>
+          <option value="7" {% if request.GET.month == "7" %}selected{% endif %}>İyul</option>
+          <option value="8" {% if request.GET.month == "8" %}selected{% endif %}>Avqust</option>
+          <option value="9" {% if request.GET.month == "9" %}selected{% endif %}>Sentyabr</option>
+          <option value="10" {% if request.GET.month == "10" %}selected{% endif %}>Oktyabr</option>
+          <option value="11" {% if request.GET.month == "11" %}selected{% endif %}>Noyabr</option>
+          <option value="12" {% if request.GET.month == "12" %}selected{% endif %}>Dekabr</option>
+        </select>
+      </div>
+
+      <div class="col-md-2 d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-success w-50">Filtrlə</button>
+        <a href="{% url 'real_sales_list' %}" class="btn btn-outline-light w-50">Təmizlə</a>
+      </div>
+    </form>
+
+    <div class="d-flex justify-content-end align-items-center mt-4 gap-2">
+      <a href="{% url 'create_real_sales' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+        <i class="bi bi-plus-lg"></i> Yeni əlavə et
+      </a>
+    </div>
+
+    <hr class="border-secondary my-4">
+
+    <div class="table-responsive">
+      <table class="custom-dark-table" id="result-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Bölgə</th>
+            <th>Həkim</th>
+            <th>Tarix</th>
+            {% for d in drug %}
+              <th>{{ d.med_name }}</th>
+            {% endfor %}
+            <th>Total</th>
+            <th>Sil</th>
+          </tr>
+        </thead>
+        <tbody id="table-body" style="font-size: 0.75rem;">
+          <tr>
+            <td colspan="{{ drug|length|add:6 }}" class="text-secondary fst-italic">Bölgə seçin...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<style>
+  .data-list-page {
+    background: #0f172a;
+    min-height: 100vh;
+    padding: 1.5rem 0;
+  }
+
+  .data-list-page .card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    color: #f8fafc;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  }
+
+  .data-list-page .form-control,
+  .data-list-page .form-select {
+    background-color: #0f172a !important;
+    color: #e2e8f0 !important;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    transition: border-color 0.15s ease;
+  }
+
+  .data-list-page .form-control:focus,
+  .data-list-page .form-select:focus {
+    background-color: #0f172a !important;
+    border-color: #475569 !important;
+    box-shadow: 0 0 0 2px rgba(71, 85, 105, 0.3);
+    outline: none;
+  }
+
+  .data-list-page .form-control::placeholder { color: #64748b; }
+  .data-list-page .form-label { color: #94a3b8; }
+
+  .data-list-page .btn-success {
+    background: #22c55e;
+    border: none;
+    color: #fff;
+  }
+  .data-list-page .btn-success:hover { background: #16a34a; color: #fff; }
+
+  .data-list-page .btn-outline-light {
+    border-color: #475569;
+    color: #94a3b8;
+  }
+  .data-list-page .btn-outline-light:hover {
+    background: #334155;
+    border-color: #475569;
+    color: #f8fafc;
+  }
+
+  .table-responsive { overflow-x: auto; padding: 0; }
+
+  .custom-dark-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .custom-dark-table thead {
+    background: #0f172a;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .custom-dark-table thead th {
+    color: #b5bcc7;
+    font-size: 0.60rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem;
+    text-align: center;
+    border-bottom: 2px solid #334155;
+    white-space: nowrap;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+
+  .custom-dark-table thead th:nth-child(-n+4),
+  .custom-dark-table thead th:last-child,
+  .custom-dark-table thead th:nth-last-child(2) {
+    writing-mode: horizontal-tb;
+    transform: none;
+  }
+
+  .custom-dark-table tbody { font-size: 0.75rem; }
+
+  .custom-dark-table tbody tr {
+    background: #1e293b;
+    transition: all 0.2s ease;
+  }
+
+  .custom-dark-table tbody tr:hover { background: #334155; }
+
+  .custom-dark-table tbody td {
+    padding: 1rem;
+    color: #e2e8f0;
+    text-align: center;
+    border-bottom: 1px solid #334155;
+  }
+
+  .custom-dark-table tbody tr:last-child td { border-bottom: none; }
+
+  .text-secondary { color: #64748b !important; }
+  .fst-italic { font-style: italic; }
+  .total-cell {
+    font-weight: 700;
+    color: #10b981;
+    font-size: 0.85rem;
+  }
+
+  .delete-link { color: #f87171; font-size: 1rem; text-decoration: none; }
+  .delete-link:hover { color: #ef4444; }
+
+  @media (max-width: 768px) {
+    .custom-dark-table thead th,
+    .custom-dark-table tbody td {
+      padding: 0.75rem 0.5rem;
+      font-size: 0.7rem;
+    }
+  }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: #0f172a; }
+  ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+  .data-list-page .pagination .page-link {
+    background: #0f172a;
+    border-color: #334155;
+    color: #94a3b8;
+  }
+  .data-list-page .pagination .page-item.active .page-link {
+    background: #334155;
+    border-color: #475569;
+    color: #f8fafc;
+  }
+</style>
+
+<script>
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+let currentPage = 1;
+let totalPages = 1;
+let abortController = null;
+
+function getColspan() {
+  const thCount = document.querySelectorAll('#result-table thead th').length;
+  return thCount || 10;
+}
+
+function showLoading() {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="${getColspan()}" class="text-center py-4">
+        <div class="spinner-border text-primary spinner-border-sm" role="status">
+          <span class="visually-hidden">Yüklənir...</span>
+        </div>
+        <span class="ms-2 text-muted">Axtarılır...</span>
+      </td>
+    </tr>`;
+}
+
+function loadRealSalesData(regionId, page = 1) {
+  if (abortController) abortController.abort();
+  abortController = new AbortController();
+
+  const searchInput = document.getElementById('searchInput');
+  const searchTerm = searchInput ? searchInput.value.trim() : "";
+  const monthSelect = document.getElementById('month-select');
+  const month = monthSelect ? monthSelect.value : "";
+
+  const params = new URLSearchParams({
+    region_id: regionId,
+    page: page,
+  });
+  if (searchTerm) params.append('search', searchTerm);
+  if (month) params.append('month', month);
+
+  showLoading();
+
+  fetch("{% url 'ajax_real_sales_data' %}?" + params.toString(), {
+    signal: abortController.signal,
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'Cache-Control': 'no-cache',
+    },
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error("Server cavabı düzgün deyil");
+      return response.json();
+    })
+    .then((data) => {
+      abortController = null;
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = "";
+
+      currentPage = data.current_page || 1;
+      totalPages = data.total_pages || 1;
+
+      if (!data.results || data.results.length === 0) {
+        const noResultsText = searchTerm
+          ? `"${searchTerm}" üçün nəticə tapılmadı`
+          : 'Seçilən filtr üzrə real satış tapılmadı';
+        tbody.innerHTML = `<tr><td colspan="${getColspan()}" class="fst-italic text-center py-4">${noResultsText}</td></tr>`;
+        updatePagination();
+        return;
+      }
+
+      const allTh = Array.from(document.querySelectorAll('#result-table thead th'));
+      const headerDrugCount = Math.max(0, allTh.length - 6);
+
+      data.results.forEach((item, index) => {
+        let drugCells = "";
+        const drugs = item.drugs || [];
+        for (let i = 0; i < headerDrugCount; i++) {
+          const d = drugs[i];
+          const count = d ? d.count : 0;
+          const cellClass = count > 0 ? 'class="fw-bold" style="background-color: #111d35;"' : '';
+          drugCells += `<td ${cellClass}>${count}</td>`;
+        }
+
+        const globalIndex = (currentPage - 1) * 30 + index + 1;
+        const deleteUrl = "{% url 'del_real_sale' 0 %}".replace('/0/', `/${item.sale_id}/`);
+
+        const row = `
+          <tr>
+            <td class="fw-medium">${globalIndex}</td>
+            <td>${item.bolge}</td>
+            <td>
+              <a href="/doctors/details/${item.doctor_id}/" class="text-primary fw-semibold text-decoration-none">
+                ${item.doctor}
+              </a>
+            </td>
+            <td>${item.date}</td>
+            ${drugCells}
+            <td class="total-cell">${item.total}</td>
+            <td>
+              <a href="${deleteUrl}" class="delete-link" title="Sil"
+                 onclick="return confirm('Bu real satış silinsin? Bölgə satışı və resept geri qaytarılacaq.');">
+                <i class="bi bi-trash"></i>
+              </a>
+            </td>
+          </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+
+      updatePagination();
+    })
+    .catch((error) => {
+      if (error.name === 'AbortError') return;
+      console.error("Xəta baş verdi:", error);
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = `<tr><td colspan="${getColspan()}" class="text-danger text-center py-4">Xəta baş verdi: ${error.message}</td></tr>`;
+      updatePagination();
+    });
+}
+
+function updatePagination() {
+  let paginationContainer = document.getElementById('pagination-container');
+
+  if (!paginationContainer) {
+    paginationContainer = document.createElement('div');
+    paginationContainer.id = 'pagination-container';
+    paginationContainer.className = 'd-flex justify-content-center align-items-center mt-3';
+    document.querySelector('.card-body').appendChild(paginationContainer);
+  }
+
+  if (totalPages <= 1) {
+    paginationContainer.innerHTML = '';
+    return;
+  }
+
+  let buttons = "";
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  if (startPage > 1) {
+    buttons += `<li class="page-item"><button class="page-link" onclick="changePage(1)">1</button></li>`;
+    if (startPage > 2) {
+      buttons += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    buttons += `
+      <li class="page-item ${currentPage === i ? 'active' : ''}">
+        <button class="page-link" onclick="changePage(${i})">${i}</button>
+      </li>`;
+  }
+
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) {
+      buttons += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+    buttons += `<li class="page-item"><button class="page-link" onclick="changePage(${totalPages})">${totalPages}</button></li>`;
+  }
+
+  paginationContainer.innerHTML = `
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+          <button class="page-link" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+            <i class="bi bi-chevron-left"></i>
+          </button>
+        </li>
+        ${buttons}
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+          <button class="page-link" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </li>
+      </ul>
+    </nav>`;
+}
+
+function changePage(page) {
+  if (page < 1 || page > totalPages) return;
+  const regionSelect = document.getElementById('region-select');
+  const regionId = regionSelect.value;
+  if (regionId) loadRealSalesData(regionId, page);
+}
+
+function setCurrentMonth() {
+  const monthSelect = document.getElementById('month-select');
+  if (monthSelect && !monthSelect.value) {
+    monthSelect.value = (new Date().getMonth() + 1).toString();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const regionSelect = document.getElementById('region-select');
+  const monthSelect = document.getElementById('month-select');
+  const searchInput = document.getElementById('searchInput');
+  const form = document.getElementById('filter-form');
+
+  setCurrentMonth();
+
+  searchInput.addEventListener('input', debounce(() => {
+    if (regionSelect.value) loadRealSalesData(regionSelect.value, 1);
+  }, 300));
+
+  regionSelect.addEventListener('change', () => {
+    if (regionSelect.value) loadRealSalesData(regionSelect.value, 1);
+  });
+
+  monthSelect.addEventListener('change', () => {
+    if (regionSelect.value) loadRealSalesData(regionSelect.value, 1);
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (regionSelect.value) {
+      loadRealSalesData(regionSelect.value, 1);
+    } else {
+      alert("Zəhmət olmasa bölgə seçin");
+    }
+  });
+
+  if (regionSelect.value) {
+    loadRealSalesData(regionSelect.value, 1);
+  }
+});
+</script>
+{% endblock content %}

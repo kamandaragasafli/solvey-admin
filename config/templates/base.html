@@ -530,10 +530,15 @@
         <span>Arxiv Həkimlər</span>
     </a>
 
-    <!-- <a href="{% url 'create_real_sales' %}" class="nav-item {% if request.resolver_match.url_name == 'create_real_sales' %}active{% endif %}"> -->
-    <!-- <i class="bi bi-cart-plus-fill"></i>
-        <span>Real Satış Əlavə et</span>
-    </a> -->
+    <a href="{% url 'create_real_sales' %}" class="nav-item {% if request.resolver_match.url_name == 'create_real_sales' %}active{% endif %}">
+        <i class="bi bi-cart-plus-fill"></i>
+        <span>Real Satış Əlavə</span>
+    </a>
+
+    <a href="{% url 'real_sales_list' %}" class="nav-item {% if request.resolver_match.url_name == 'real_sales_list' %}active{% endif %}">
+        <i class="bi bi-list-check"></i>
+        <span>Real Satışlar</span>
+    </a>
 
     <div class="prescription-divider"></div>
 
@@ -607,7 +612,7 @@
     <div class="top-actions" id="topActions">
       {% if request.user.is_superuser %}
       <a href="{% url 'test' %}" class="top-action-link">
-        <i class="bx bx-file-blank"></i> Komissiya Hesabatı
+        <i class="bx bx-calculator"></i> Komissiya Hesabatı
       </a>
       {% endif %}
       <a href="{% url 'create_recipe' %}" class="top-action-link">
@@ -682,8 +687,8 @@
         {% elif message.tags == 'info' %}info
         {% endif %}">
         
-        {# Məhz burada |safe filtrini istifadə edirik #}
-        {{ message }}
+        {# HTML mesajlar (məs. cədvəl linki) üçün #}
+        {{ message|safe }}
         
       </div>
     {% endfor %}

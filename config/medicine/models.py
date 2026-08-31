@@ -1,6 +1,13 @@
 from django.db import models
 
 
+class MedicalQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(status=True)
+
+
+class MedicalManager(models.Manager.from_queryset(MedicalQuerySet)):
+    pass
 
 
 class Medical(models.Model):
@@ -12,8 +19,7 @@ class Medical(models.Model):
     in_stock = models.BooleanField(default=True)
     position = models.IntegerField(default=0)
 
-    
-
+    objects = MedicalManager()
 
     def __str__(self):
         return f"{self.med_name}"

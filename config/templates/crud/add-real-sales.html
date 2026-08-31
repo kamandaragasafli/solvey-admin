@@ -1,88 +1,113 @@
 {% extends "base.html" %}
 {% block content %}
 
-
+<style>
+  @media (max-width: 992px) {
+    .real-sales-card {
+      width: 100% !important;
+      margin: 0 !important;
+    }
+    .real-sales-body {
+      width: 100% !important;
+    }
+  }
+  .drug-name-btn {
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.2;
+    padding: 8px 10px !important;
+  }
+  @media (min-width: 992px) {
+    .drug-name-btn {
+      font-size: 1rem;
+      padding: 10px 12px !important;
+    }
+  }
+</style>
 
 <form method="POST" action="{% url 'create_real_sales' %}">
   {% csrf_token %}
-  <div class="card shadow-sm" style="width: 80%; margin: auto; background-color: #1f2937; color: #f9fafb; border-radius: 14px;">
-    <div style="width: 70%; padding: 20px;">
+  <div class="card shadow-sm real-sales-card" style="width: 80%; margin: auto; background-color: #1f2937; color: #f9fafb; border-radius: 14px;">
+    <div class="real-sales-body" style="width: 70%; padding: 20px;">
       <div class="card-body">
 
-        <!-- Başlıq -->
-        <div class="d-flex align-items-center mb-4">
-          <i class="fa-solid fa-prescription-bottle-medical fa-xl me-2" style="color: #0099ffff;"></i>
-          <h5 class="card-title mb-0">Real Satış Əlavə Et</h5>
+        <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+          <div class="d-flex align-items-center">
+            <i class="fa-solid fa-prescription-bottle-medical fa-xl me-2" style="color: #0099ffff;"></i>
+            <h5 class="card-title mb-0">Real Satış Əlavə Et</h5>
+          </div>
+          <a href="{% url 'real_sales_list' %}" class="btn btn-sm" style="background-color: #374151; color: #f9fafb;">
+            <i class="bi bi-list-check me-1"></i> Siyahıya keç
+          </a>
         </div>
 
-        <!-- Bölgə seçimi -->
         <div class="mb-3">
-          <label for="region" class="form-label small ">Bölgə<span style="color:red">*</span></label>
+          <label for="region-select" class="form-label small">Bölgə<span style="color:red">*</span></label>
           <select id="region-select" name="region" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
-            <option disabled selected>Bölgə Seçin</option>
+            <option value="" disabled {% if not selected_region %}selected{% endif %}>Bölgə Seçin</option>
             {% for r in regions %}
-              <option value="{{ r.id }}" {% if r.id|stringformat:"s" == selected_region %}selected{% endif %}>
+              <option value="{{ r.id }}" {% if selected_region and r.id|stringformat:"s" == selected_region %}selected{% endif %}>
                 {{ r.region_name }}
               </option>
             {% endfor %}
           </select>
         </div>
 
-        <!-- Həkim, Tarix, Yekun -->
-        <div class="row mb-4">
-          <!-- Həkim -->
-          <div class="col-md-6">
-            <label for="doctor" class="form-label small ">Həkim seçin<span style="color:red">*</span></label>
-            <select id="doctor-select" name="doctor" class="form-select" style="background-color: #273549; color: #f9fafb; border: none;">
-              <option selected disabled>Əvvəl bölgə seçin</option>
-            </select>
+        <div class="row mb-4 align-items-end g-3">
+          <div class="col-lg-8 col-md-12">
+            <input type="hidden" name="doctor" id="doctor-id" value="{{ selected_doctor|default:'' }}" />
+            <label for="doctor-search" class="form-label small">Ad ilə axtar<span style="color:red">*</span></label>
+            <div class="position-relative doctor-search-box">
+              <input type="text" id="doctor-search" class="form-control doctor-search-input" autocomplete="off"
+                autocorrect="off" autocapitalize="off" spellcheck="false"
+                placeholder="{% if selected_region %}Həkim adını yazın...{% else %}Əvvəlcə yuxarıdan bölgə seçin...{% endif %}"
+                value="{{ selected_doctor_name|default:'' }}"
+                {% if not selected_region %}disabled{% endif %}
+                style="background-color: #273549; color: #f9fafb; border: none; width: 100%; min-height: 44px;" />
+              <button type="button" id="doctor-search-clear" class="doctor-search-clear"
+                aria-label="Adı təmizlə" title="Adı təmizlə" tabindex="-1" hidden>&times;</button>
+              <ul id="doctor-dropdown" class="doctor-dropdown-list" role="listbox" aria-label="Həkim axtarış nəticələri"></ul>
+            </div>
           </div>
-
-          <!-- Tarix -->
-          <div class="col-md-3">
-            <label for="tarix" class="form-label small ">Tarix<span style="color:red">*</span></label>
-            <input type="date" name="date" value="{% now 'Y-m-d' %}" class="form-control" style="background-color: #273549; color: #f9fafb; border: none;" />
-          </div>
-
-          <!-- Yekun Say -->
-          <div class="col-md-3">
-            <label class="form-label small ">Yekun Say<span style="color:red">*</span></label>
-            <input type="text" id="total-count" class="form-control text-end" readonly value="0" style="background-color: #273549; color: #f9fafb; border: none;" />
+          <div class="col-lg-4 col-md-12">
+            <label for="tarix" class="form-label small">Tarix<span style="color:red">*</span></label>
+            <input type="date" id="tarix" name="date" class="form-control" style="background-color: #273549; color: #f9fafb; border: none;"
+              value="{% if selected_date %}{{ selected_date }}{% else %}{% now 'Y-m-d' %}{% endif %}" />
           </div>
         </div>
 
         <hr style="border-color: #374151;">
 
-        <!-- Dərmanlar -->
         <div class="mb-4">
           <label class="form-label fw-bold">Dərmanlar</label>
           {% for d in drugs %}
             <div class="d-flex mb-3 justify-content-start align-items-center">
-              <!-- Dərman adı düymə kimi -->
-              <button type="button" class="fs-6 fw-bold me-3"
-                style="width: 60%; background-color: #374151; border-radius: 10px; border: none; padding: 10px; color: #f9fafb; text-align: left;"
+              <button type="button" class="me-3 drug-name-btn"
+                style="width: 60%; background-color: #374151; border-radius: 10px; border: none; color: #f9fafb; text-align: left;"
                 disabled>
-                {{ d.med_full_name }}
+                {{ d.med_full_name|default:d.med_name }}
               </button>
-
-              <!-- Say inputu -->
               <div style="width: 120px;">
-                <input type="number" name="quantity_{{ d.id }}" class="form-control" min="0" style="background-color: #273549; color: #f9fafb; border: none;" />
+                <input type="number" name="quantity_{{ d.id }}" class="form-control drug-qty" min="0" step="1"
+                  style="background-color: #273549; color: #f9fafb; border: none;" />
               </div>
             </div>
+          {% empty %}
+            <p class="text-secondary mb-0">Aktiv dərman tapılmadı.</p>
           {% endfor %}
         </div>
 
         <hr style="border-color: #374151;">
 
-        <!-- Əməliyyat düymələri -->
-        <div class="d-flex justify-content-start align-items-center mb-3 gap-2">
+        <div class="d-flex justify-content-start align-items-center mb-3 gap-2 flex-wrap">
           <button type="submit" class="btn" style="background-color: #0373f3ff; color: #f9fafb;">
             <i class="fa-solid fa-floppy-disk me-1"></i> Yadda Saxla
           </button>
           <button type="reset" class="btn" style="background-color: #e9042e; color: #f9fafb;">
             <i class="fa-solid fa-rotate-right me-1"></i> Sıfırla
           </button>
+          <input type="text" id="total-count" class="form-control text-end" readonly value="0"
+            style="width: 100px; background-color: #273549; color: #f9fafb; border: none;" />
         </div>
 
       </div>
@@ -90,70 +115,307 @@
   </div>
 </form>
 
+<style>
+.doctor-dropdown-list {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 1050;
+  max-height: 240px;
+  overflow-y: auto;
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  margin-top: 4px;
+  padding: 0;
+  list-style: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.doctor-dropdown-list.is-open { display: block; }
+.doctor-dropdown-list li {
+  padding: 10px 12px;
+  cursor: pointer;
+  color: #f9fafb;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #273549;
+}
+.doctor-dropdown-list li:last-child { border-bottom: none; }
+.doctor-dropdown-list li:hover,
+.doctor-dropdown-list li.is-active { background: #374151; }
+.doctor-dropdown-list .doctor-dd-empty {
+  cursor: default;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+.doctor-dropdown-list .doctor-dd-empty:hover { background: transparent; }
+.doctor-search-input { padding-right: 2.5rem !important; }
+.doctor-search-clear {
+  display: flex;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: #4b5563;
+  color: #f9fafb;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+}
+.doctor-search-clear:hover { background: #6b7280; }
+.doctor-search-input::placeholder { color: #f3f4f6; opacity: 0.9; }
+</style>
 
 <script>
+(function () {
   const ajaxUrl = "{% url 'ajax_doctors_by_region' %}";
+
+  function norm(s) {
+    return String(s || "")
+      .toLowerCase()
+      .replace(/ı/g, "i").replace(/ə/g, "e").replace(/ö/g, "o")
+      .replace(/ü/g, "u").replace(/ş/g, "s").replace(/ç/g, "c").replace(/ğ/g, "g");
+  }
+
+  const PLACEHOLDER_WITH_REGION = "Həkim adını yazın...";
+  const PLACEHOLDER_NO_REGION = "Əvvəlcə yuxarıdan bölgə seçin...";
 
   document.addEventListener("DOMContentLoaded", function () {
     const regionSelect = document.getElementById("region-select");
-    const doctorSelect = document.getElementById("doctor-select");
+    const doctorIdInput = document.getElementById("doctor-id");
+    const doctorSearch = document.getElementById("doctor-search");
+    const doctorSearchClearBtn = document.getElementById("doctor-search-clear");
+    const doctorDropdown = document.getElementById("doctor-dropdown");
+    const form = regionSelect.closest("form");
+    const doctorSearchBox = doctorSearch.closest(".doctor-search-box");
+
+    let doctorsCache = [];
+    let activeIndex = -1;
+    let loadSeq = 0;
+    let blurHideTimer = null;
+
+    function hideDropdown() {
+      clearTimeout(blurHideTimer);
+      blurHideTimer = null;
+      doctorDropdown.classList.remove("is-open");
+      doctorDropdown.innerHTML = "";
+      activeIndex = -1;
+    }
+
+    function scheduleHideDropdownOnBlur() {
+      clearTimeout(blurHideTimer);
+      blurHideTimer = setTimeout(function () {
+        blurHideTimer = null;
+        if (document.activeElement === doctorSearch || doctorSearchBox.contains(document.activeElement)) return;
+        hideDropdown();
+      }, 220);
+    }
+
+    function cancelBlurHide() {
+      clearTimeout(blurHideTimer);
+      blurHideTimer = null;
+    }
+
+    function renderList(items) {
+      doctorDropdown.innerHTML = "";
+      activeIndex = -1;
+      if (!items.length) {
+        const li = document.createElement("li");
+        li.className = "doctor-dd-empty";
+        li.textContent = doctorsCache.length ? "Uyğun həkim tapılmadı" : "Bu bölgədə həkim yoxdur";
+        doctorDropdown.appendChild(li);
+        doctorDropdown.classList.add("is-open");
+        return;
+      }
+      items.forEach((doc) => {
+        const li = document.createElement("li");
+        li.setAttribute("role", "option");
+        li.dataset.id = doc.id;
+        li.dataset.ad = doc.ad;
+        li.innerHTML = `<span style="font-weight:600;">${doc.ad}</span>`;
+        li.addEventListener("mousedown", function (e) {
+          e.preventDefault();
+          cancelBlurHide();
+          selectDoctor(doc.id, doc.ad);
+        });
+        doctorDropdown.appendChild(li);
+      });
+      doctorDropdown.classList.add("is-open");
+    }
+
+    function filterDoctors(q) {
+      const nq = norm(q.trim());
+      if (!nq) return doctorsCache.slice();
+      return doctorsCache.filter((d) => norm(d.ad).includes(nq));
+    }
+
+    function updateDoctorClearVisibility() {
+      if (!doctorSearchClearBtn) return;
+      const show = !doctorSearch.disabled && !!(doctorSearch.value && doctorSearch.value.trim());
+      doctorSearchClearBtn.toggleAttribute("hidden", !show);
+    }
+
+    function clearDoctorSearch() {
+      doctorIdInput.value = "";
+      doctorSearch.value = "";
+      hideDropdown();
+      updateDoctorClearVisibility();
+      doctorSearch.focus();
+    }
+
+    function selectDoctor(id, ad) {
+      doctorIdInput.value = String(id);
+      doctorSearch.value = ad;
+      hideDropdown();
+      updateDoctorClearVisibility();
+    }
+
+    function loadDoctors(regionId, keepSelection) {
+      const mySeq = ++loadSeq;
+      const preserveId = keepSelection ? doctorIdInput.value : "";
+      const preserveSearch = keepSelection ? doctorSearch.value.trim() : "";
+
+      if (!regionId) {
+        doctorsCache = [];
+        doctorIdInput.value = "";
+        doctorSearch.value = "";
+        doctorSearch.disabled = true;
+        doctorSearch.placeholder = PLACEHOLDER_NO_REGION;
+        hideDropdown();
+        updateDoctorClearVisibility();
+        return;
+      }
+
+      doctorSearch.disabled = false;
+      doctorSearch.placeholder = PLACEHOLDER_WITH_REGION;
+
+      if (!keepSelection) {
+        doctorIdInput.value = "";
+        doctorSearch.value = "";
+      }
+      updateDoctorClearVisibility();
+
+      fetch(ajaxUrl + "?region_id=" + encodeURIComponent(regionId))
+        .then((r) => {
+          if (!r.ok) throw new Error("Server cavab vermədi");
+          return r.json();
+        })
+        .then((data) => {
+          if (mySeq !== loadSeq) return;
+          doctorsCache = data.doctors && data.doctors.length ? data.doctors : [];
+          if (keepSelection && preserveId && document.activeElement !== doctorSearch) {
+            const found = doctorsCache.find((d) => String(d.id) === String(preserveId));
+            if (found) {
+              doctorIdInput.value = String(preserveId);
+              doctorSearch.value = found.ad;
+            } else if (preserveSearch) {
+              doctorSearch.value = preserveSearch;
+            }
+          }
+          hideDropdown();
+          updateDoctorClearVisibility();
+        })
+        .catch((err) => {
+          if (mySeq !== loadSeq) return;
+          console.error(err);
+          doctorsCache = [];
+          hideDropdown();
+          updateDoctorClearVisibility();
+        });
+    }
 
     regionSelect.addEventListener("change", function () {
-      const selectedRegionId = this.value;
-      doctorSelect.innerHTML = '<option disabled selected>Yüklənir...</option>';
-
-      fetch(ajaxUrl + '?region_id=' + selectedRegionId)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Server cavab vermədi');
-          }
-          return response.json();
-        })
-        .then(data => {
-          doctorSelect.innerHTML = '';
-
-          if (data.doctors.length > 0) {
-            data.doctors.forEach(doctor => {
-              const option = document.createElement("option");
-              option.value = doctor.id;
-              option.textContent = doctor.ad;
-              doctorSelect.appendChild(option);
-            });
-          } else {
-            const option = document.createElement("option");
-            option.text = "Həkim tapılmadı";
-            option.disabled = true;
-            option.selected = true;
-            doctorSelect.appendChild(option);
-          }
-        })
-        .catch(error => {
-          console.error("Həkimlər alınarkən xəta:", error);
-          doctorSelect.innerHTML = '<option disabled selected>Xəta baş verdi</option>';
-        });
+      loadDoctors(this.value, false);
     });
-  });
 
+    doctorSearch.addEventListener("input", function () {
+      cancelBlurHide();
+      doctorIdInput.value = "";
+      updateDoctorClearVisibility();
+      renderList(filterDoctors(this.value));
+    });
 
-  document.addEventListener("DOMContentLoaded", function () {
-    const inputs = document.querySelectorAll('input[name^="quantity_"]');
+    doctorSearch.addEventListener("focus", function () {
+      cancelBlurHide();
+      if (!regionSelect.value) return;
+      renderList(filterDoctors(this.value));
+    });
+
+    doctorSearch.addEventListener("blur", scheduleHideDropdownOnBlur);
+    doctorDropdown.addEventListener("mousedown", cancelBlurHide);
+
+    if (doctorSearchClearBtn) {
+      doctorSearchClearBtn.addEventListener("mousedown", function (e) {
+        e.preventDefault();
+        cancelBlurHide();
+      });
+      doctorSearchClearBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        clearDoctorSearch();
+      });
+    }
+
+    doctorSearch.addEventListener("keydown", function (e) {
+      const items = doctorDropdown.querySelectorAll("li:not(.doctor-dd-empty)");
+      if (!items.length || !doctorDropdown.classList.contains("is-open")) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        activeIndex = Math.min(activeIndex + 1, items.length - 1);
+        items.forEach((el, i) => el.classList.toggle("is-active", i === activeIndex));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        activeIndex = Math.max(activeIndex - 1, 0);
+        items.forEach((el, i) => el.classList.toggle("is-active", i === activeIndex));
+      } else if (e.key === "Enter" && activeIndex >= 0) {
+        e.preventDefault();
+        const li = items[activeIndex];
+        selectDoctor(li.dataset.id, li.dataset.ad);
+      } else if (e.key === "Escape") {
+        hideDropdown();
+      }
+    });
+
+    document.addEventListener("mousedown", function (e) {
+      if (!e.target.closest(".doctor-search-box")) hideDropdown();
+    });
+
+    if (regionSelect.value) {
+      loadDoctors(regionSelect.value, true);
+    }
+
+    form.addEventListener("submit", function (e) {
+      if (!regionSelect.value) {
+        e.preventDefault();
+        alert("Zəhmət olmasa bölgə seçin.");
+        return;
+      }
+      if (!doctorIdInput.value) {
+        e.preventDefault();
+        alert("Zəhmət olmasa həkim adını yazıb siyahıdan seçin.");
+      }
+    });
+
+    const qtyInputs = document.querySelectorAll(".drug-qty");
     const totalField = document.getElementById("total-count");
-
     function updateTotal() {
       let total = 0;
-      inputs.forEach(input => {
-        total += parseInt(input.value) || 0;
+      qtyInputs.forEach((input) => {
+        total += parseInt(input.value, 10) || 0;
       });
       totalField.value = total;
     }
-
-    inputs.forEach(input => {
-      input.addEventListener("input", updateTotal);
-    });
+    qtyInputs.forEach((input) => input.addEventListener("input", updateTotal));
+    updateDoctorClearVisibility();
   });
+})();
 </script>
-
-
-
 
 {% endblock content %}

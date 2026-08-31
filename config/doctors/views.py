@@ -332,6 +332,11 @@ def doctor_detail(request, doctor_id):
 
     recipe = recipe.order_by("recipe__date") 
 
+    real_sales_lines = list(
+        RealSalesDrug.objects.filter(real_sale__dr_name=doctor)
+        .select_related("real_sale", "real_sale__region_n", "drug_name")
+        .order_by("-real_sale__date_sale", "-id")
+    )
 
     # Əgər resept modeli varsa
     recibe_total = RecipeDrug.objects.filter(recipe__dr=doctor).aggregate(total=Sum('number'))['total'] or 0
@@ -354,6 +359,7 @@ def doctor_detail(request, doctor_id):
         "payments": payments,
         "recibe_total": recibe_total,
         "recipe": recipe,
+        "real_sales_lines": real_sales_lines,
         "silinme_list": silinme_list,
         "regions": regions,
         "recipe_date_from": recipe_date_from,
@@ -424,7 +430,7 @@ def _doctor_display_name(pk):
 
 def create_recipe(request):
     regions = Region.objects.all().order_by("region_name")
-    drugs = Medical.objects.all().order_by('id')
+    drugs = Medical.objects.active().order_by('id')
     last_recipes = RecipeDrug.objects.all().order_by("-created_at", "-id")[:5]
 
     selected_region = ""
@@ -842,123 +848,434 @@ def update_doctor(request, pk):
     return render(request, 'doctor-details.html', {'doctor': doctor})
 
 
-def create_real_sales(request):
-    regions = Region.objects.all().order_by("region_name")
-    doctors = Doctors.objects.all().order_by("id")
-    drugs = Medical.objects.all().order_by('id')
+def _reduce_from_sale_queryset(queryset, remaining):
+    """Sale queryset-indən FIFO qədər miqdar azaldır; neçə ədəd çıxıldığını qaytarır."""
+    reduced = 0
+    for sale_row in queryset:
+        if remaining <= 0:
+            break
+        current = int(sale_row.quantity or 0)
+        if current <= 0:
+            sale_row.delete()
+            continue
+        if current <= remaining:
+            remaining -= current
+            reduced += current
+            sale_row.delete()
+        else:
+            sale_row.quantity = current - remaining
+            sale_row.save(update_fields=["quantity"])
+            reduced += remaining
+            remaining = 0
+    return reduced
 
-    selected_region = None
-    selected_doctor = None
-    selected_date = None
+
+def _reduce_region_sale(region_id, drug_id, quantity, sale_date):
+    """
+    Bölgə Sale-dən azaldır: əvvəl eyni ay/il, yetmirsə digər aylardan (ən yeni əvvəl).
+    Real satış > mövcud satış olsa, 0-a endirilir.
+    """
+    remaining = int(quantity)
+    if remaining <= 0:
+        return 0
+
+    base_qs = Sale.objects.select_for_update().filter(
+        region_id=int(region_id),
+        drug_id=int(drug_id),
+    )
+
+    reduced = _reduce_from_sale_queryset(
+        base_qs.filter(
+            sale_date__year=sale_date.year,
+            sale_date__month=sale_date.month,
+        ).order_by("sale_date", "id"),
+        remaining,
+    )
+    remaining -= reduced
+
+    if remaining > 0:
+        reduced += _reduce_from_sale_queryset(
+            base_qs.exclude(
+                sale_date__year=sale_date.year,
+                sale_date__month=sale_date.month,
+            ).order_by("-sale_date", "-id"),
+            remaining,
+        )
+
+    return reduced
+
+
+def create_real_sales(request):
+    """
+    Real qutu satışı:
+    - RealSales + RealSalesDrug yazılır
+    - Bölgə Sale-dən çıxılır (azdırsa 0)
+    - RecipeDrug-dan çıxılır (azdırsa 0)
+    - hesablanan_miqdar += qutu, hekimden_silinen += komissiya
+    """
+    from django.utils.dateparse import parse_date
+
+    regions = Region.objects.all().order_by("region_name")
+    drugs = Medical.objects.active().order_by("position", "id")
+
+    selected_region = ""
+    selected_doctor = ""
+    selected_date = ""
+
+    def _form_ctx():
+        return {
+            "regions": regions,
+            "drugs": drugs,
+            "selected_region": selected_region,
+            "selected_doctor": selected_doctor,
+            "selected_doctor_name": _doctor_display_name(selected_doctor),
+            "selected_date": selected_date,
+        }
 
     if request.method == "POST":
         region_id = request.POST.get("region")
         doctor_id = request.POST.get("doctor")
-        date = request.POST.get("date")
+        date_str = request.POST.get("date")
 
-        selected_region = region_id
-        selected_doctor = doctor_id
-        selected_date = date
+        selected_region = region_id or ""
+        selected_doctor = doctor_id or ""
+        selected_date = date_str or ""
 
-        if not (region_id and doctor_id and date):
+        if not (region_id and doctor_id and date_str):
             messages.error(request, "Zəhmət olmasa bütün sahələri doldurun.")
-            return render(request, "crud/add-real-sales.html", {
-                "regions": regions,
-                "doctors": doctors,
-                "drugs": drugs,
-                "selected_region": selected_region,
-                "selected_doctor": selected_doctor,
-                "selected_date": selected_date
-            })
+            return render(request, "crud/add-real-sales.html", _form_ctx())
 
-        # Dərmanların olub-olmadığını yoxlayaq
+        sale_date = parse_date(date_str)
+        if not sale_date:
+            messages.error(request, "Tarix düzgün deyil.")
+            return render(request, "crud/add-real-sales.html", _form_ctx())
+
         selected_drugs = []
         for key in request.POST:
             if key.startswith("quantity_"):
                 drug_id = key.split("_")[1]
                 count = request.POST.get(key)
-                if count and int(count) > 0:
+                if count and str(count).isdigit() and int(count) > 0:
                     selected_drugs.append((int(drug_id), int(count)))
 
         if not selected_drugs:
             messages.error(request, "Zəhmət olmasa ən az bir dərman miqdarı daxil edin.")
-            return render(request, "crud/add-real-sales.html", {
-                "regions": regions,
-                "doctors": doctors,
-                "drugs": drugs,
-                "selected_region": selected_region,
-                "selected_doctor": selected_doctor,
-                "selected_date": selected_date
-            })
+            return render(request, "crud/add-real-sales.html", _form_ctx())
 
-        # Real satış yaradılır
-        real_sale = RealSales.objects.create(
-            region_n_id=region_id,
-            dr_name_id=doctor_id,
-            date_sale=date
+        try:
+            with transaction.atomic():
+                real_sale = RealSales.objects.create(
+                    region_n_id=region_id,
+                    dr_name_id=doctor_id,
+                    date_sale=sale_date,
+                )
+
+                total_commission = Decimal("0")
+                total_quantity = 0
+                total_sale_reduced = 0
+
+                for drug_id, count in selected_drugs:
+                    RealSalesDrug.objects.create(
+                        real_sale=real_sale,
+                        drug_name_id=drug_id,
+                        numbers=count,
+                    )
+
+                    total_sale_reduced += _reduce_region_sale(
+                        region_id, drug_id, count, sale_date
+                    )
+
+                    remaining_recipe = count
+                    recipe_drugs = RecipeDrug.objects.filter(
+                        recipe__region_id=region_id,
+                        recipe__dr_id=doctor_id,
+                        drug_id=drug_id,
+                    ).order_by("recipe__date")
+                    for rd in recipe_drugs:
+                        if remaining_recipe <= 0:
+                            break
+                        if rd.number >= remaining_recipe:
+                            rd.number -= remaining_recipe
+                            remaining_recipe = 0
+                        else:
+                            remaining_recipe -= rd.number
+                            rd.number = 0
+                        rd.save(update_fields=["number"])
+
+                    drug = Medical.objects.get(id=drug_id)
+                    komissiya = (drug.komissiya or Decimal("0")) * count
+                    total_commission += komissiya
+                    total_quantity += count
+
+                doctor = Doctors.objects.select_for_update().get(id=doctor_id)
+                doctor.hesablanan_miqdar = (doctor.hesablanan_miqdar or Decimal("0")) + Decimal(
+                    total_quantity
+                )
+                doctor.hekimden_silinen = (doctor.hekimden_silinen or Decimal("0")) + total_commission
+                doctor.save(update_fields=["hesablanan_miqdar", "hekimden_silinen"])
+
+        except Exception as e:
+            messages.error(request, f"Xəta: {e}")
+            return render(request, "crud/add-real-sales.html", _form_ctx())
+
+        messages.success(
+            request,
+            f"Real satış əlavə olundu: {total_quantity} qutu. "
+            f"Bölgə satışından {total_sale_reduced} qutu çıxıldı. "
+            f"Hesablanan +{total_quantity}, silinən +{total_commission} AZN.",
         )
-        
-        total_commission = Decimal('0')
-        total_quantity = 0  # Real satış miqdarını burada topluyuruq
-
-        for drug_id, count in selected_drugs:
-            RealSalesDrug.objects.create(
-                real_sale=real_sale,
-                drug_name_id=drug_id,
-                numbers=count
+        if total_sale_reduced < total_quantity:
+            messages.warning(
+                request,
+                f"Diqqət: {total_quantity - total_sale_reduced} qutu bölgə satışında tapılmadı.",
             )
 
+    return render(request, "crud/add-real-sales.html", _form_ctx())
 
-            # Həkimin reseptindən də azaldırıq (tarixi köhnədən yeniyə)
-            recipe_drugs = RecipeDrug.objects.filter(
-                recipe__region_id=region_id,
-                recipe__dr_id=doctor_id,
-                drug_id=drug_id
-            ).order_by('recipe__date')
-            
-            remaining_to_subtract = count
-            for rd in recipe_drugs:
-                if remaining_to_subtract <= 0:
-                    break
-                
-                if rd.number >= remaining_to_subtract:
-                    rd.number -= remaining_to_subtract
-                    remaining_to_subtract = 0
-                else:
-                    remaining_to_subtract -= rd.number
-                    rd.number = 0
-                
-                rd.save()
 
-            # Komissiyanı hesabla
-            drug = Medical.objects.get(id=drug_id)
-            komissiya = drug.komissiya * count
-            total_commission += komissiya
-            
-            # Real satış miqdarını topluyuruq
-            total_quantity += count
+def _restore_region_sale(region_id, drug_id, quantity, sale_date):
+    """Real satış silinəndə bölgə Sale-ə miqdarı geri əlavə edir."""
+    remaining = int(quantity)
+    if remaining <= 0:
+        return
 
-        # Həkimin miqdarını və pulunu artırırıq
-        doctor = Doctors.objects.get(id=doctor_id)
-        
+    sale = (
+        Sale.objects.filter(
+            region_id=int(region_id),
+            drug_id=int(drug_id),
+            sale_date__year=sale_date.year,
+            sale_date__month=sale_date.month,
+        )
+        .order_by("sale_date", "id")
+        .first()
+    )
+    if sale:
+        sale.quantity = int(sale.quantity or 0) + remaining
+        sale.save(update_fields=["quantity"])
+    else:
+        Sale.objects.create(
+            region_id=int(region_id),
+            drug_id=int(drug_id),
+            quantity=remaining,
+            sale_date=sale_date,
+        )
 
-        
-        # Komissiyanı (məbləği) həkimdən silinənə əlavə edirik
-        doctor.hekimden_silinen += total_commission  # MƏBLƏĞ (manat)
-        
-        doctor.save()
 
-        messages.success(request, "Satış uğurla əlavə olundu. Həkimin miqdarı və komissiyası yeniləndi.")
-        return redirect("create_real_sales")
+def _restore_recipe_drug(region_id, doctor_id, drug_id, quantity):
+    """Real satış silinəndə reseptə miqdarı təxmini geri qaytarır."""
+    remaining = int(quantity)
+    if remaining <= 0:
+        return
 
-    return render(request, "crud/add-real-sales.html", {
-        "regions": regions,
-        "doctors": doctors,
-        "drugs": drugs,
-        "selected_region": selected_region,
-        "selected_doctor": selected_doctor,
-        "selected_date": selected_date
-    })
+    recipe_drug = (
+        RecipeDrug.objects.filter(
+            recipe__region_id=int(region_id),
+            recipe__dr_id=int(doctor_id),
+            drug_id=int(drug_id),
+        )
+        .order_by("-recipe__date", "-id")
+        .first()
+    )
+    if recipe_drug:
+        recipe_drug.number = int(recipe_drug.number or 0) + remaining
+        recipe_drug.save(update_fields=["number"])
+
+
+def _reverse_real_sale_drug_line(line):
+    """Tək real satış dərman sətirini geri qaytarır və silir."""
+    real_sale = line.real_sale
+    drug = line.drug_name
+    count = int(line.numbers or 0)
+    sale_id = real_sale.id
+
+    if count > 0:
+        _restore_region_sale(
+            real_sale.region_n_id,
+            drug.id,
+            count,
+            real_sale.date_sale,
+        )
+        _restore_recipe_drug(
+            real_sale.region_n_id,
+            real_sale.dr_name_id,
+            drug.id,
+            count,
+        )
+        commission = (drug.komissiya or Decimal("0")) * count
+
+        doctor = Doctors.objects.select_for_update().get(id=real_sale.dr_name_id)
+        doctor.hesablanan_miqdar = max(
+            Decimal("0"),
+            (doctor.hesablanan_miqdar or Decimal("0")) - Decimal(count),
+        )
+        doctor.hekimden_silinen = max(
+            Decimal("0"),
+            (doctor.hekimden_silinen or Decimal("0")) - commission,
+        )
+        doctor.save(update_fields=["hesablanan_miqdar", "hekimden_silinen"])
+    else:
+        commission = Decimal("0")
+
+    line.delete()
+    if not RealSalesDrug.objects.filter(real_sale_id=sale_id).exists():
+        RealSales.objects.filter(id=sale_id).delete()
+
+    return count, commission
+
+
+def real_sales_list(request):
+    region = Region.objects.all().order_by("region_name")
+    drug = Medical.objects.active().order_by("position", "id")
+    return render(
+        request,
+        "crud/real-sales-list.html",
+        {"region": region, "drug": drug},
+    )
+
+
+def ajax_real_sales_data(request):
+    region_id = request.GET.get("region_id")
+    month = request.GET.get("month")
+    search = (request.GET.get("search") or "").strip()
+    page = request.GET.get("page", 1)
+    per_page = 30
+
+    try:
+        region_id = int(region_id)
+    except (TypeError, ValueError):
+        return JsonResponse({"results": [], "total_pages": 0, "current_page": 1})
+
+    qs = (
+        RealSales.objects.filter(region_n_id=region_id)
+        .select_related("region_n", "dr_name")
+        .prefetch_related("drug_name__drug_name")
+        .order_by("-date_sale", "-id")
+    )
+
+    if month:
+        try:
+            month_int = int(month)
+            current_year = datetime.now().year
+            month_start = datetime(current_year, month_int, 1).date()
+            if month_int == 12:
+                month_end = datetime(current_year + 1, 1, 1).date()
+            else:
+                month_end = datetime(current_year, month_int + 1, 1).date()
+            qs = qs.filter(date_sale__gte=month_start, date_sale__lt=month_end)
+        except ValueError:
+            pass
+    if search:
+        qs = qs.filter(dr_name__ad__icontains=search)
+
+    all_medical_drugs = list(Medical.objects.active().order_by("position", "id"))
+    result = []
+
+    for sale in qs:
+        drug_map = {
+            line.drug_name_id: int(line.numbers or 0)
+            for line in sale.drug_name.all()
+        }
+        drugs = []
+        total = 0
+        for med_drug in all_medical_drugs:
+            count = drug_map.get(med_drug.id, 0)
+            drugs.append({"name": med_drug.med_name, "count": count})
+            total += count
+
+        if total <= 0:
+            continue
+
+        result.append(
+            {
+                "sale_id": sale.id,
+                "bolge": sale.region_n.region_name,
+                "doctor": sale.dr_name.ad,
+                "doctor_id": sale.dr_name_id,
+                "date": sale.date_sale.strftime("%d.%m.%Y"),
+                "drugs": drugs,
+                "total": total,
+            }
+        )
+
+    paginator = Paginator(result, per_page)
+    try:
+        current_page = paginator.page(page)
+        paginated_results = list(current_page.object_list)
+    except Exception:
+        current_page = paginator.page(1)
+        paginated_results = list(current_page.object_list)
+
+    return JsonResponse(
+        {
+            "results": paginated_results,
+            "total_pages": paginator.num_pages,
+            "current_page": current_page.number,
+            "has_previous": current_page.has_previous(),
+            "has_next": current_page.has_next(),
+            "total_results": len(result),
+        }
+    )
+
+
+def del_real_sale(request, id):
+    real_sale = get_object_or_404(
+        RealSales.objects.select_related("dr_name").prefetch_related("drug_name__drug_name"),
+        id=id,
+    )
+    redirect_params = request.GET.copy()
+    redirect_params.pop("next", None)
+
+    try:
+        with transaction.atomic():
+            lines = list(
+                real_sale.drug_name.select_related("drug_name", "real_sale", "real_sale__dr_name")
+            )
+            total_quantity = 0
+            total_commission = Decimal("0")
+            doctor_name = real_sale.dr_name.ad
+            sale_date = real_sale.date_sale
+
+            for line in lines:
+                count, commission = _reverse_real_sale_drug_line(line)
+                total_quantity += count
+                total_commission += commission
+
+        messages.success(
+            request,
+            f"{doctor_name} — {sale_date} real satış silindi "
+            f"({total_quantity} qutu geri qaytarıldı).",
+        )
+    except Exception as e:
+        messages.error(request, f"Silinmə zamanı xəta: {e}")
+
+    redirect_url = reverse("real_sales_list")
+    if redirect_params:
+        redirect_url = f"{redirect_url}?{redirect_params.urlencode()}"
+    return redirect(redirect_url)
+
+
+def del_real_sale_line(request, id):
+    line = get_object_or_404(
+        RealSalesDrug.objects.select_related(
+            "real_sale__dr_name",
+            "real_sale__region_n",
+            "drug_name",
+            "real_sale",
+        ),
+        id=id,
+    )
+    doctor_id = line.real_sale.dr_name_id
+    drug_name = line.drug_name.med_full_name or line.drug_name.med_name
+
+    try:
+        with transaction.atomic():
+            count, _ = _reverse_real_sale_drug_line(line)
+        messages.success(request, f"{drug_name}: {count} qutu real satış silindi.")
+    except Exception as e:
+        messages.error(request, f"Silinmə zamanı xəta: {e}")
+
+    return redirect("doctor_detail", doctor_id=doctor_id)
+
 
 # def create_real_sales(request):
 #     regions = Region.objects.all().order_by("region_name")
@@ -1414,9 +1731,7 @@ def ajax_doctors_by_region(request):
 
 def data_list(request):
     region = Region.objects.all()
-    drug = Medical.objects.all().order_by('id')
-
-    print(list(Medical.objects.all().order_by("id").values_list("med_name", flat=True)))
+    drug = Medical.objects.active().order_by('id')
 
     context = {
         "region": region,
@@ -1509,7 +1824,7 @@ def ajax_region_data(request):
         start_date = end_date = None
 
     result = []
-    all_medical_drugs = Medical.objects.all().order_by('id')
+    all_medical_drugs = Medical.objects.active().order_by('id')
 
     for doctor in doctors:
         # RecipeDrug queryset
@@ -1651,7 +1966,8 @@ def export_region_excel(request):
     # RecipeDrug aggregation + tarix filteri
     counts_qs = RecipeDrug.objects.filter(
         recipe__dr__in=doctor_ids,
-        recipe__region=region
+        recipe__region=region,
+        drug__status=True,
     )
 
     if start_date and end_date:
@@ -1680,7 +1996,7 @@ def export_region_excel(request):
             doctor_total_counts[dr_id] += total
 
     # 🔹 Dərmanlar siyahısı
-    drugs = list(Medical.objects.all().order_by('id'))
+    drugs = list(Medical.objects.active().order_by('id'))
 
     # 📊 Excel yaradılması
     wb = Workbook()
@@ -1840,8 +2156,16 @@ def region_report(request, region_id):
     """Yungul sehife - yalniz formu render edir, hec bir agir SQL yoxdur."""
     region = get_object_or_404(Region, id=region_id)
     now = datetime.now()
-    current_year = now.year
-    current_month = now.month
+    try:
+        current_year = int(request.GET.get("year") or now.year)
+    except (TypeError, ValueError):
+        current_year = now.year
+    try:
+        current_month = int(request.GET.get("month") or now.month)
+        if not (1 <= current_month <= 12):
+            current_month = now.month
+    except (TypeError, ValueError):
+        current_month = now.month
     report_scope_label = "Şəhər" if (region.region_type or "") == "Şəhər" else "Bölgə"
     context = {
         "region": region,
@@ -1854,27 +2178,19 @@ def region_report(request, region_id):
     return render(request, "test_2.html", context)
 
 
-def region_report_data_ajax(request, region_id):
-    """AJAX endpoint - yalniz Hesabla dugmesine basanda cagrilir."""
-    month = request.GET.get("month")
-    year = request.GET.get("year")
-    current_year = datetime.now().year
-
-    region = get_object_or_404(Region, id=region_id)
+def _compute_region_report(region_id, ay, il):
+    """
+    Bir bölgə üçün komissiya hesabatını hesablayır və nəticəni dict kimi
+    qaytarır. Bu, `region_report_data_ajax` (Hesabla düyməsi) ilə həm də
+    satış əlavə/redaktə olunanda avtomatik çağırılan hesablama üçün
+    ortaq məntiqdir — ikisi də eyni nəticəni versin deyə ayrıca funksiyaya
+    çıxarılıb.
+    """
     dermanlar = list(Medical.objects.all().order_by("-id"))
     hekimler = Doctors.objects.filter(bolge_id=region_id, is_active=True).order_by("ad")
 
     region_recipe_drugs = RecipeDrug.objects.filter(recipe__region_id=region_id)
     sales = Sale.objects.filter(region_id=region_id)
-
-    try:
-        ay = int(month) if month else None
-    except ValueError:
-        ay = None
-    try:
-        il = int(year) if year else current_year
-    except ValueError:
-        il = current_year
 
     if ay:
         region_recipe_drugs = region_recipe_drugs.filter(recipe__date__month=ay)
@@ -1918,37 +2234,78 @@ def region_report_data_ajax(request, region_id):
         })
 
     derman_toplamlari = [sum(r["dermanlar"][i] for r in report_data) for i in range(len(dermanlar))]
-    faizli_toplamlari = [round(float(sum(r["faizli_dermanlar"][i] for r in report_data)), 2) for i in range(len(dermanlar))]
+    # Cədvəl 1 üçün faktiki resept cəmləri (real satış çıxarılmış)
     toplam_hekim_say = sum(r["toplam"] for r in report_data)
+
+    # Real qutu satışları
+    real_filter = {"real_sale__region_n_id": region_id}
+    if il:
+        real_filter["real_sale__date_sale__year"] = il
+    if ay:
+        real_filter["real_sale__date_sale__month"] = ay
+    real_by_doctor_drug = defaultdict(lambda: Decimal("0"))
+    real_by_drug_region = defaultdict(lambda: Decimal("0"))  # bölgə üzrə dərman cəmi
+    for rsd in (
+        RealSalesDrug.objects.filter(**real_filter)
+        .select_related("drug_name", "real_sale")
+    ):
+        did = rsd.real_sale.dr_name_id
+        boxes = Decimal(rsd.numbers)
+        real_by_doctor_drug[(did, rsd.drug_name_id)] += boxes
+        real_by_drug_region[rsd.drug_name_id] += boxes
+
+    # Formula üçün virtual bərpa: real satış reseptdən/satışdan çıxarıldığı üçün
+    # köhnə Hesabla nəticəsi (məs. 5.94) itməsin deyə real qutular müvəqqəti geri əlavə olunur.
+    virtual_faizli_per_row = []
+    for row in report_data:
+        hekim = row["hekim"]
+        faktor = Decimal(str(dereceler.get(hekim.derece, 0)))
+        v_faizli = []
+        for i, derman in enumerate(dermanlar):
+            actual = Decimal(str(row["dermanlar"][i] or 0))
+            real_q = real_by_doctor_drug.get((hekim.id, derman.id), Decimal("0"))
+            virtual_say = actual + real_q
+            v_faizli.append((virtual_say * faktor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        virtual_faizli_per_row.append(v_faizli)
+
+    faizli_toplamlari_virtual = [
+        round(float(sum(virtual_faizli_per_row[r][i] for r in range(len(report_data)))), 2)
+        for i in range(len(dermanlar))
+    ]
+    # Cədvəl 2 üçün faktiki (virtual olmayan) faizli — UI-da resept qalığı görünsün
+    faizli_toplamlari = [round(float(sum(r["faizli_dermanlar"][i] for r in report_data)), 2) for i in range(len(dermanlar))]
     toplam_faizli_say = round(float(sum(r["faizli_toplam"] for r in report_data)), 2)
 
     satis_map = {row["drug_id"]: row["s"] for row in sales.values("drug_id").annotate(s=Sum("quantity"))}
+    # Real satış bölgə Sale-dən çıxılıb — satis_map-ə yenidən əlavə etməyin.
+
     effektivlik_faizleri = []
     for i, derman in enumerate(dermanlar):
         satis = satis_map.get(derman.id, 0) or 0
-        fp = faizli_toplamlari[i]
+        fp = faizli_toplamlari_virtual[i]
         eff = (Decimal(satis) / Decimal(str(fp))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if fp else Decimal("0.00")
         effektivlik_faizleri.append(eff)
 
-    for row in report_data:
+    for idx, row in enumerate(report_data):
         eff_d = []
         eff_t = Decimal("0.00")
         kom_d = []
         kom_t = Decimal("0.00")
-        for i, faizli in enumerate(row["faizli_dermanlar"]):
-            vurulmus = (faizli * effektivlik_faizleri[i]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            eff_d.append(vurulmus)
-            eff_t += vurulmus
+        hekim = row["hekim"]
+        for i, virtual_faizli in enumerate(virtual_faizli_per_row[idx]):
+            vurulmus = (virtual_faizli * effektivlik_faizleri[i]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            real_q = real_by_doctor_drug.get((hekim.id, dermanlar[i].id), Decimal("0"))
+            vurulmus_cem = vurulmus + real_q
+            eff_d.append(vurulmus_cem)
+            eff_t += vurulmus_cem
             kom_faiz = dermanlar[i].komissiya or Decimal("0")
-            miqdar = (vurulmus * kom_faiz).quantize(Decimal("0.01"))
+            miqdar = (vurulmus_cem * kom_faiz).quantize(Decimal("0.01"))
             kom_d.append(miqdar)
             kom_t += miqdar
         row["effektivlikli_dermanlar"] = eff_d
         row["effektivlikli_toplam"] = eff_t
         row["komissiya_miqdarlari"] = kom_d
         row["umumi_komissiya"] = kom_t
-        # DB-ye yaz — yalniz Hesabla basanda
-        hekim = row["hekim"]
         hekim.hesablanan_miqdar = eff_t
         hekim.hekimden_silinen = kom_t
         hekim.save(update_fields=["hesablanan_miqdar", "hekimden_silinen"])
@@ -1982,7 +2339,7 @@ def region_report_data_ajax(request, region_id):
             "umumi_komissiya": flt(row["umumi_komissiya"]),
         })
 
-    return JsonResponse({
+    return {
         "dermanlar": [d.med_name for d in dermanlar],
         "hekimler": json_hekimler,
         "derman_toplamlari": derman_toplamlari,
@@ -1996,4 +2353,39 @@ def region_report_data_ajax(request, region_id):
         "toplam_komissiya": toplam_komissiya,
         "ay": ay,
         "il": il,
-    }, json_dumps_params={"ensure_ascii": False})
+    }
+
+
+def region_report_data_ajax(request, region_id):
+    """AJAX endpoint - Hesabla dugmesine basanda (manual) cagrilir."""
+    month = request.GET.get("month")
+    year = request.GET.get("year")
+    current_year = datetime.now().year
+
+    get_object_or_404(Region, id=region_id)
+
+    try:
+        ay = int(month) if month else None
+    except ValueError:
+        ay = None
+    try:
+        il = int(year) if year else current_year
+    except ValueError:
+        il = current_year
+
+    data = _compute_region_report(region_id, ay, il)
+    return JsonResponse(data, json_dumps_params={"ensure_ascii": False})
+
+
+def recalc_region_report_for_date(region_id, sale_date):
+    """
+    Satış əlavə/redaktə olunanda həmin bölgə+ay üçün komissiya hesabatını
+    avtomatik yenidən hesablayır (manual "Hesabla" düyməsinə ehtiyac qalmır).
+    Xəta baş versə səssizcə keçir — satışın yadda saxlanmasına mane olmasın.
+    """
+    if not region_id or not sale_date:
+        return
+    try:
+        _compute_region_report(region_id, sale_date.month, sale_date.year)
+    except Exception:
+        pass

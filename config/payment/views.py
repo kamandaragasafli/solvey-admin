@@ -192,7 +192,7 @@ def financial_documents(request):
     return render(request, 'finance-document.html', context)
 
 def create_sale(request):
-    drug_all = Medical.objects.all().order_by('id')
+    drug_all = Medical.objects.active().order_by('id')
     region_all = Region.objects.all().order_by('id')
 
     if request.method == "POST":
@@ -245,7 +245,24 @@ def create_sale(request):
                     sales_created = True
 
         if sales_created:
-            messages.success(request, 'Satışlar uğurla əlavə olundu')
+            from doctors.views import recalc_region_report_for_date
+            from django.utils.html import format_html
+            recalc_region_report_for_date(region.id, sale_date)
+            report_url = (
+                reverse("region_report", args=[region.id])
+                + f"?month={sale_date.month}&year={sale_date.year}"
+            )
+            messages.success(
+                request,
+                format_html(
+                    'Satışlar uğurla əlavə olundu. Komissiya hesablandı. '
+                    '<a href="{}" style="color:#93c5fd;text-decoration:underline;">'
+                    'Cədvəllərə bax ({} {})</a>',
+                    report_url,
+                    sale_date.month,
+                    sale_date.year,
+                ),
+            )
 
         if errors:
             for error in errors:
@@ -330,6 +347,22 @@ def update_sale(request):
                 qs.delete()  # qty == 0 → sil
 
         messages.success(request, "Satış məlumatları yeniləndi.")
+        from doctors.views import recalc_region_report_for_date
+        from django.utils.html import format_html
+        recalc_region_report_for_date(region.id, sale_date)
+        report_url = (
+            reverse("region_report", args=[region.id])
+            + f"?month={month_start.month}&year={month_start.year}"
+        )
+        messages.info(
+            request,
+            format_html(
+                'Komissiya hesablandı. '
+                '<a href="{}" style="color:#93c5fd;text-decoration:underline;">'
+                'Cədvəllərə bax</a>',
+                report_url,
+            ),
+        )
         return redirect(
             f"{reverse('sales')}?month={month_start.month}&year={month_start.year}"
             + (f"&region={region.id}" if selected_region_id else "")
@@ -367,7 +400,7 @@ def sales(request):
     """
     today = date.today()
     all_region = Region.objects.all().order_by("region_name")
-    all_drug = Medical.objects.all().order_by("position", "id")
+    all_drug = Medical.objects.active().order_by("position", "id")
 
     years = list(Sale.objects.dates("sale_date", "year").distinct())
     years = sorted([y.year for y in years], reverse=True)
@@ -483,7 +516,7 @@ def export_sales_excel(request):
     """Aylıq Satışlar səhifəsinin Excel çıxarışı (reports/sales)."""
     today = date.today()
     all_region = Region.objects.all().order_by("region_name")
-    all_drug = Medical.objects.all().order_by("position", "id")
+    all_drug = Medical.objects.active().order_by("position", "id")
 
     region_search = request.GET.get("region_search", "").strip()
     region_id = request.GET.get("region", "").strip()
@@ -829,12 +862,34 @@ def depo_sales(request):
     return render(request, "depo-sales.html", context)
 
 def report_list(request):
+    today = date.today()
+
+    if "month" not in request.GET and "year" not in request.GET:
+        q = request.GET.copy()
+        q["month"] = str(today.month)
+        q["year"] = str(today.year)
+        return redirect(f"{request.path}?{q.urlencode()}")
+
+    try:
+        selected_month = int(request.GET.get("month") or today.month)
+    except ValueError:
+        selected_month = today.month
+
+    try:
+        selected_year = int(request.GET.get("year") or today.year)
+    except ValueError:
+        selected_year = today.year
+
     region = Region.objects.all().order_by('id')
-    drug = Medical.objects.all().order_by('id')
+    drug = Medical.objects.active().order_by('id')
+    years = list(range(today.year - 1, today.year + 2))
 
     context = {
         "region": region,
-        "drug": drug
+        "drug": drug,
+        "selected_month": selected_month,
+        "selected_year": selected_year,
+        "years": years,
     }
     return render(request, "reports/report.html", context )
 
@@ -962,7 +1017,8 @@ def ajax_region_report(request):
         # Dərman məlumatları (reseptlər)
         recipe_drugs = RecipeDrug.objects.filter(
             recipe__dr=doctor,
-            recipe__region_id=region_id
+            recipe__region_id=region_id,
+            drug__status=True,
         )
         if month:
             try:
@@ -1151,7 +1207,7 @@ def export_region_report_excel(request):
     month = request.GET.get("month")
     year = request.GET.get("year")
     borc_filter = request.GET.get("borc")
-    drugs = list(Medical.objects.all().order_by('id'))  # Bütün dərmanlar
+    drugs = list(Medical.objects.active().order_by('id'))
 
     if not region_id:
         return HttpResponse("Bölgə seçilməyib.", status=400)
@@ -1180,52 +1236,6 @@ def export_region_report_excel(request):
     ws = wb.active
     ws.title = "Bölgə Hesabatı"
 
-    # Başlıqlar
-    headers = [
-        "№", "Bölgə", "Həkim", "Kod", "Şəhər", "Dərəcə", "İxtisas", "Əvvəlki Borc"
-    ] + [d.med_name for d in drugs] + [
-        "Total", "Hesablanan Miqdar", "Həkimdən Silinən", "Avans", "İnvestisiya", "Geri qaytarma", "Datasiya", "Yekun Borc"
-    ]
-
-    ws.append([])  # Boş sətir
-    ws.append(headers)
-
-    bold_font = Font(bold=True, color="060411")
-    header_fill = PatternFill(fill_type="solid", fgColor="F0F0F0")
-    thin = Side(style='thin', color="000000")
-    thin_border = Border(left=thin, right=thin, top=thin, bottom=thin)
-
-    # Başlıqları formatla
-    for cell in ws[2]:
-        cell.font = bold_font
-        cell.fill = header_fill
-        cell.border = thin_border
-        cell.alignment = Alignment(horizontal="center", vertical="center", textRotation=90)
-
-    ws.freeze_panes = "A3"
-    
-    # Sütun enliklərini sıxlaşdır
-    ws.column_dimensions['A'].width = 5   # №
-    ws.column_dimensions['B'].width = 12  # Bölgə
-    ws.column_dimensions['C'].width = 20  # Həkim
-    ws.column_dimensions['D'].width = 10  # Kod
-    ws.column_dimensions['E'].width = 12  # Şəhər
-    ws.column_dimensions['F'].width = 8   # Dərəcə
-    ws.column_dimensions['G'].width = 12  # İxtisas
-    ws.column_dimensions['H'].width = 12  # Əvvəlki Borc
-    
-    # Dərman sütunları - dar et (I sütunundan başlayır, column 9)
-    for i in range(len(drugs)):
-        col_letter = get_column_letter(9 + i)
-        ws.column_dimensions[col_letter].width = 4
-    
-    # Son sütunlar (Total, Hesablanan, Həkimdən Silinən, Avans, İnvestisiya, Geri qaytarma, Datasiya, Yekun Borc)
-    base_col = 9 + len(drugs)
-    for i in range(8):  # 8 son sütun
-        col_letter = get_column_letter(base_col + i)
-        ws.column_dimensions[col_letter].width = 8
-
-    # Cəmlər üçün dəyişənlər
     drug_totals = [0] * len(drugs)
     total_total = d(0)
     hesablanan_miqdar_total = d(0)
@@ -1236,8 +1246,13 @@ def export_region_report_excel(request):
     datasiya_total = d(0)
     yekun_borc_total = d(0)
     previous_debt_total = d(0)
+    show_geriqaytarma = False
+    show_datasiya = False
+    show_seher = False
+    pending_rows = []
+    row_idx = 0
 
-    for idx, doctor in enumerate(doctors, start=1):
+    for doctor in doctors:
         # Seçilən ay üçün mövcud hesabatı tap (AJAX ilə uyğunlaşdır)
         monthly_report = None
         if month:
@@ -1318,6 +1333,15 @@ def export_region_report_excel(request):
         if borc_filter == "borcsuz" and yekun_borc > 0:
             continue
 
+        if geriqaytarma > 0:
+            show_geriqaytarma = True
+        if datasiya > 0:
+            show_datasiya = True
+
+        city_name = doctor.city.city_name if doctor.city else ""
+        if city_name.strip():
+            show_seher = True
+
         # Recipes və drug məlumatları (month filter ilə)
         recipes = Recipe.objects.filter(dr=doctor, region_id=region_id)
         if month:
@@ -1338,7 +1362,7 @@ def export_region_report_excel(request):
         total = 0
         for recipe in recipes:
             # RecipeDrug vasitəsilə dərmanları al (AJAX ilə uyğunlaşdır)
-            recipe_drugs = RecipeDrug.objects.filter(recipe=recipe)
+            recipe_drugs = RecipeDrug.objects.filter(recipe=recipe, drug__status=True)
             for item in recipe_drugs:
                 drug_map[item.drug.med_name] += item.number
                 total += item.number
@@ -1353,24 +1377,22 @@ def export_region_report_excel(request):
         yekun_borc_total += yekun_borc
         total_total += total
 
-        row = [
-            idx,
+        row_idx += 1
+        drug_values = []
+        for i, drug in enumerate(drugs):
+            val = drug_map.get(drug.med_name, 0)
+            drug_totals[i] += val
+            drug_values.append(val)
+
+        pending_rows.append([
+            row_idx,
             doctor.bolge.region_name,
             doctor.ad,
-            doctor.barkod,
             doctor.city.city_name if doctor.city else "",
             doctor.get_derece_display(),
             doctor.get_ixtisas_display(),
-            float(previous_debt)
-        ]
-
-        # Dərman sütunları və cəmləri
-        for i, drug in enumerate(drugs):
-            val = drug_map.get(drug.med_name, 0)
-            drug_totals[i] += val  # cəmi əlavə et
-            row.append(val)
-
-        row += [
+            float(previous_debt),
+            *drug_values,
             float(total),
             float(hesablanan_miqdar),
             float(hekimden_silinen),
@@ -1378,12 +1400,78 @@ def export_region_report_excel(request):
             float(investisiya),
             float(geriqaytarma),
             float(datasiya),
-            float(yekun_borc)
-        ]
+            float(yekun_borc),
+        ])
 
-        ws.append(row)
-        
-        # Hər xanaya border və mərkəzləşdirmə əlavə et
+    tail_headers = [
+        "Total", "Hesablanan Miqdar", "Həkimdən Silinən", "Avans", "İnvestisiya",
+    ]
+    if show_geriqaytarma:
+        tail_headers.append("Geri qaytarma")
+    if show_datasiya:
+        tail_headers.append("Datasiya")
+    tail_headers.append("Yekun Borc")
+
+    prefix_headers = ["№", "Bölgə", "Həkim"]
+    if show_seher:
+        prefix_headers.append("Şəhər")
+    prefix_headers += ["Dərəcə", "İxtisas", "Əvvəlki Borc"]
+
+    headers = prefix_headers + [d.med_name for d in drugs] + tail_headers
+
+    ws.append([])
+    ws.append(headers)
+
+    bold_font = Font(bold=True, color="060411")
+    header_fill = PatternFill(fill_type="solid", fgColor="F0F0F0")
+    thin = Side(style='thin', color="000000")
+    thin_border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    for cell in ws[2]:
+        cell.font = bold_font
+        cell.fill = header_fill
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal="center", vertical="center", textRotation=90)
+
+    ws.freeze_panes = "A3"
+
+    prefix_cols = 6 + (1 if show_seher else 0)
+
+    ws.column_dimensions['A'].width = 5
+    ws.column_dimensions['B'].width = 12
+    ws.column_dimensions['C'].width = 20
+    ws.column_dimensions['D'].width = 12
+    ws.column_dimensions['E'].width = 8
+    ws.column_dimensions['F'].width = 12
+    ws.column_dimensions['G'].width = 12
+
+    for i in range(len(drugs)):
+        col_letter = get_column_letter(prefix_cols + 1 + i)
+        ws.column_dimensions[col_letter].width = 4
+
+    base_col = prefix_cols + 1 + len(drugs)
+    for i in range(len(tail_headers)):
+        col_letter = get_column_letter(base_col + i)
+        ws.column_dimensions[col_letter].width = 8
+
+    drug_start = 7
+    for row in pending_rows:
+        prefix_values = [row[0], row[1], row[2]]
+        if show_seher:
+            prefix_values.append(row[3])
+        prefix_values.extend([row[4], row[5], row[6]])
+        drug_values = row[drug_start:drug_start + len(drugs)]
+        tail_values = row[drug_start + len(drugs):drug_start + len(drugs) + 5]
+        optional_values = row[drug_start + len(drugs) + 5:drug_start + len(drugs) + 7]
+        yekun_value = row[drug_start + len(drugs) + 7]
+        export_row = prefix_values + drug_values + tail_values
+        if show_geriqaytarma:
+            export_row.append(optional_values[0])
+        if show_datasiya:
+            export_row.append(optional_values[1])
+        export_row.append(yekun_value)
+        ws.append(export_row)
+
         current_row = ws.max_row
         for col in range(1, len(headers) + 1):
             cell = ws.cell(row=current_row, column=col)
@@ -1403,32 +1491,31 @@ def export_region_report_excel(request):
     cemi_cell.border = thin_border
     cemi_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Əvvəlki borcun cəmi (column 8)
-    prev_debt_cell = ws.cell(row=total_row_idx, column=8, value=float(previous_debt_total))
+    # Əvvəlki borcun cəmi
+    prev_debt_cell = ws.cell(row=total_row_idx, column=prefix_cols, value=float(previous_debt_total))
     prev_debt_cell.font = Font(bold=True)
     prev_debt_cell.border = thin_border
     prev_debt_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Dərmanların cəmi (columns 9 to 9+len(drugs)-1)
-    drug_start_col = 9
+    drug_start_col = prefix_cols + 1
     for i, total_val in enumerate(drug_totals):
         cell = ws.cell(row=total_row_idx, column=drug_start_col + i, value=total_val)
         cell.font = Font(bold=True)
         cell.border = thin_border
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Yekun sütunların cəmləri (base_col = 9 + len(drugs))
-    base_col = 9 + len(drugs)
     final_totals = [
         ("Total", float(total_total)),
         ("Hesablanan Miqdar", float(hesablanan_miqdar_total)),
         ("Həkimdən Silinən", float(hekimden_silinen_total)),
         ("Avans", float(avans_total)),
         ("İnvestisiya", float(investisiya_total)),
-        ("Geri qaytarma", float(geriqaytarma_total)),
-        ("Datasiya", float(datasiya_total)),
-        ("Yekun Borc", float(yekun_borc_total))
     ]
+    if show_geriqaytarma:
+        final_totals.append(("Geri qaytarma", float(geriqaytarma_total)))
+    if show_datasiya:
+        final_totals.append(("Datasiya", float(datasiya_total)))
+    final_totals.append(("Yekun Borc", float(yekun_borc_total)))
     
     for i, (label, value) in enumerate(final_totals):
         cell = ws.cell(row=total_row_idx, column=base_col + i, value=value)
@@ -1436,8 +1523,13 @@ def export_region_report_excel(request):
         cell.border = thin_border
         cell.alignment = Alignment(horizontal="center", vertical="center")
     
-    # Qalan boş xanalara border əlavə et (№, Həkim, Kod, Şəhər, Dərəcə, İxtisas)
-    for col in [1, 3, 4, 5, 6, 7]:
+    # Qalan boş xanalara border əlavə et
+    empty_border_cols = [1, 3]
+    if show_seher:
+        empty_border_cols.extend([4, 5, 6])
+    else:
+        empty_border_cols.extend([4, 5])
+    for col in empty_border_cols:
         cell = ws.cell(row=total_row_idx, column=col)
         cell.border = thin_border
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -1457,7 +1549,7 @@ def export_region_report_excel(request):
 
 def kohne_hesabat(request):
     region_list = Region.objects.all()
-    drug_list = Medical.objects.all().order_by('id')
+    drug_list = Medical.objects.active().order_by('id')
 
     aylar = [
         (1, "Yanvar"),
@@ -1516,9 +1608,12 @@ def kohne_region_ajax(request):
 
         # Əgər drugs_list boşdursa, həkimə aid RecipeDrug məlumatlarından yarat
         if not drugs_list:
-            counts_qs = RecipeDrug.objects.filter(recipe__dr_id=report.doctor.id,
-                                                  recipe__date__year=report_month.year,
-                                                  recipe__date__month=report_month.month)
+            counts_qs = RecipeDrug.objects.filter(
+                recipe__dr_id=report.doctor.id,
+                recipe__date__year=report_month.year,
+                recipe__date__month=report_month.month,
+                drug__status=True,
+            )
             temp_drugs = []
             total_drugs = 0
             for item in counts_qs:

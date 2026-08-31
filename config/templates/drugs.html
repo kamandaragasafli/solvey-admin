@@ -1,65 +1,87 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block content %}
 <style>
-  body {
+  .drugs-page .drug-item {
+    background-color: #1f2937;
+    border: 1px solid rgba(255,255,255,.08);
+    transition: all 0.2s;
+  }
+  .drugs-page .drug-item:hover {
+    border-color: rgba(16,185,129,.35);
+    transform: translateY(-1px);
+  }
+  .drugs-page .modal-content {
+    background-color: #1f2937;
+    color: #f9fafb;
+    border: 1px solid rgba(255,255,255,.1);
+  }
+  .drugs-page .form-control,
+  .drugs-page .form-select {
     background-color: #273549;
+    color: #f9fafb;
+    border: 1px solid rgba(255,255,255,.12);
   }
-
-  .drug-item:hover {
-    background-color: #1e1e1e;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 255, 150, 0.1);
-  }
-
-  .list-group-item h6 {
-    color: #ffffff;
-  }
-
-  .badge {
-    font-size: 0.85rem;
-  }
-
-  .btn-outline-danger:hover {
-    background-color: #dc3545;
-    color: white;
+  .drugs-page .form-control:focus,
+  .drugs-page .form-select:focus {
+    background-color: #273549;
+    color: #f9fafb;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,.2);
   }
 </style>
-<div class="container mt-4">
-  <div class="d-flex align-items-center justify-content-between mb-3">
+
+<div class="container mt-4 drugs-page">
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <h4 class="text-light mb-0"><i class="bi bi-capsule me-2 text-success"></i>Dərman Siyahısı</h4>
     <button type="button" class="btn btn-success d-flex align-items-center gap-2 px-3 py-2" data-bs-toggle="modal" data-bs-target="#addDrugModal">
-      <i class="bi bi-plus-circle fs-5"></i> Əlavə et
+      <i class="bi bi-plus-circle"></i> Əlavə et
     </button>
   </div>
 
   {% if drugs %}
-    <div class="list-group">
+    <div class="list-group border-0">
       {% for drug in drugs %}
-        <div class="list-group-item  text-light border-0 mb-2 rounded-4 
-        shadow-sm p-3 d-flex align-items-center justify-content-between drug-item" 
-        style="transition: all 0.2s; background-color: #273549;">
-          <div class="d-flex align-items-center gap-3">
-            <i class="bi bi-capsule-fill fs-3 text-success"></i>
-            <div>
-              <h6 class="mb-0 fw-bold">{{ drug.med_name }}</h6>
-              <small class="text-secondary">Qiymət: ₼{{ drug.med_price }}</small>
+        <div class="list-group-item text-light mb-2 rounded-4 shadow-sm p-3 d-flex align-items-center justify-content-between drug-item">
+          <div class="d-flex align-items-center gap-3 min-w-0">
+            <i class="bi bi-capsule-fill fs-4 text-success flex-shrink-0"></i>
+            <div class="min-w-0">
+              <h6 class="mb-0 fw-bold text-truncate">{{ drug.med_name }}</h6>
+              <small class="text-secondary d-block text-truncate">
+                {% if drug.med_full_name and drug.med_full_name != drug.med_name %}
+                  {{ drug.med_full_name }} ·
+                {% endif %}
+                Qiymət: ₼{{ drug.med_price }}
+              </small>
             </div>
           </div>
 
-          <div class="d-flex align-items-center gap-3">
-            <!-- Komissiya -->
-            <span class="badge bg-success px-3 py-2">₼{{ drug.komissiya }}</span>
-
-            <!-- Status -->
+          <div class="d-flex align-items-center gap-2 flex-shrink-0">
+            <span class="badge bg-success">₼{{ drug.komissiya }}</span>
             {% if drug.status %}
-              <span class="badge bg-primary px-3 py-2">Aktiv</span>
+              <span class="badge bg-primary">Aktiv</span>
             {% else %}
-              <span class="badge bg-secondary px-3 py-2">Passiv</span>
+              <span class="badge bg-secondary">Passiv</span>
             {% endif %}
-
-            <!-- Sil -->
-            <a href="{% url 'remove' drug.id %}" class="btn btn-outline-danger btn-sm rounded-circle d-flex align-items-center justify-content-center" title="Sil">
+            <button
+              type="button"
+              class="btn btn-outline-primary btn-sm rounded-circle d-flex align-items-center justify-content-center edit-drug-btn"
+              title="Redaktə et"
+              data-bs-toggle="modal"
+              data-bs-target="#editDrugModal"
+              data-id="{{ drug.id }}"
+              data-name="{{ drug.med_name|escape }}"
+              data-full-name="{{ drug.med_full_name|default:drug.med_name|escape }}"
+              data-price="{% localize off %}{{ drug.med_price }}{% endlocalize %}"
+              data-komissiya="{% localize off %}{{ drug.komissiya }}{% endlocalize %}"
+              data-position="{{ drug.position }}"
+              data-status="{{ drug.status|yesno:'1,0' }}"
+              data-in-stock="{{ drug.in_stock|yesno:'1,0' }}"
+            >
+              <i class="bi bi-pencil-square"></i>
+            </button>
+            <a href="{% url 'remove' drug.id %}" class="btn btn-outline-danger btn-sm rounded-circle d-flex align-items-center justify-content-center" title="Sil" onclick="return confirm('«{{ drug.med_name }}» silinsin?');">
               <i class="bi bi-trash3"></i>
             </a>
           </div>
@@ -71,13 +93,13 @@
   {% endif %}
 </div>
 
-<!-- Modal -->
+<!-- Əlavə et modal -->
 <div class="modal fade" id="addDrugModal" tabindex="-1" aria-labelledby="addDrugModalLabel" aria-hidden="true">
   <div class="modal-dialog">
-    <div class="modal-content text-light border-0 rounded-4 shadow-lg"style="background-color: #273549;">
+    <div class="modal-content rounded-4 shadow-lg">
       <div class="modal-header border-secondary">
         <h5 class="modal-title d-flex align-items-center gap-2">
-          <i class="bi bi-capsule text-success"></i> Yeni Dərman Əlavə et
+          <i class="bi bi-capsule text-success"></i> Yeni Dərman
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Bağla"></button>
       </div>
@@ -85,20 +107,20 @@
         {% csrf_token %}
         <div class="modal-body">
           <div class="mb-3">
-            <label for="medName" class="form-label">Dərman adı</label>
-            <input type="text" class="form-control bg-secondary text-light border-0" id="medName" name="drug_name" required>
-          </div>
-         <div class="mb-3">
-            <label for="medName" class="form-label">Dərman tam adı</label>
-            <input type="text" class="form-control bg-secondary text-light border-0" id="medName" name="drug_name" >
+            <label class="form-label">Dərman adı</label>
+            <input type="text" class="form-control" name="drug_name" required>
           </div>
           <div class="mb-3">
-            <label for="medPrice" class="form-label">Satış Qiyməti</label>
-            <input type="number" step="0.01" class="form-control bg-secondary text-light border-0" id="medPrice" name="price" required>
+            <label class="form-label">Tam adı</label>
+            <input type="text" class="form-control" name="med_full_name" placeholder="Məs: Solseda N30 tablet">
           </div>
           <div class="mb-3">
-            <label for="komissiya" class="form-label">Komissiya</label>
-            <input type="number" step="0.01" class="form-control bg-secondary text-light border-0" id="komissiya" name="komissiya" required>
+            <label class="form-label">Satış qiyməti</label>
+            <input type="number" step="0.01" min="0" class="form-control" name="price" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Komissiya</label>
+            <input type="number" step="0.01" min="0" class="form-control" name="komissiya" required>
           </div>
         </div>
         <div class="modal-footer border-secondary">
@@ -110,4 +132,87 @@
   </div>
 </div>
 
+<!-- Redaktə modal -->
+<div class="modal fade" id="editDrugModal" tabindex="-1" aria-labelledby="editDrugModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content rounded-4 shadow-lg">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title d-flex align-items-center gap-2">
+          <i class="bi bi-pencil-square text-primary"></i> Dərmanı redaktə et
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Bağla"></button>
+      </div>
+      <form method="POST" id="editDrugForm" action="">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Dərman adı</label>
+            <input type="text" class="form-control" name="drug_name" id="editDrugName" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tam adı</label>
+            <input type="text" class="form-control" name="med_full_name" id="editDrugFullName">
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Satış qiyməti</label>
+              <input type="number" step="0.01" min="0" class="form-control" name="price" id="editDrugPrice" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Komissiya</label>
+              <input type="number" step="0.01" min="0" class="form-control" name="komissiya" id="editDrugKomissiya" required>
+            </div>
+          </div>
+          <div class="row g-3 mt-1">
+            <div class="col-md-4">
+              <label class="form-label">Sıra</label>
+              <input type="number" class="form-control" name="position" id="editDrugPosition" min="0">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Status</label>
+              <select class="form-select" name="status" id="editDrugStatus">
+                <option value="1">Aktiv</option>
+                <option value="0">Passiv</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Anbarda</label>
+              <select class="form-select" name="in_stock" id="editDrugInStock">
+                <option value="1">Var</option>
+                <option value="0">Yox</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Bağla</button>
+          <button type="submit" class="btn btn-primary">Yadda saxla</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  function toNumberInput(val) {
+    return String(val || "").replace(",", ".");
+  }
+
+  const form = document.getElementById("editDrugForm");
+  document.querySelectorAll(".edit-drug-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      const id = btn.dataset.id;
+      form.action = "{% url 'edit-drug' 0 %}".replace("/0/", "/" + id + "/");
+      document.getElementById("editDrugName").value = btn.dataset.name || "";
+      document.getElementById("editDrugFullName").value = btn.dataset.fullName || "";
+      document.getElementById("editDrugPrice").value = toNumberInput(btn.dataset.price);
+      document.getElementById("editDrugKomissiya").value = toNumberInput(btn.dataset.komissiya);
+      document.getElementById("editDrugPosition").value = btn.dataset.position || "0";
+      document.getElementById("editDrugStatus").value = btn.dataset.status || "1";
+      document.getElementById("editDrugInStock").value = btn.dataset.inStock || "1";
+    });
+  });
+});
+</script>
 {% endblock content %}

@@ -59,7 +59,7 @@ def index(request):
     total_doctors = doctors.count()
     total_hospitals = Hospital.objects.count()
     total_cities = City.objects.count()
-    all_drug = Medical.objects.all()
+    all_drug = Medical.objects.active().order_by("position")
 
 
 
@@ -396,7 +396,7 @@ def region_modal_monthly_data(request):
         start_date, end_date = end_date, start_date
 
     regions = list(Region.objects.filter(region_type="Digər").values_list("region_name", flat=True))
-    drugs = list(Medical.objects.all().order_by("position").values_list("med_name", flat=True))
+    drugs = list(Medical.objects.active().order_by("position").values_list("med_name", flat=True))
 
     # Default 0 strukturu
     region_map = {
@@ -457,7 +457,7 @@ def baku_modal_monthly_data(request):
         start_date, end_date = end_date, start_date
 
     regions = list(Region.objects.filter(region_type="Bakı").values_list("region_name", flat=True))
-    drugs = list(Medical.objects.all().order_by("position").values_list("med_name", flat=True))
+    drugs = list(Medical.objects.active().order_by("position").values_list("med_name", flat=True))
 
     region_map = {
         rn: {"region": rn, "drugs": {dn: "0" for dn in drugs}, "total": "0"}
@@ -705,7 +705,7 @@ def export_excel_ayliq_region(request):
 
     # Digər bölgələr
     diger_region = Region.objects.filter(region_type="Digər")
-    all_drug = Medical.objects.all().order_by("position")
+    all_drug = Medical.objects.active().order_by("position")
 
     # RecipeDrug məlumatları (günlük + aylıq/interval)
     daily_map = {}
@@ -914,7 +914,7 @@ def export_excel_ayliq_seher(request):
     first_day_of_month = today.replace(day=1)
 
     seher_region = Region.objects.filter(region_type="Şəhər")
-    all_drug = Medical.objects.all().order_by("position")
+    all_drug = Medical.objects.active().order_by("position")
 
     drugs_data = (
         RecipeDrug.objects
@@ -1091,7 +1091,7 @@ def export_excel_ayliq_baki(request):
 
     # Digər bölgələr
     baku_region = Region.objects.filter(region_type="Bakı")
-    all_drug = Medical.objects.all().order_by("position")
+    all_drug = Medical.objects.active().order_by("position")
 
     daily_map = {}
     monthly_map = {}

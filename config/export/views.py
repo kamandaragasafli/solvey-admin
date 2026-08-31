@@ -1089,6 +1089,7 @@ def import_sales_from_excel(request):
             added_count = 0
             not_found_regions = set()
             not_found_drugs = set()
+            touched_regions = set()
 
             # Bölgələri və dərmanları əvvəlcədən bazadan çək
             region_map = {}
@@ -1146,6 +1147,12 @@ def import_sales_from_excel(request):
                             sale_date=import_date
                         )
                         added_count += 1
+                        touched_regions.add(region.id)
+
+            if added_count:
+                from doctors.views import recalc_region_report_for_date
+                for rid in touched_regions:
+                    recalc_region_report_for_date(rid, import_date)
 
             messages.success(request, f"{added_count} satış məlumatı {import_date} tarixinə uğurla əlavə olundu.")
             if not_found_regions:
@@ -1221,6 +1228,7 @@ def import_baku_sales_from_excel(request):
         added_total_qty = 0
         not_matched_regions = set()
         not_matched_drugs = set()
+        touched_regions = set()
 
         cols = list(df.columns)
         region_col_idx = 0
@@ -1302,6 +1310,12 @@ def import_baku_sales_from_excel(request):
                     )
                     added_count += 1
                     added_total_qty += quantity
+                    touched_regions.add(matched_region.id)
+
+        if added_count:
+            from doctors.views import recalc_region_report_for_date
+            for rid in touched_regions:
+                recalc_region_report_for_date(rid, import_date)
 
         messages.success(request, f"{added_count} satış məlumatı (cəmi {added_total_qty} ədəd) {import_date} tarixinə əlavə olundu.")
         if not_matched_regions:
@@ -1348,6 +1362,7 @@ def import_region_sales_from_excel(request):
         added_total_qty = 0
         not_matched_regions = set()
         not_matched_drugs = set()
+        touched_regions = set()
 
         # Dərman sütununun indeksini tap
         cols = list(df.columns)
@@ -1430,6 +1445,12 @@ def import_region_sales_from_excel(request):
                     )
                     added_count += 1
                     added_total_qty += quantity
+                    touched_regions.add(matched_region.id)
+
+        if added_count:
+            from doctors.views import recalc_region_report_for_date
+            for rid in touched_regions:
+                recalc_region_report_for_date(rid, import_date)
 
         messages.success(request, f"{added_count} satış məlumatı (cəmi {added_total_qty} ədəd) {import_date} tarixinə əlavə olundu.")
         if not_matched_regions:

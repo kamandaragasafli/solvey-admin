@@ -27,6 +27,9 @@ urlpatterns = [
     ),
     path('details/update-data/<int:id>/', views.update_recipe, name='update_recipe'),
 
+    path('real-sales/list/', views.real_sales_list, name='real_sales_list'),
+    path('real-sales/remove/<int:id>/', views.del_real_sale, name='del_real_sale'),
+    path('real-sales/line/remove/<int:id>/', views.del_real_sale_line, name='del_real_sale_line'),
     path('real-sales/', views.create_real_sales, name='create_real_sales'),
     path('razilasma/', views.create_razilasma, name='razilasma'),
     path('datasiya/', views.create_datasiya, name='datasiya'),
@@ -35,6 +38,7 @@ urlpatterns = [
     
     path('ajax/doctors/', views.ajax_doctors_by_region, name='ajax_doctors_by_region'),
     path('ajax/add-data/', views.ajax_doctors_by_region, name='ajax_doctors_by_region'),
+    path('ajax/real-sales-data/', views.ajax_real_sales_data, name='ajax_real_sales_data'),
     path('ajax/region-data/', views.ajax_region_data, name='ajax_region_data'),
     path('drug-data/', views.data_list, name='data_list'),
     path('export-region-excel/', views.export_region_excel, name='export_region_excel'),
