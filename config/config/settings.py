@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'tracking',
     'vizit',
     'calculate',
+    'depo_sales',
 
 ]
 
@@ -127,9 +128,11 @@ USE_I18N = True
 USE_TZ = True
 
 
-SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 gün
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 365  # 1 il — çıxış edilməyənə qədər
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
 
 
 STATIC_URL = '/static/'

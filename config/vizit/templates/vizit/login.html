@@ -106,6 +106,33 @@
             box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.1);
         }
 
+        .password-wrap {
+            position: relative;
+        }
+        .password-wrap input {
+            padding-right: 48px;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 0;
+            background: transparent;
+            padding: 6px;
+            cursor: pointer;
+            color: #94a3b8;
+            display: grid;
+            place-items: center;
+            border-radius: 8px;
+            line-height: 0;
+        }
+        .toggle-password:hover { color: #2980b9; background: #eef6fc; }
+        .toggle-password svg { width: 20px; height: 20px; display: block; }
+        .toggle-password .icon-hide { display: none; }
+        .toggle-password.is-visible .icon-show { display: none; }
+        .toggle-password.is-visible .icon-hide { display: block; }
+
         .login-btn {
             width: 100%;
             padding: 14px;
@@ -169,12 +196,40 @@
 
         <div class="form-group">
             <label for="sifre">Şifrə</label>
-            <input type="password" id="sifre" name="sifre" placeholder="••••••••" required>
+            <div class="password-wrap">
+                <input type="password" id="sifre" name="sifre" placeholder="••••••••" required>
+                <button type="button" class="toggle-password" id="togglePassword" aria-label="Şifrəni göstər" title="Şifrəni göstər/gizlət">
+                    <svg class="icon-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <svg class="icon-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+                        <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <button type="submit" class="login-btn">Daxil ol →</button>
     </form>
 </div>
+
+<script>
+(function () {
+    var btn = document.getElementById('togglePassword');
+    var input = document.getElementById('sifre');
+    if (!btn || !input) return;
+    btn.addEventListener('click', function () {
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.classList.toggle('is-visible', show);
+        btn.setAttribute('aria-label', show ? 'Şifrəni gizlət' : 'Şifrəni göstər');
+    });
+})();
+</script>
 
 </body>
 </html>

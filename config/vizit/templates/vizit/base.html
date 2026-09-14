@@ -1,253 +1,160 @@
 {% load static %}
-
 <!DOCTYPE html>
-
 <html lang="az">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>{% block title %}Solvey Pharma{% endblock %}</title>
-
     <link rel="icon" href="{% static 'img/solvey logo.png' %}" type="image/png">
-
-    <!-- Font Awesome (Müasir İkonlar üçün) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-
     <link rel="stylesheet" href="{% static 'vizit/css/style.css' %}">
-
     {% block extra_css %}{% endblock %}
-
 </head>
-
 <body>
+<div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
-<header class="site-header">
-
-    <div class="header-inner">
-
-        <a href="{% url 'vizit:index' %}" class="logo">
-
-            <img src="{% static 'img/solvey logo.png' %}" alt="Solvey Pharma" class="logo-img">
-
-            <div class="logo-text">
-
-                <strong>Solvey Pharma</strong>
-
-                <small>Vizit İdarəetmə Sistemi</small>
-
-            </div>
-
-        </a>
-
-
-
-        <button type="button" class="burger-menu" id="burgerToggle" aria-label="Menyunu aç" aria-expanded="false" aria-controls="headerRight">
-
-            <span></span>
-
-            <span></span>
-
-            <span></span>
-
-        </button>
-
-
-
-        <div class="header-right" id="headerRight">
-
-            {% if session_ad %}
-
-            <div class="mobile-user-card">
-
-                {% if session_rol %}
-
-                <span class="role-badge role-{{ session_rol }}">{{ session_rol_label }}</span>
-
-                {% endif %}
-
-                <span class="user-name">{{ session_ad }}</span>
-
-            </div>
-
-            {% endif %}
-
-
-
-            <nav class="site-nav" id="siteNav">
-
-                <a href="{% url 'vizit:index' %}"{% if request.resolver_match.url_name == 'index' %} class="active"{% endif %}>
-
-                    <span class="nav-icon"><i class="fa-solid fa-house"></i></span><span>Ana Səhifə</span>
-
-                </a>
-
-                 <a href="{% url 'vizit:yeni_aptek_vizit' %}"{% if request.resolver_match.url_name == 'yeni_aptek_vizit' %} class="active"{% endif %}>
-
-                    <span class="nav-icon"><i class="fa-solid fa-prescription-bottle-medical"></i></span><span>Aptek vizit</span>
-
-                </a> 
-                {% if session_rol == 'rehber' or session_rol == 'menecer' %}
-
-                <a href="{% url 'vizit:hesabat' %}"{% if request.resolver_match.url_name == 'hesabat' %} class="active"{% endif %}>
-
-                    <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span><span>Hesabat</span>
-
-                </a>
-                {% endif %}
-                
-                {% if session_rol == 'menecer' or session_rol == 'rehber' %}
-
-                <a href="{% url 'vizit:bolge_statistika' %}"{% if request.resolver_match.url_name == 'bolge_statistika' %} class="active"{% endif %}>
-
-                    <span class="nav-icon"><i class="fa-solid fa-map-location-dot"></i></span><span>Bölgə Stat.</span>
-
-                </a>
-                <a href="{% url 'vizit:aptek_stats' %}"{% if request.resolver_match.url_name == 'aptek_stats' %} class="active"{% endif %}><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span><span>Aptek Stat.</span></a>
-
-                {% endif %}
-
-                {% if session_rol == 'rehber' %}
-
-                <a href="{% url 'vizit:admin_panel' %}"{% if request.resolver_match.url_name == 'admin_panel' %} class="active"{% endif %}>
-
-                    <span class="nav-icon"><i class="fa-solid fa-sliders"></i></span><span>Admin</span>
-
-                </a>
-
-                {% endif %}
-
-            </nav>
-
-
-
-            <div class="user-info">
-
-                {% if session_rol %}
-
-                <span class="role-badge role-{{ session_rol }}">{{ session_rol_label }}</span>
-
-                <span class="user-name">{{ session_ad }}</span>
-
-                {% endif %}
-
-                <a href="{% url 'vizit:logout' %}" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Çıxış</a>
-
-            </div>
-
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="{% url 'vizit:index' %}" class="sidebar-logo">
+                <img src="{% static 'img/solvey logo.png' %}" alt="Solvey Pharma" class="logo-img">
+                <div class="logo-text">
+                    <strong>Solvey Pharma</strong>
+                    <small>Vizit İdarəetmə</small>
+                </div>
+            </a>
+            <button type="button" class="sidebar-close" id="sidebarClose" aria-label="Menyunu bağla">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
 
+        <nav class="sidebar-nav">
+            <a href="{% url 'vizit:index' %}"{% if request.resolver_match.url_name == 'index' %} class="active"{% endif %}>
+                <span class="nav-icon"><i class="fa-solid fa-house"></i></span>
+                <span>Ana Səhifə</span>
+            </a>
+            <a href="{% url 'vizit:yeni_aptek_vizit' %}"{% if request.resolver_match.url_name == 'yeni_aptek_vizit' %} class="active"{% endif %}>
+                <span class="nav-icon"><i class="fa-solid fa-prescription-bottle-medical"></i></span>
+                <span>Aptek vizit</span>
+            </a>
+            <a href="{% url 'vizit:create_day_recipe' %}"{% if request.resolver_match.url_name == 'create_day_recipe' %} class="active"{% endif %}>
+                <span class="nav-icon"><i class="fa-solid fa-clipboard-list"></i></span>
+                <span>Günlük Qeydiyyat</span>
+            </a>
+            <a href="{% url 'vizit:weekly_schedule_list' %}"{% if request.resolver_match.url_name == 'weekly_schedule_list' or request.resolver_match.url_name == 'weekly_schedule_create' or request.resolver_match.url_name == 'weekly_schedule_edit' or request.resolver_match.url_name == 'weekly_schedule_detail' %} class="active"{% endif %}>
+                <span class="nav-icon"><i class="fa-solid fa-calendar-week"></i></span>
+                <span>Həftəlik Qrafiq</span>
+            </a>
+            <a href="{% url 'vizit:seen_doctors' %}"{% if request.resolver_match.url_name == 'seen_doctors' %} class="active"{% endif %}>
+                <span class="nav-icon"><i class="fa-solid fa-user-check"></i></span>
+                <span>Görülən Həkimlər</span>
+            </a>
+            <a href="{% url 'vizit:day_recipe_stats' %}"{% if request.resolver_match.url_name == 'day_recipe_stats' %} class="active"{% endif %}>
+                <span class="nav-icon"><i class="fa-solid fa-chart-bar"></i></span>
+                <span>Günlük Stat.</span>
+            </a>
+            {% if session_rol == 'rehber' or session_rol == 'menecer' %}
+            <a href="{% url 'vizit:hesabat' %}"{% if request.resolver_match.url_name == 'hesabat' %} class="active"{% endif %}>
+                <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
+                <span>Hesabat</span>
+            </a>
+            {% endif %}
+            {% if session_rol == 'menecer' or session_rol == 'rehber' %}
+            <a href="{% url 'vizit:bolge_statistika' %}"{% if request.resolver_match.url_name == 'bolge_statistika' %} class="active"{% endif %}>
+                <span class="nav-icon"><i class="fa-solid fa-map-location-dot"></i></span>
+                <span>Bölgə Stat.</span>
+            </a>
+            <a href="{% url 'vizit:aptek_stats' %}"{% if request.resolver_match.url_name == 'aptek_stats' %} class="active"{% endif %}>
+                <span class="nav-icon"><i class="fa-solid fa-store"></i></span>
+                <span>Aptek Stat.</span>
+            </a>
+            {% endif %}
+            {% if session_rol == 'rehber' %}
+            <a href="{% url 'vizit:admin_panel' %}"{% if request.resolver_match.url_name == 'admin_panel' %} class="active"{% endif %}>
+                <span class="nav-icon"><i class="fa-solid fa-sliders"></i></span>
+                <span>Admin</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-footer">
+            {% if session_rol %}
+            <div class="user-card">
+                <span class="role-badge role-{{ session_rol }}">{{ session_rol_label }}</span>
+                <span class="user-name">{{ session_ad }}</span>
+            </div>
+            {% endif %}
+            <a href="{% url 'vizit:logout' %}" class="btn-logout">
+                <i class="fa-solid fa-right-from-bracket"></i> Çıxış
+            </a>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <header class="top-bar">
+            <button type="button" class="menu-toggle" id="menuToggle" aria-label="Menyunu aç">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="page-title">
+                {% block page_title %}{% endblock %}
+            </div>
+        </header>
+
+        <div class="content-wrapper">
+            <main class="container">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
     </div>
-
-</header>
-
-
-
-<div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
-
-
-
-<main class="container">
-
-    {% block content %}{% endblock %}
-
-</main>
-
-
-
-
-
-
+</div>
 
 <script>
-
 document.addEventListener('DOMContentLoaded', function () {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebarClose = document.getElementById('sidebarClose');
 
-    const burger = document.getElementById('burgerToggle');
-
-    const panel = document.getElementById('headerRight');
-
-    const backdrop = document.getElementById('drawerBackdrop');
-
-    const navLinks = document.querySelectorAll('#siteNav a');
-
-
-
-    const siteHeader = document.querySelector('.site-header');
-
-    function setOpen(open) {
-        if (!burger || !panel || !backdrop) return;
-        burger.classList.toggle('open', open);
-        panel.classList.toggle('open', open);
+    function setSidebarOpen(open) {
+        if (!sidebar || !backdrop) return;
+        sidebar.classList.toggle('open', open);
         backdrop.classList.toggle('show', open);
-        if (siteHeader) siteHeader.classList.toggle('is-menu-open', open);
+        document.body.classList.toggle('sidebar-open', open);
         backdrop.setAttribute('aria-hidden', open ? 'false' : 'true');
-        burger.setAttribute('aria-expanded', open ? 'true' : 'false');
-        burger.setAttribute('aria-label', open ? 'Menyunu bağla' : 'Menyunu aç');
-        document.body.style.overflow = open ? 'hidden' : '';
     }
 
+    function closeSidebar() {
+        setSidebarOpen(false);
+    }
 
-
-    function closeMenu() { setOpen(false); }
-
-
-
-    if (burger && panel) {
-
-        burger.addEventListener('click', function (e) {
-
-            e.stopPropagation();
-
-            setOpen(!panel.classList.contains('open'));
-
+    if (menuToggle) {
+        menuToggle.addEventListener('click', function () {
+            setSidebarOpen(!sidebar.classList.contains('open'));
         });
-
     }
-
-
-
+    if (sidebarClose) {
+        sidebarClose.addEventListener('click', closeSidebar);
+    }
     if (backdrop) {
-
-        backdrop.addEventListener('click', closeMenu);
-
+        backdrop.addEventListener('click', closeSidebar);
     }
 
-
-
-    navLinks.forEach(function (link) {
-
-        link.addEventListener('click', closeMenu);
-
+    document.querySelectorAll('.sidebar-nav a').forEach(function (link) {
+        link.addEventListener('click', function () {
+            if (window.innerWidth <= 992) closeSidebar();
+        });
     });
-
-
 
     document.addEventListener('keydown', function (e) {
-
-        if (e.key === 'Escape') closeMenu();
-
+        if (e.key === 'Escape') closeSidebar();
     });
-
-
 
     window.addEventListener('resize', function () {
-
-        if (window.innerWidth > 992) closeMenu();
-
+        if (window.innerWidth > 992) closeSidebar();
     });
-
 });
-
 </script>
 
-
-
 {% block extra_js %}{% endblock %}
-
 </body>
-
 </html>

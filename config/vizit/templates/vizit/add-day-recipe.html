@@ -1,0 +1,477 @@
+{% extends 'vizit/base.html' %}
+
+{% block title %}Günlük Qeydiyyat — Solvey Pharma{% endblock %}
+{% block page_title %}Günlük qeydiyyat{% endblock %}
+
+{% block content %}
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert {% if '❌' in message.message %}alert-error{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<div class="steps">
+    <div class="step active">1. Bölgə & Həkim</div>
+    <div class="step">2. Tarix</div>
+    <div class="step">3. Dərmanlar</div>
+</div>
+
+<form method="POST" action="{% url 'vizit:create_day_recipe' %}">
+    {% csrf_token %}
+
+    <div class="card">
+        <div class="card-title"><i class="fas fa-map-marker-alt"></i> Bölgə və Həkim</div>
+        <div class="grid-2">
+            <div>
+                <label>Bölgə</label>
+                <select name="region" id="region-select" class="form-control" required>
+                    <option value="">Bölgə seçin...</option>
+                    
+                    {% for r in regions %}
+                        <option value="{{ r.id }}" {% if selected_region and r.id|stringformat:"s" == selected_region %}selected{% endif %}>
+                            {{ r.region_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="position: relative; z-index: 9999;">
+                <label>Həkim</label>
+                <input type="hidden" name="doctor" id="doctor-id" value="{{ selected_doctor|default:'' }}" />
+                <input type="text" id="doctor-search" class="form-control" autocomplete="off"
+                    placeholder="{% if selected_region %}Həkim adını yazın...{% else %}Əvvəlcə bölgə seçin...{% endif %}"
+                    value="{{ selected_doctor_name|default:'' }}"
+                    {% if not selected_region %}disabled{% endif %} />
+                <ul id="doctor-dropdown" class="doctor-dropdown"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><i class="fas fa-calendar-alt"></i> Tarix</div>
+        <div>
+            <label>Tarix</label>
+            <input type="date" name="date" class="form-control" required
+                value="{% if selected_date %}{{ selected_date }}{% else %}{% now 'Y-m-d' %}{% endif %}" />
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><i class="fas fa-pills"></i> Dərmanlar</div>
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline" id="select-all-drugs">✅ Hamısını seç</button>
+            <button type="button" class="btn btn-outline" id="clear-all-drugs">❌ Sıfırla</button>
+        </div>
+        <div class="drugs-grid">
+            {% for d in drugs %}
+            <div class="drug-item">
+                <label class="drug-name">{{ d.med_full_name|default:d.med_name }}</label>
+                <input type="number" name="quantity_{{ d.id }}" class="form-control" min="0" step="0.1" placeholder="0" />
+            </div>
+            {% endfor %}
+        </div>
+        <div class="action-row">
+            <button type="submit" class="btn btn-success btn-lg"><i class="fas fa-save"></i> Yadda Saxla</button>
+            <button type="reset" class="btn btn-outline"><i class="fas fa-undo"></i> Sıfırla</button>
+            <div class="total-wrap">
+                <label>Cəmi:</label>
+                <input type="text" id="total-count" class="form-control" readonly value="0" />
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-title"><i class="fas fa-history"></i> Ən Son Qeydiyyat (Son 5)</div>
+    {% if last_recipes %}
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Tarix</th>
+                    <th>Həkim</th>
+                    <th>Bölgə</th>
+                    <th>Dərman</th>
+                    <th>Say</th>
+                    <th>Əməliyyat</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in last_recipes %}
+                <tr>
+                    <td>{{ record.created_at|date:"d.m.Y H:i" }}</td>
+                    <td>{{ record.recipe.dr.ad }}</td>
+                    <td>{{ record.recipe.region.region_name }}</td>
+                    <td>{{ record.drug.med_full_name|default:record.drug.med_name }}</td>
+                    <td>{{ record.number }}</td>
+                    <td>
+                        <a href="{% url 'vizit:del_day_recipe' record.id %}?next=create_day_recipe" class="btn btn-sm btn-danger">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty">
+        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+        <p>Hələ qeydiyyat yoxdur.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.doctor-dropdown {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 99999;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 4px;
+    padding: 0;
+    list-style: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.doctor-dropdown.show {
+    display: block;
+}
+.doctor-dropdown li {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+.doctor-dropdown li:last-child {
+    border-bottom: none;
+}
+.doctor-dropdown li:hover {
+    background: #f5f5f5;
+}
+.doctor-dropdown .empty {
+    cursor: default;
+    color: #999;
+    padding: 10px;
+}
+
+/* --- Responsive əsas hissə --- */
+
+.card {
+    padding: 16px;
+    box-sizing: border-box;
+    overflow-x: visible;
+    position: relative;
+    z-index: 1;
+}
+
+.steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.step {
+    flex: 1 1 auto;
+    text-align: center;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    padding: 8px 4px;
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.drugs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+.drug-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s;
+}
+.drug-item:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+.drug-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #212529;
+    word-break: break-word;
+}
+.drug-item input[type="number"] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.drug-item input[type="number"]:focus {
+    outline: none;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+}
+.form-control {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Cədvəl mobil-də üfüqi scroll */
+.data-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.data-table {
+    width: 100%;
+    min-width: 600px;
+    border-collapse: collapse;
+}
+
+/* Save/Reset/Cəmi sətri */
+.action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-top: 20px;
+}
+.action-row .total-wrap {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.action-row .total-wrap input {
+    width: 100px;
+}
+
+@media (max-width: 768px) {
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+    .drugs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+    .action-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .action-row .total-wrap {
+        margin-left: 0;
+        justify-content: space-between;
+    }
+    .action-row .total-wrap input {
+        width: 80px;
+    }
+    .card-title {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .drugs-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .btn-lg {
+        width: 100%;
+        justify-content: center;
+    }
+    .btn-outline {
+        flex: 1;
+    }
+}
+</style>
+
+<script>
+(function () {
+    const ajaxUrl = "{% url 'vizit:ajax_doctors_by_region' %}";
+
+    function norm(s) {
+        return String(s || "")
+            .toLowerCase()
+            .replace(/ı/g, "i")
+            .replace(/ə/g, "e")
+            .replace(/ö/g, "o")
+            .replace(/ü/g, "u")
+            .replace(/ş/g, "s")
+            .replace(/ç/g, "c")
+            .replace(/ğ/g, "g");
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const regionSelect = document.getElementById("region-select");
+        const doctorIdInput = document.getElementById("doctor-id");
+        const doctorSearch = document.getElementById("doctor-search");
+        const doctorDropdown = document.getElementById("doctor-dropdown");
+        const form = regionSelect.closest("form");
+
+        let doctorsCache = [];
+
+        function hideDropdown() {
+            doctorDropdown.classList.remove("show");
+            doctorDropdown.innerHTML = "";
+        }
+
+        function showDropdown() {
+            const rect = doctorSearch.getBoundingClientRect();
+            document.body.appendChild(doctorDropdown);
+            doctorDropdown.style.position = 'fixed';
+            doctorDropdown.style.left = rect.left + 'px';
+            doctorDropdown.style.top = (rect.bottom + window.scrollY) + 'px';
+            doctorDropdown.style.width = rect.width + 'px';
+            doctorDropdown.style.zIndex = '99999';
+            doctorDropdown.classList.add("show");
+        }
+
+        function renderList(items) {
+            doctorDropdown.innerHTML = "";
+            if (!items.length) {
+                const li = document.createElement("li");
+                li.className = "empty";
+                li.textContent = doctorsCache.length ? "Uyğun həkim tapılmadı" : "Bu bölgədə həkim yoxdur";
+                doctorDropdown.appendChild(li);
+                showDropdown();
+                return;
+            }
+            items.forEach((doc) => {
+                const li = document.createElement("li");
+                li.textContent = doc.ad;
+                li.addEventListener("mousedown", function (e) {
+                    e.preventDefault();
+                    selectDoctor(doc.id, doc.ad);
+                });
+                doctorDropdown.appendChild(li);
+            });
+            showDropdown();
+        }
+
+        function filterDoctors(q) {
+            const nq = norm(q.trim());
+            if (!nq) return doctorsCache.slice();
+            return doctorsCache.filter((d) => norm(d.ad).includes(nq));
+        }
+
+        function selectDoctor(id, ad) {
+            doctorIdInput.value = String(id);
+            doctorSearch.value = ad;
+            hideDropdown();
+        }
+
+        function loadDoctors(regionId) {
+            if (!regionId) {
+                doctorsCache = [];
+                doctorIdInput.value = "";
+                doctorSearch.value = "";
+                doctorSearch.disabled = true;
+                hideDropdown();
+                return;
+            }
+
+            doctorSearch.disabled = false;
+
+            fetch(ajaxUrl + "?region_id=" + encodeURIComponent(regionId))
+                .then((r) => {
+                    if (!r.ok) throw new Error("Server cavab vermədi");
+                    return r.json();
+                })
+                .then((data) => {
+                    console.log("Həkimlər gəldi:", data);
+                    doctorsCache = data.doctors && data.doctors.length ? data.doctors : [];
+                    console.log("doctorsCache:", doctorsCache);
+                    hideDropdown();
+                })
+                .catch((err) => {
+                    console.error("Həkimlər alınarkən xəta:", err);
+                    doctorsCache = [];
+                    hideDropdown();
+                });
+        }
+
+        regionSelect.addEventListener("change", function () {
+            loadDoctors(this.value);
+        });
+
+        doctorSearch.addEventListener("input", function () {
+            doctorIdInput.value = "";
+            renderList(filterDoctors(this.value));
+        });
+
+        doctorSearch.addEventListener("focus", function () {
+            if (!regionSelect.value) return;
+            renderList(filterDoctors(this.value));
+        });
+
+        doctorSearch.addEventListener("blur", function () {
+            setTimeout(hideDropdown, 200);
+        });
+
+        document.addEventListener("mousedown", function (e) {
+            if (!e.target.closest("#doctor-search") && !e.target.closest(".doctor-dropdown")) {
+                hideDropdown();
+            }
+        });
+
+        if (regionSelect.value) {
+            loadDoctors(regionSelect.value);
+        }
+
+        form.addEventListener("submit", function (e) {
+            if (!regionSelect.value) {
+                e.preventDefault();
+                alert("Zəhmət olmasa bölgə seçin.");
+                return;
+            }
+            if (!doctorIdInput.value) {
+                e.preventDefault();
+                alert("Zəhmət olmasa həkim adını yazıb siyahıdan seçin.");
+            }
+        });
+
+        // Select all drugs
+        document.getElementById('select-all-drugs').addEventListener('click', function() {
+            document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+                input.value = 1;
+            });
+            updateTotal();
+        });
+
+        // Clear all drugs
+        document.getElementById('clear-all-drugs').addEventListener('click', function() {
+            document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+                input.value = '';
+            });
+            updateTotal();
+        });
+
+        const inputs = document.querySelectorAll('input[name^="quantity_"]');
+        const totalField = document.getElementById("total-count");
+        function updateTotal() {
+            let total = 0;
+            inputs.forEach((input) => {
+                total += parseFloat(input.value) || 0;
+            });
+            totalField.value = total;
+        }
+        inputs.forEach((input) => input.addEventListener("input", updateTotal));
+    });
+})();
+</script>
+
+{% endblock content %}

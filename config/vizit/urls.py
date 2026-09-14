@@ -15,6 +15,32 @@ from .views import (
     yeni_aptek_vizit,
     ajax_rayonlar,
     export_to_excel,
+    create_day_recipe,
+    del_day_recipe,
+    del_day_recipe_record,
+    ajax_doctors_by_region,
+    day_recipe_stats,
+    export_day_recipe_stats,
+)
+from .weekly_schedule import (
+    weekly_schedule_list,
+    weekly_schedule_create,
+    weekly_schedule_edit,
+    weekly_schedule_detail,
+    weekly_schedule_delete,
+    weekly_schedule_excel,
+    weekly_schedule_pdf,
+    weekly_schedule_shared_pdf,
+)
+from .seen_doctors import (
+    seen_doctors_page,
+    seen_doctors_toggle,
+    seen_doctors_pdf,
+    seen_doctors_shared_pdf,
+)
+from .aptek_vizit_pdf import (
+    aptek_vizit_pdf,
+    aptek_vizit_shared_pdf,
 )
 
 app_name = 'vizit'
@@ -26,13 +52,32 @@ urlpatterns = [
     path('admin/', admin_panel_view, name='admin_panel'),
     path('api/rayonlar/', get_rayonlar_api, name='api_rayonlar'),
     path('api/hekimler/', get_hekimler_api, name='api_hekimler'),
-    # ajax.php uyğunluğu (?action=rayonlar|hekimler)
     path('ajax/', ajax_compat_view, name='ajax'),
     path('hesabat/', hesabat_view, name='hesabat'),
     path('export/', excel_export_view, name='export_excel'),
     path('bolge-statistika/', bolge_stat_view, name='bolge_statistika'),
     path('aptek-stats/', statistika, name='aptek_stats'),
     path('yeni-aptek-vizit/', yeni_aptek_vizit, name='yeni_aptek_vizit'),
-    path('ajax/rayonlar/', ajax_rayonlar, name='ajax_rayonlar'), 
+    path('ajax/rayonlar/', ajax_rayonlar, name='ajax_rayonlar'),
     path('export-to-excel/', export_to_excel, name='export_to_excel'),
+    path('add-day-recipe/', create_day_recipe, name='create_day_recipe'),
+    path('del-day-recipe/<int:id>/', del_day_recipe, name='del_day_recipe'),
+    path('del-day-recipe-record/<int:id>/', del_day_recipe_record, name='del_day_recipe_record'),
+    path('ajax/doctors-by-region/', ajax_doctors_by_region, name='ajax_doctors_by_region'),
+    path('day-recipe-stats/', day_recipe_stats, name='day_recipe_stats'),
+    path('day-recipe-stats/export/', export_day_recipe_stats, name='export_day_recipe_stats'),
+    path('weekly-schedule/', weekly_schedule_list, name='weekly_schedule_list'),
+    path('weekly-schedule/new/', weekly_schedule_create, name='weekly_schedule_create'),
+    path('weekly-schedule/<int:pk>/', weekly_schedule_detail, name='weekly_schedule_detail'),
+    path('weekly-schedule/<int:pk>/edit/', weekly_schedule_edit, name='weekly_schedule_edit'),
+    path('weekly-schedule/<int:pk>/delete/', weekly_schedule_delete, name='weekly_schedule_delete'),
+    path('weekly-schedule/<int:pk>/excel/', weekly_schedule_excel, name='weekly_schedule_excel'),
+    path('weekly-schedule/<int:pk>/pdf/', weekly_schedule_pdf, name='weekly_schedule_pdf'),
+    path('weekly-schedule/paylas/<path:token>/', weekly_schedule_shared_pdf, name='weekly_schedule_shared_pdf'),
+    path('gorulen-hekimler/', seen_doctors_page, name='seen_doctors'),
+    path('gorulen-hekimler/toggle/', seen_doctors_toggle, name='seen_doctors_toggle'),
+    path('gorulen-hekimler/pdf/', seen_doctors_pdf, name='seen_doctors_pdf'),
+    path('gorulen-hekimler/paylas/<path:token>/', seen_doctors_shared_pdf, name='seen_doctors_shared_pdf'),
+    path('aptek-vizit/pdf/', aptek_vizit_pdf, name='aptek_vizit_pdf'),
+    path('aptek-vizit/paylas/<path:token>/', aptek_vizit_shared_pdf, name='aptek_vizit_shared_pdf'),
 ]

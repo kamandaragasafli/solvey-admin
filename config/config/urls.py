@@ -19,4 +19,5 @@ urlpatterns = [
     path('users/', include("user.urls")),
     path('vizit/', include("vizit.urls")),
     path('groups/', include("calculate.urls")),
+    path('depo-sales/', include("depo_sales.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

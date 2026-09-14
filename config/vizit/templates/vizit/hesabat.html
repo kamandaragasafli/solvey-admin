@@ -1,153 +1,408 @@
 {% extends 'vizit/base.html' %}
 
 {% block title %}Hesabat — Solvey Pharma{% endblock %}
+{% block page_title %}Vizit hesabatı{% endblock %}
 
 {% block content %}
-<div class="card no-print">
-    <div class="card-title">🔍 Filtr</div>
-    <form method="get" action="{% url 'vizit:hesabat' %}">
-        <div class="grid-3">
-            {% if user_rol == 'rehber' %}
-            <div>
-                <label>Bölgə</label>
-                <select name="bolge_id" id="f_bolge">
-                    <option value="">Hamısı</option>
-                    {% for b in bolgeler %}
-                    <option value="{{ b.id }}"{% if filter_bolge == b.id|stringformat:"s" %} selected{% endif %}>{{ b.region_name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% endif %}
+<div class="hes-page">
+  <div class="hes-header">
+    <div>
+      <h1 class="hes-title"><i class="fa-solid fa-chart-line"></i> Vizit Hesabatı</h1>
+      <p class="hes-subtitle">Filtrləyin, çap edin və ya Excel-ə çıxarın.</p>
+    </div>
+    <div class="hes-header-actions no-print">
+      <button type="button" onclick="window.print()" class="btn btn-outline">
+        <i class="fa-solid fa-print"></i> Çap et
+      </button>
+      <a href="{% url 'vizit:export_excel' %}?{{ excel_url_params }}" class="btn btn-success">
+        <i class="fa-solid fa-file-excel"></i> Excel
+      </a>
+    </div>
+  </div>
 
-            <div>
-                <label>Rayon</label>
-                <select name="rayon_id" id="f_rayon">
-                    <option value="">Hamısı</option>
-                    {% for r in rayonlar %}
-                    <option value="{{ r.id }}"{% if filter_rayon == r.id|stringformat:"s" %} selected{% endif %}>{{ r.get_city_name_display }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+  <div class="card hes-filter-card no-print">
+    <div class="card-title"><i class="fa-solid fa-filter"></i> Filter</div>
+    <form method="get" action="{% url 'vizit:hesabat' %}" class="hes-filter-form">
+      <div class="hes-filter-grid">
+        {% if user_rol == 'rehber' %}
+        <div>
+          <label>Bölgə</label>
+          <select name="bolge_id" id="f_bolge" class="form-control">
+            <option value="">Hamısı</option>
+            {% for b in bolgeler %}
+            <option value="{{ b.id }}"{% if filter_bolge == b.id|stringformat:"s" %} selected{% endif %}>{{ b.region_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% else %}
+        <input type="hidden" name="bolge_id" value="{{ user_bolge_id }}">
+        {% endif %}
 
-            <div>
-                <label>Münasibət</label>
-                <select name="munasibat">
-                    <option value="">Hamısı</option>
-                    {% for m in munasibatler %}
-                    <option value="{{ m }}"{% if filter_munasibat == m %} selected{% endif %}>{{ m }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            {% if user_rol != 'rehber' %}
-            <input type="hidden" name="bolge_id" value="{{ user_bolge_id }}">
-            {% endif %}
+        <div>
+          <label>Rayon</label>
+          <select name="rayon_id" id="f_rayon" class="form-control">
+            <option value="">Hamısı</option>
+            {% for r in rayonlar %}
+            <option value="{{ r.id }}"{% if filter_rayon == r.id|stringformat:"s" %} selected{% endif %}>{{ r.get_city_name_display }}</option>
+            {% endfor %}
+          </select>
         </div>
 
-        <div style="display:flex;gap:10px;margin-top:14px;align-items:flex-end;flex-wrap:wrap;">
-            <div>
-                <label>Başlanğıc</label>
-                <input type="date" name="tarix_bas" value="{{ filter_tarix_bas }}">
-            </div>
-            <div>
-                <label>Son</label>
-                <input type="date" name="tarix_son" value="{{ filter_tarix_son }}">
-            </div>
-            <div style="display:flex;gap:8px;">
-                <button type="submit" class="btn btn-primary">🔍 Filtrlə</button>
-                <a href="{% url 'vizit:hesabat' %}" class="btn btn-outline">↺ Sıfırla</a>
-            </div>
-            <div style="margin-left:auto;display:flex;gap:8px;">
-                <button type="button" onclick="window.print()" class="btn btn-outline">🖨️ Çap et</button>
-                <a href="{% url 'vizit:export_excel' %}?{{ excel_url_params }}" class="btn btn-success">📥 Excel</a>
-            </div>
+        <div>
+          <label>Münasibət</label>
+          <select name="munasibat" class="form-control">
+            <option value="">Hamısı</option>
+            {% for m in munasibatler %}
+            <option value="{{ m }}"{% if filter_munasibat == m %} selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
         </div>
+
+        <div>
+          <label>Başlanğıc</label>
+          <input type="date" name="tarix_bas" class="form-control" value="{{ filter_tarix_bas }}">
+        </div>
+
+        <div>
+          <label>Son</label>
+          <input type="date" name="tarix_son" class="form-control" value="{{ filter_tarix_son }}">
+        </div>
+      </div>
+
+      <div class="hes-filter-actions">
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i> Filtrlə</button>
+        <a href="{% url 'vizit:hesabat' %}" class="btn btn-outline"><i class="fa-solid fa-undo"></i> Sıfırla</a>
+        <a href="{% url 'vizit:export_excel' %}?{{ excel_url_params }}" class="btn btn-success hes-excel-mobile">
+          <i class="fa-solid fa-file-excel"></i> Excel
+        </a>
+      </div>
     </form>
-</div>
+  </div>
 
-<div class="grid-3" style="margin-bottom:22px;">
-    <div class="stat-card">
-        <div class="stat-number">{{ total_vizit }}</div>
-        <div class="stat-label">Ümumi Vizit</div>
+  <div class="hes-stats">
+    <div class="hes-stat">
+      <div class="hes-stat-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+      <div>
+        <div class="hes-stat-value">{{ total_vizit }}</div>
+        <div class="hes-stat-label">Ümumi vizit</div>
+      </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-number">{{ vizitler|length }}</div>
-        <div class="stat-label">Nəticə</div>
+    <div class="hes-stat">
+      <div class="hes-stat-icon"><i class="fa-solid fa-list"></i></div>
+      <div>
+        <div class="hes-stat-value">{{ vizitler|length }}</div>
+        <div class="hes-stat-label">Nəticə</div>
+      </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-number">{{ prep_stat|length }}</div>
-        <div class="stat-label">Aktiv Preparat</div>
+    <div class="hes-stat">
+      <div class="hes-stat-icon"><i class="fa-solid fa-pills"></i></div>
+      <div>
+        <div class="hes-stat-value">{{ prep_stat|length }}</div>
+        <div class="hes-stat-label">Aktiv preparat</div>
+      </div>
     </div>
-</div>
+  </div>
 
-{% if prep_stat %}
-<div class="card">
-    <div class="card-title">💊 Ən çox istifadə olunan preparatlar</div>
-    <div style="display:flex;flex-wrap:wrap;gap:10px;">
-        {% for ps in prep_stat %}
-        <div style="background:#f0f7ff;border:1px solid #d6eaf8;border-radius:8px;padding:8px 16px;font-size:14px;">
-            <strong>{{ ps.ad }}</strong> — {{ ps.c }} dəfə
-        </div>
-        {% endfor %}
+  {% if prep_stat %}
+  <div class="card">
+    <div class="card-title"><i class="fa-solid fa-trophy"></i> Ən çox istifadə olunan preparatlar</div>
+    <div class="hes-top-preps">
+      {% for ps in prep_stat %}
+      <div class="hes-top-item">
+        <span class="hes-top-name">{{ ps.ad }}</span>
+        <span class="hes-top-qty">{{ ps.c }}</span>
+      </div>
+      {% endfor %}
     </div>
-</div>
-{% endif %}
+  </div>
+  {% endif %}
 
-<div class="card">
-    <div class="card-title">📋 Vizit Siyahısı ({{ vizitler|length }} vizit)</div>
+  <div class="card">
+    <div class="card-title hes-list-title">
+      <span><i class="fa-solid fa-table-list"></i> Vizit siyahısı</span>
+      <span class="hes-list-hint">{{ vizitler|length }} vizit</span>
+    </div>
 
     {% if not vizitler %}
     <div class="empty">
-        <div class="empty-icon">🔍</div>
-        <p>Seçilmiş filtrə uyğun vizit tapılmadı.</p>
+      <div class="empty-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+      <p>Seçilmiş filtrə uyğun vizit tapılmadı.</p>
     </div>
     {% else %}
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Tarix</th>
-                    <th>Vaxt</th>
-                    {% if user_rol != 'numayende' %}<th>Nümayəndə</th>{% endif %}
-                    <th>Bölgə</th>
-                    <th>Rayon</th>
-                    <th>Həkim</th>
-                    <th>İxtisas</th>
-                    <th>Kat.</th>
-                    <th>Münasibət</th>
-                    <th>Preparatlar</th>
-                    <th>Qeyd</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for v in vizitler %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td><strong>{{ v.tarix|date:"d.m.Y" }}</strong></td>
-                    <td>{{ v.vaxt|time:"H:i" }}</td>
-                    {% if user_rol != 'numayende' %}
-                    <td>{{ v.istifadeci.ad }}</td>
-                    {% endif %}
-                    <td>{{ v.bolge.region_name }}</td>
-                    <td>{% if v.rayon %}{{ v.rayon.get_city_name_display }}{% else %}—{% endif %}</td>
-                    <td>{{ v.hekim.ad }}</td>
-                    <td><span title="{{ v.hekim.get_ixtisas_display }}">{{ v.hekim.ixtisas }}</span></td>
-                    <td>{{ v.hekim.kategoriya }}</td>
-                    <td><span class="badge badge-warning">{{ v.munasibat }}</span></td>
-                    <td style="font-size:12px;color:#27ae60;">
-                        {% for vp in v.preparatlar.all %}
-                        {{ vp.preparat.med_name }}{% if not forloop.last %}, {% endif %}
-                        {% endfor %}
-                    </td>
-                    <td style="font-size:12px;">{{ v.qeyd|default:"" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="data-table-wrapper">
+      <table class="data-table hes-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tarix</th>
+            <th>Vaxt</th>
+            {% if user_rol != 'numayende' %}<th>Nümayəndə</th>{% endif %}
+            <th>Bölgə</th>
+            <th>Rayon</th>
+            <th>Həkim</th>
+            <th>İxtisas</th>
+            <th>Kat.</th>
+            <th>Münasibət</th>
+            <th>Preparatlar</th>
+            <th>Qeyd</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in vizitler %}
+          <tr>
+            <td data-label="#">{{ forloop.counter }}</td>
+            <td data-label="Tarix"><strong>{{ v.tarix|date:"d.m.Y" }}</strong></td>
+            <td data-label="Vaxt">{{ v.vaxt|time:"H:i" }}</td>
+            {% if user_rol != 'numayende' %}
+            <td data-label="Nümayəndə">
+              {% if v.istifadeci %}{{ v.istifadeci.ad }}{% else %}—{% endif %}
+            </td>
+            {% endif %}
+            <td data-label="Bölgə">{% if v.bolge %}{{ v.bolge.region_name }}{% else %}—{% endif %}</td>
+            <td data-label="Rayon">{% if v.rayon %}{{ v.rayon.get_city_name_display }}{% else %}—{% endif %}</td>
+            <td data-label="Həkim"><strong>{% if v.hekim %}{{ v.hekim.ad }}{% else %}—{% endif %}</strong></td>
+            <td data-label="İxtisas">
+              {% if v.hekim %}
+                <span title="{{ v.hekim.get_ixtisas_display }}">{{ v.hekim.ixtisas }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td data-label="Kat.">{% if v.hekim %}{{ v.hekim.kategoriya }}{% else %}—{% endif %}</td>
+            <td data-label="Münasibət"><span class="badge badge-warning">{{ v.munasibat }}</span></td>
+            <td data-label="Preparatlar" class="hes-preps-cell">
+              {% for vp in v.preparatlar.all %}
+                <span class="hes-chip">{{ vp.preparat.med_full_name|default:vp.preparat.med_name }}</span>
+              {% empty %}
+                <span class="muted">—</span>
+              {% endfor %}
+            </td>
+            <td data-label="Qeyd" class="hes-note">{{ v.qeyd|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
     {% endif %}
+  </div>
 </div>
+
+<style>
+.hes-page { max-width: 1200px; margin: 0 auto; }
+.hes-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.hes-title {
+  margin: 0;
+  font-size: 1.35rem;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hes-subtitle {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.hes-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.hes-excel-mobile { display: none; }
+
+.hes-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+.hes-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.hes-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.hes-stat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.hes-stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8f4fc;
+  color: var(--primary);
+  font-size: 1.15rem;
+}
+.hes-stat-value {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1.1;
+}
+.hes-stat-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.hes-top-preps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.hes-top-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f7fafd;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.hes-top-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+.hes-top-qty {
+  flex-shrink: 0;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.hes-list-title {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hes-list-hint {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.hes-table th {
+  background: var(--primary);
+  color: #fff;
+  white-space: nowrap;
+}
+.hes-preps-cell { max-width: 280px; }
+.hes-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  margin: 2px;
+  background: #eafaf1;
+  border: 1px solid #a9dfbf;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: #1e8449;
+}
+.hes-note {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  max-width: 160px;
+}
+.muted { color: #94a3b8; }
+
+@media (max-width: 1100px) {
+  .hes-filter-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .hes-filter-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .hes-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .hes-filter-grid { grid-template-columns: 1fr; }
+  .hes-header-actions { display: none; }
+  .hes-excel-mobile { display: inline-flex; }
+  .hes-title { font-size: 1.15rem; }
+
+  .hes-table thead { display: none; }
+  .hes-table,
+  .hes-table tbody,
+  .hes-table tr,
+  .hes-table td {
+    display: block;
+    width: 100%;
+  }
+  .hes-table { min-width: 0 !important; }
+  .hes-table tr {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .hes-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px dashed #e8edf2;
+    text-align: right;
+  }
+  .hes-table td:last-child { border-bottom: none; }
+  .hes-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: left;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
+  .hes-preps-cell,
+  .hes-note {
+    max-width: none;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+}
+
+@media print {
+  .hes-filter-card,
+  .hes-header-actions,
+  .no-print { display: none !important; }
+  .hes-page { max-width: none; }
+  .hes-table th { background: #ddd !important; color: #000 !important; }
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -155,25 +410,25 @@
 const RAYONLAR_URL = "{% url 'vizit:api_rayonlar' %}";
 
 document.addEventListener('DOMContentLoaded', function () {
-    const bolgeSelect = document.getElementById('f_bolge');
-    const rayonSelect = document.getElementById('f_rayon');
-    if (!bolgeSelect || !rayonSelect) return;
+  const bolgeSelect = document.getElementById('f_bolge');
+  const rayonSelect = document.getElementById('f_rayon');
+  if (!bolgeSelect || !rayonSelect) return;
 
-    bolgeSelect.addEventListener('change', function () {
-        const bolgeId = this.value;
-        if (!bolgeId) {
-            rayonSelect.innerHTML = '<option value="">Hamısı</option>';
-            return;
-        }
-        fetch(`${RAYONLAR_URL}?bolge_id=${bolgeId}`)
-            .then(r => r.json())
-            .then(data => {
-                rayonSelect.innerHTML = '<option value="">Hamısı</option>';
-                data.rayonlar.forEach(r => {
-                    rayonSelect.add(new Option(r.ad, r.id));
-                });
-            });
-    });
+  bolgeSelect.addEventListener('change', function () {
+    const bolgeId = this.value;
+    if (!bolgeId) {
+      rayonSelect.innerHTML = '<option value="">Hamısı</option>';
+      return;
+    }
+    fetch(`${RAYONLAR_URL}?bolge_id=${bolgeId}`)
+      .then(r => r.json())
+      .then(data => {
+        rayonSelect.innerHTML = '<option value="">Hamısı</option>';
+        (data.rayonlar || []).forEach(r => {
+          rayonSelect.add(new Option(r.ad, r.id));
+        });
+      });
+  });
 });
 </script>
 {% endblock %}

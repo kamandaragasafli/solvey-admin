@@ -1,0 +1,100 @@
+{% extends 'vizit/base.html' %}
+
+{% block title %}Həftəlik Qrafiq — Solvey Pharma{% endblock %}
+{% block page_title %}Həftəlik qrafiq{% endblock %}
+
+{% block content %}
+<div class="wq-page">
+  <div class="wq-header">
+    <div>
+      <h1 class="wq-title"><i class="fa-solid fa-calendar-week"></i> Həftəlik Qrafiq</h1>
+    </div>
+    <a href="{% url 'vizit:weekly_schedule_create' %}" class="btn btn-success">
+      <i class="fa-solid fa-plus"></i> Yeni qrafiq
+    </a>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert {% if 'error' in message.tags %}alert-error{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="card">
+    {% if schedules %}
+    <div class="data-table-wrapper">
+      <table class="data-table wq-table">
+        <thead>
+          <tr>
+            <th>Həftə</th>
+            <th>Yaradan</th>
+            <th>Menecer</th>
+            <th>Yaradılıb</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in schedules %}
+          <tr>
+            <td data-label="Həftə">
+              <strong>{{ s.week_start|date:"d.m.Y" }}</strong>
+              – {{ s.week_end|date:"d.m.Y" }}
+            </td>
+            <td data-label="Yaradan">{% if s.created_by %}{{ s.created_by.ad }}{% else %}—{% endif %}</td>
+            <td data-label="Menecer">{{ s.menecer_name|default:"—" }}</td>
+            <td data-label="Yaradılıb">{{ s.created_at|date:"d.m.Y H:i" }}</td>
+            <td data-label="" class="wq-actions">
+              <a href="{% url 'vizit:weekly_schedule_detail' s.pk %}" class="btn btn-sm btn-outline" title="Bax"><i class="fa-solid fa-eye"></i></a>
+              <a href="{% url 'vizit:weekly_schedule_edit' s.pk %}" class="btn btn-sm btn-primary" title="Redaktə"><i class="fa-solid fa-pen"></i></a>
+              <a href="{% url 'vizit:weekly_schedule_pdf' s.pk %}" class="btn btn-sm" style="background:#c0392b;color:#fff;" title="PDF" target="_blank"><i class="fa-solid fa-file-pdf"></i></a>
+
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon"><i class="fa-solid fa-calendar-xmark"></i></div>
+      <p>Hələ həftəlik qrafiq yoxdur.</p>
+      <a href="{% url 'vizit:weekly_schedule_create' %}" class="btn btn-success" style="margin-top:12px;">
+        <i class="fa-solid fa-plus"></i> İlk qrafiqi yarat
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.wq-page { max-width: 1000px; margin: 0 auto; }
+.wq-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 14px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.wq-title {
+  margin: 0; font-size: 1.35rem; color: var(--primary);
+  display: flex; gap: 10px; align-items: center;
+}
+.wq-subtitle { margin: 6px 0 0; color: var(--text-muted); font-size: .9rem; }
+.wq-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.wq-table th { background: var(--primary); color: #fff; }
+@media (max-width: 640px) {
+  .wq-table thead { display: none; }
+  .wq-table, .wq-table tbody, .wq-table tr, .wq-table td { display: block; width: 100%; }
+  .wq-table tr {
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 10px;
+  }
+  .wq-table td {
+    display: flex; justify-content: space-between; gap: 10px;
+    padding: 6px 0; border-bottom: 1px dashed #e8edf2; text-align: right;
+  }
+  .wq-table td:last-child { border-bottom: none; }
+  .wq-table td::before {
+    content: attr(data-label); font-weight: 700; color: var(--text-muted);
+    font-size: .75rem; text-transform: uppercase; text-align: left;
+  }
+}
+</style>
+{% endblock %}

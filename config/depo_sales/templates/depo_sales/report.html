@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'depo_sales/css/report.css' %}">
+
+<div class="depo-hub depo-hub--report">
+  <header class="depo-report-bar">
+    <a href="{% url 'depo_sales:upload' %}" class="depo-btn depo-btn--ghost">
+      <i class="bi bi-arrow-left"></i>
+      Geri
+    </a>
+    <div class="depo-report-bar__info">
+      <h1 class="depo-report-bar__title">{{ report.depo.name }}</h1>
+      <p class="depo-report-bar__meta">
+        <span><i class="bi bi-calendar3"></i> {{ report.report_date|date:"d.m.Y" }}</span>
+        <span><i class="bi bi-boxes"></i> {{ drug_rows|length }} dərman</span>
+        <span><i class="bi bi-sigma"></i> Cəm: {{ grand_total }}</span>
+      </p>
+    </div>
+  </header>
+
+  <div class="table-scroll">
+    <table class="sales-matrix">
+      <thead>
+        <tr>
+          <th class="col-sira">Sıra</th>
+          <th class="col-drug">Dərmanlar</th>
+          {% for h in headers %}
+            <th class="rotated{% if not h.color %} extra-header{% endif %}"
+                {% if h.color %}style="background:#{{ h.color }};"{% endif %}>
+              <span>{{ h.name }}</span>
+            </th>
+          {% endfor %}
+          <th class="col-total">cəm</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in drug_rows %}
+          <tr>
+            <td class="col-sira">{{ forloop.counter }}</td>
+            <td class="col-drug">{{ row.name }}</td>
+            {% for c in row.cells %}
+              <td class="{% if c < 0 %}neg{% endif %}">{{ c }}</td>
+            {% endfor %}
+            <td class="col-total">{{ row.total }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="totals-row">
+          <td colspan="2">Cəm</td>
+          {% for t in column_totals %}
+            <td class="{% if t < 0 %}neg{% endif %}">{{ t }}</td>
+          {% endfor %}
+          <td>{{ grand_total }}</td>
+        </tr>
+        <tr class="legend-row">
+          <td colspan="{{ leading_blank }}"></td>
+          {% for g in group_totals %}
+            <td colspan="{{ g.span }}" style="background:#{{ g.color }};">{{ g.total }}</td>
+          {% endfor %}
+          <td colspan="{{ trailing_blank }}"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endblock %}

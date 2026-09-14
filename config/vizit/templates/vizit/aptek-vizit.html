@@ -1,7 +1,7 @@
 {% extends 'vizit/base.html' %}
 
 {% block title %}Yeni Aptek Viziti{% endblock %}
-bl
+
 {% block content %}
 {% if messages %}
     {% for message in messages %}
@@ -97,6 +97,40 @@ bl
         color: #1e8449;
         border: 1px solid #27ae60;
     }
+    .av-share-actions { display: flex; gap: 8px; align-items: center; }
+    .av-share-btn, .av-pdf-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        border: 0; border-radius: 8px; padding: 8px 12px;
+        font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none;
+    }
+    .av-share-btn { background: #25D366; color: #fff; }
+    .av-pdf-btn { background: #c0392b; color: #fff !important; }
+    .av-share-sheet {
+        position: fixed; inset: 0; z-index: 1200;
+        background: rgba(15, 23, 42, .45);
+        display: flex; align-items: flex-end; justify-content: center;
+        padding: 16px;
+    }
+    .av-share-sheet[hidden] { display: none !important; }
+    .av-share-card {
+        width: min(420px, 100%); background: #fff;
+        border-radius: 16px; padding: 16px;
+        box-shadow: 0 12px 40px rgba(0,0,0,.2);
+    }
+    .av-share-head {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 8px; color: #1a5276; font-size: 1.05rem;
+    }
+    .av-share-close { border: 0; background: transparent; font-size: 1.6rem; cursor: pointer; color: #64748b; }
+    .av-share-hint { margin: 0 0 14px; color: #64748b; font-size: .88rem; }
+    .av-share-btns { display: grid; gap: 8px; }
+    .av-share-action {
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        width: 100%; padding: 12px; border: 0; border-radius: 10px;
+        color: #fff !important; font-weight: 700; text-decoration: none; cursor: pointer;
+    }
+    .av-share-copy { background: #f1f5f9 !important; color: #1a5276 !important; border: 1px solid #dce6f0 !important; }
+    .av-share-status { min-height: 1.2em; margin: 10px 0 0; font-size: .85rem; color: #1a5276; }
     .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     .table th { text-align: left; color: #7f8c8d; padding: 8px 4px; border-bottom: 2px solid #f0f2f5; }
     .table td { padding: 12px 4px; border-bottom: 1px solid #f0f2f5; }
@@ -257,7 +291,7 @@ bl
     <!-- Header -->
     <div class="page-header">
         <h4>Yeni Aptek Viziti</h4>
-        <p>Məlumatları doldurun və viziti qeydə alın</p>
+        
     </div>
 
     <!-- Steps -->
@@ -280,7 +314,7 @@ bl
 
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label">Bölgə</label>
+                    <label class="form-label">Bölgə <span style="color:#e74c3c">*</span></label>
                     <select name="bolge_id" id="bolge_id" class="form-select" required>
                         <option value="">Bölgə seçin...</option>
                         {% for bolge in bolgeler %}
@@ -289,7 +323,7 @@ bl
                     </select>
                 </div>
                 <div class="col-md-6" id="rayon-wrap">
-                    <label class="form-label">Rayon</label>
+                    <label class="form-label">Rayon <span style="font-weight:400;color:#95a5a6">(ixtiyari)</span></label>
                     <select name="rayon_id" id="rayon_id" class="form-select">
                         <option value="">Əvvəlcə bölgə seçin...</option>
                     </select>
@@ -297,9 +331,9 @@ bl
             </div>
 
             <div class="mt-field">
-                <label class="form-label">Aptekin adı</label>
+                <label class="form-label">Aptekin adı <span style="font-weight:400;color:#95a5a6">(ixtiyari)</span></label>
                 <input type="text" name="aptek_ad" id="aptek_ad" class="form-control"
-                       placeholder="Aptekin tam adı" required>
+                       placeholder="Aptekin tam adı">
             </div>
 
             <div class="mt-field">
@@ -312,7 +346,7 @@ bl
         <!-- 2. Soruşulan dərmanlar -->
         <div class="section-card" id="step2">
             <div class="section-title">
-                <i class="fas fa-search"></i> Soruşulan dərmanlar
+                <i class="fas fa-search"></i> Soruşulan dərmanlar <span style="font-weight:400;color:#95a5a6;font-size:12px">(ixtiyari)</span>
             </div>
             <div class="action-bar">
                 <button type="button" class="btn btn-success btn-action" id="sorusulub-all">
@@ -326,7 +360,7 @@ bl
                 {% for p in preparatlar %}
                 <div class="chip" data-group="sorusulub">
                     <span class="chip-ico">✓</span>
-                    {{ p.med_name }}
+                    {{ p.med_full_name|default:p.med_name }}
                     <input type="checkbox" name="sorusulub" value="{{ p.id }}" style="display:none">
                 </div>
                 {% endfor %}
@@ -336,7 +370,7 @@ bl
         <!-- 3. Satış vəziyyəti -->
         <div class="section-card" id="step3">
             <div class="section-title">
-                <i class="fas fa-money-bill-wave"></i> Satış vəziyyəti
+                <i class="fas fa-money-bill-wave"></i> Satış vəziyyəti <span style="font-weight:400;color:#95a5a6;font-size:12px">(ixtiyari)</span>
             </div>
             <div class="action-bar">
                 <button type="button" class="btn btn-outline-danger btn-action" id="satis-yox-btn">
@@ -353,7 +387,7 @@ bl
                 {% for p in preparatlar %}
                 <div class="chip" data-group="satilib">
                     <span class="chip-ico">✓</span>
-                    {{ p.med_name }}
+                    {{ p.med_full_name|default:p.med_name }}
                     <input type="checkbox" name="satilib" value="{{ p.id }}" style="display:none">
                 </div>
                 {% endfor %}
@@ -363,7 +397,7 @@ bl
         <!-- 4. Mövcudluq -->
         <div class="section-card" id="step4">
             <div class="section-title">
-                <i class="fas fa-boxes"></i> Aptekdəki mövcudluq
+                <i class="fas fa-boxes"></i> Aptekdəki mövcudluq <span style="font-weight:400;color:#95a5a6;font-size:12px">(ixtiyari)</span>
             </div>
             <div class="action-bar">
                 <button type="button" class="btn btn-success btn-action" id="movcud-all-btn">
@@ -381,7 +415,7 @@ bl
                 {% for p in preparatlar %}
                 <div class="chip" data-group="yoxdur">
                     <span class="chip-ico">✓</span>
-                    {{ p.med_name }}
+                    {{ p.med_full_name|default:p.med_name }}
                     <input type="checkbox" name="yoxdur" value="{{ p.id }}" style="display:none">
                 </div>
                 {% endfor %}
@@ -391,7 +425,7 @@ bl
         <!-- 5. Rəf vəziyyəti & Yekun -->
         <div class="section-card" id="step5">
             <div class="section-title">
-                <i class="fas fa-layer-group"></i> Rəf vəziyyəti
+                <i class="fas fa-layer-group"></i> Rəf vəziyyəti <span style="font-weight:400;color:#95a5a6;font-size:12px">(ixtiyari)</span>
             </div>
 
             <input type="hidden" name="ref_veziyyeti" id="ref_val">
@@ -406,7 +440,7 @@ bl
             </div>
 
             <div class="mt-field">
-                <label class="form-label">Aptek işçisinin adı</label>
+                <label class="form-label">Aptek işçisinin adı <span style="font-weight:400;color:#95a5a6">(ixtiyari)</span></label>
                 <input type="text" name="aptek_iscisi" class="form-control"
                        placeholder="Əczacı / işçinin adı">
             </div>
@@ -425,9 +459,19 @@ bl
     </form>
 
     <div class="section-card mt-2">
-        <div class="section-title">
-            <i class="fas fa-clock"></i>
-            Bu gün — <strong style="margin-left:4px">{{ bugun_vizitler|length }}</strong>&nbsp;vizit
+        <div class="section-title" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <span>
+                <i class="fas fa-clock"></i>
+                Bu gün — <strong style="margin-left:4px">{{ bugun_vizitler|length }}</strong>&nbsp;vizit
+            </span>
+            <span class="av-share-actions">
+                <button type="button" class="av-share-btn" id="av-share-btn">
+                    <i class="fa-solid fa-share-nodes"></i> Paylaş
+                </button>
+                <a href="{% url 'vizit:aptek_vizit_pdf' %}" class="av-pdf-btn" target="_blank">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </a>
+            </span>
         </div>
     
         {% if bugun_vizitler %}
@@ -446,9 +490,9 @@ bl
                         {% for vizit in bugun_vizitler %}
                         <tr>
                             <td style="font-weight: 600;">{{ vizit.aptek_ad }}</td>
-                            <td>{{ vizit.aptek_nomre }}</td>
-                            <td>{{ vizit.rayon.city_name }}</td>
-                            <td>{{ vizit.ref_vez }}</td>
+                            <td>{{ vizit.aptek_nomre|default:"—" }}</td>
+                            <td>{% if vizit.rayon %}{{ vizit.rayon.city_name }}{% else %}—{% endif %}</td>
+                            <td>{% with p=vizit.preparatlar.all|first %}{{ p.ref_vez|default:"—" }}{% endwith %}</td>
                             <td>{{ vizit.created_at|date:"H:i" }}</td>
                         </tr>
                         {% endfor %}
@@ -463,6 +507,31 @@ bl
         {% endif %}
     </div>
 
+</div>
+
+<div class="av-share-sheet" id="av-share-sheet" hidden>
+  <div class="av-share-card">
+    <div class="av-share-head">
+      <strong>PDF paylaş</strong>
+      <button type="button" class="av-share-close" id="av-share-close" aria-label="Bağla">&times;</button>
+    </div>
+    <p class="av-share-hint">Bugünkü aptek vizitlərini birbaşa WhatsApp və digər tətbiqlərə göndərin.</p>
+    <div class="av-share-btns">
+      <button type="button" class="av-share-action" id="av-share-native" style="background:#1a5276;">
+        <i class="fa-solid fa-share-nodes"></i> Birbaşa paylaş (PDF)
+      </button>
+      <a class="av-share-action" id="av-share-wa" style="background:#25D366;" target="_blank" rel="noopener">
+        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+      </a>
+      <a class="av-share-action" id="av-share-tg" style="background:#2AABEE;" target="_blank" rel="noopener">
+        <i class="fa-brands fa-telegram"></i> Telegram
+      </a>
+      <button type="button" class="av-share-action av-share-copy" id="av-share-copy">
+        <i class="fa-solid fa-link"></i> Linki kopyala
+      </button>
+    </div>
+    <p class="av-share-status" id="av-share-status"></p>
+  </div>
 </div>
 {% endblock content %}
 
@@ -640,5 +709,89 @@ function showStep(step) {
 }
 
 // Rəf düyməsi seçiləndə step-i sabit saxla (artıq son step-dir)
+
     </script>
+
+{{ share_url|json_script:"av-share-url" }}
+{{ pdf_filename|json_script:"av-pdf-filename" }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var shareUrlEl = document.getElementById("av-share-url");
+  var pdfNameEl = document.getElementById("av-pdf-filename");
+  if (!shareUrlEl) return;
+  var shareUrl = JSON.parse(shareUrlEl.textContent);
+  var filename = pdfNameEl ? JSON.parse(pdfNameEl.textContent) : "Aptek Viziti.pdf";
+  var pdfUrl = "{% url 'vizit:aptek_vizit_pdf' %}?download=1";
+  var title = "{{ user_ad|escapejs }} Aptek Viziti — {{ today|date:'d.m.Y' }}";
+  var text = title + "\n" + shareUrl;
+
+  var sheet = document.getElementById("av-share-sheet");
+  var statusEl = document.getElementById("av-share-status");
+  var openBtn = document.getElementById("av-share-btn");
+  var closeBtn = document.getElementById("av-share-close");
+  var nativeBtn = document.getElementById("av-share-native");
+  var copyBtn = document.getElementById("av-share-copy");
+  var wa = document.getElementById("av-share-wa");
+  var tg = document.getElementById("av-share-tg");
+
+  if (wa) wa.href = "https://wa.me/?text=" + encodeURIComponent(text);
+  if (tg) tg.href = "https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(title);
+
+  function setStatus(msg) { if (statusEl) statusEl.textContent = msg || ""; }
+  function openSheet() { if (sheet) { sheet.hidden = false; setStatus(""); } }
+  function closeSheet() { if (sheet) sheet.hidden = true; }
+
+  async function shareNative() {
+    var res = await fetch(pdfUrl, { credentials: "same-origin" });
+    if (!res.ok) throw new Error("PDF yüklənmədi");
+    var blob = await res.blob();
+    var file = new File([blob], filename, { type: "application/pdf" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: title, text: title });
+      return true;
+    }
+    if (navigator.share) {
+      await navigator.share({ title: title, text: title, url: shareUrl });
+      return true;
+    }
+    return false;
+  }
+
+  if (openBtn) {
+    openBtn.addEventListener("click", async function () {
+      try {
+        var ok = await shareNative();
+        if (!ok) openSheet();
+      } catch (e) {
+        if (e && e.name === "AbortError") return;
+        openSheet();
+      }
+    });
+  }
+  if (closeBtn) closeBtn.addEventListener("click", closeSheet);
+  if (sheet) sheet.addEventListener("click", function (e) { if (e.target === sheet) closeSheet(); });
+  if (nativeBtn) {
+    nativeBtn.addEventListener("click", async function () {
+      setStatus("PDF hazırlanır...");
+      try {
+        var ok = await shareNative();
+        setStatus(ok ? "Paylaşıldı." : "WhatsApp və ya linkdən istifadə edin.");
+      } catch (e) {
+        if (e && e.name === "AbortError") { setStatus(""); return; }
+        setStatus("Paylaşım alınmadı.");
+      }
+    });
+  }
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async function () {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setStatus("Link kopyalandı.");
+      } catch (e) {
+        setStatus(shareUrl);
+      }
+    });
+  }
+});
+</script>
 {% endblock %}

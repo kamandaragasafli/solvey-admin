@@ -59,9 +59,9 @@
                 <td><strong>{{ u.login }}</strong></td>
                 <td>{{ u.ad }}</td>
                 <td><span class="badge role-badge role-{{ u.rol }}">{{ u.get_rol_display }}</span></td>
-                <td>{% if u.bolge %}{{ u.bolge.region_name }}{% else %}—{% endif %}</td>
+                <td>{% for b in u.bolgeler.all %}{{ b.region_name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
                 <td>{% if u.aktiv %}✅{% else %}❌{% endif %}</td>
-                <td><a href="{% url 'vizit:admin_panel' %}?tab=istifadeciler&amp;del_user={{ u.id }}" onclick="return confirm('Silinsin?')" style="color:red;">🗑️</a></td>
+                <td><a href="{% url 'vizit:admin_panel' %}?tab=istifadeciler&amp;del_user={{ u.id }}" onclick="return confirm('İstifadəçi və ona aid vizit qeydləri silinsin?')" style="color:red;">🗑️</a></td>
             </tr>
             {% endfor %}
             </tbody>

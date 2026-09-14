@@ -1,6 +1,7 @@
 {% extends 'vizit/base.html' %}
 
 {% block title %}Yeni Vizit — Solvey Pharma{% endblock %}
+{% block page_title %}Yeni vizit{% endblock %}
 
 {% block content %}
 {% if messages %}
@@ -64,7 +65,7 @@
 
     <div class="card" id="preparat-section">
         <div class="card-title"><i class="fas fa-pills"></i> Preparatlar</div>
-        <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <div class="prep-toolbar">
             <button type="button" class="btn btn-outline" id="select-all-prep">✅ Hamısını seç</button>
             <button type="button" class="btn btn-outline" id="clear-all-prep">❌ Sıfırla</button>
         </div>
@@ -72,7 +73,7 @@
             {% for p in preparatlar_siyahisi %}
             <label class="preparat-item">
                 <input type="checkbox" name="preparatlar[]" value="{{ p.id }}">
-                <span>{{ p.med_name }}</span>
+                <span>{{ p.med_full_name|default:p.med_name }}</span>
             </label>
             {% endfor %}
         </div>
@@ -120,7 +121,7 @@
                 </div>
                 <div class="vizit-preparatlar">Dərmanlar:
                     {% for vp in v.preparatlar.all %}
-                    {{ vp.preparat.med_name }}{% if not forloop.last %}, {% endif %}
+                    {{ vp.preparat.med_full_name|default:vp.preparat.med_name }}{% if not forloop.last %}, {% endif %}
                     {% endfor %}
                 </div>
                 {% if v.qeyd %}

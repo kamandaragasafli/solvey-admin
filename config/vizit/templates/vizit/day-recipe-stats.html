@@ -1,0 +1,382 @@
+{% extends 'vizit/base.html' %}
+
+{% block page_title %}Günlük resept statistikası{% endblock %}
+{% block title %}Günlük Stat. — Solvey Pharma{% endblock %}
+
+{% block content %}
+<div class="drs-page">
+  <div class="drs-header">
+    <div>
+      <h1 class="drs-title"><i class="fa-solid fa-chart-bar"></i> Günlük Qeydiyyat Statistikası</h1>
+      <p class="drs-subtitle">Bölgə və tarixə görə günlük resept qeydlərini izləyin, Excel-ə çıxarın.</p>
+    </div>
+    <a class="btn btn-success drs-excel-btn"
+       href="{% url 'vizit:export_day_recipe_stats' %}{% if query_string %}?{{ query_string }}{% endif %}">
+      <i class="fa-solid fa-file-excel"></i> Excel
+    </a>
+  </div>
+
+  <div class="card drs-filter-card">
+    <div class="card-title"><i class="fa-solid fa-filter"></i> Filter</div>
+    <form method="GET" class="drs-filter-form">
+      <div class="drs-filter-grid">
+        <div>
+          <label>Bölgə</label>
+          <select name="region_id" class="form-control">
+            <option value="">Bütün bölgələr</option>
+            {% for r in regions %}
+              <option value="{{ r.id }}" {% if filter_region and r.id|stringformat:"s" == filter_region %}selected{% endif %}>
+                {{ r.region_name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Tarixdən</label>
+          <input type="date" name="date_from" class="form-control" value="{{ filter_date_from }}" />
+        </div>
+        <div>
+          <label>Tarixədək</label>
+          <input type="date" name="date_to" class="form-control" value="{{ filter_date_to }}" />
+        </div>
+        <div>
+          <label>Axtar</label>
+          <input type="text" name="search" class="form-control" placeholder="Həkim, dərman, istifadəçi..." value="{{ search }}" />
+        </div>
+      </div>
+      <div class="drs-filter-actions">
+        <button type="submit" class="btn btn-success"><i class="fa-solid fa-search"></i> Axtar</button>
+        <a href="{% url 'vizit:day_recipe_stats' %}" class="btn btn-outline"><i class="fa-solid fa-undo"></i> Sıfırla</a>
+        <a class="btn btn-outline drs-excel-mobile"
+           href="{% url 'vizit:export_day_recipe_stats' %}{% if query_string %}?{{ query_string }}{% endif %}">
+          <i class="fa-solid fa-file-excel"></i> Excel
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <div class="drs-stats">
+    <div class="drs-stat">
+      <div class="drs-stat-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+      <div>
+        <div class="drs-stat-value">{{ total_recipes }}</div>
+        <div class="drs-stat-label">Resept</div>
+      </div>
+    </div>
+    <div class="drs-stat">
+      <div class="drs-stat-icon"><i class="fa-solid fa-pills"></i></div>
+      <div>
+        <div class="drs-stat-value">{{ total_drug_lines }}</div>
+        <div class="drs-stat-label">Dərman sətiri</div>
+      </div>
+    </div>
+    <div class="drs-stat">
+      <div class="drs-stat-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+      <div>
+        <div class="drs-stat-value">{{ total_quantity }}</div>
+        <div class="drs-stat-label">Ümumi say</div>
+      </div>
+    </div>
+  </div>
+
+  {% if top_drugs %}
+  <div class="card">
+    <div class="card-title"><i class="fa-solid fa-trophy"></i> Ən çox yazılan dərmanlar</div>
+    <div class="drs-top-drugs">
+      {% for d in top_drugs %}
+      <div class="drs-top-item">
+        <span class="drs-top-name">{{ d.drug__med_full_name|default:d.drug__med_name }}</span>
+        <span class="drs-top-qty">{{ d.total }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-title drs-list-title">
+      <span><i class="fa-solid fa-list"></i> Resept siyahısı</span>
+      <span class="drs-list-hint">Excel-də hər dərman ayrı sətirdə açılır</span>
+    </div>
+
+    {% if recipe_rows %}
+    <div class="data-table-wrapper">
+      <table class="data-table drs-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tarix</th>
+            <th>Həkim</th>
+            <th>Bölgə</th>
+            <th>İstifadəçi</th>
+            <th>Dərmanlar</th>
+            <th>Cəm</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in recipe_rows %}
+          <tr>
+            <td data-label="#">{{ forloop.counter }}</td>
+            <td data-label="Tarix">{{ row.recipe.date|date:"d.m.Y" }}</td>
+            <td data-label="Həkim"><strong>{{ row.recipe.dr.ad|default:"—" }}</strong></td>
+            <td data-label="Bölgə">{{ row.recipe.region.region_name }}</td>
+            <td data-label="İstifadəçi">
+              {% if row.recipe.created_by %}
+                {{ row.recipe.created_by.ad|default:row.recipe.created_by.login }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td data-label="Dərmanlar" class="drs-drugs-cell">
+              {% for drug in row.drugs %}
+                <span class="drs-chip">
+                  {{ drug.drug.med_full_name|default:drug.drug.med_name }}
+                  <b>{{ drug.number }}</b>
+                </span>
+              {% empty %}
+                <span class="muted">—</span>
+              {% endfor %}
+            </td>
+            <td data-label="Cəm"><strong>{{ row.row_total }}</strong></td>
+            <td data-label="">
+              <a href="{% url 'vizit:del_day_recipe_record' row.recipe.id %}{% if query_string %}?{{ query_string }}{% endif %}"
+                 class="btn btn-sm btn-danger"
+                 title="Sil"
+                 onclick="return confirm('Bu günlük qeydiyyat silinsin?');">
+                <i class="fa-solid fa-trash"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if total_recipes > 200 %}
+    <p class="drs-limit-note">Siyahıda son 200 qeyd göstərilir. Tam siyahı üçün Excel yükləyin.</p>
+    {% endif %}
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon"><i class="fa-solid fa-inbox"></i></div>
+      <p>Məlumat tapılmadı.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.drs-page { max-width: 1100px; margin: 0 auto; }
+.drs-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.drs-title {
+  margin: 0;
+  font-size: 1.35rem;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.drs-subtitle {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.drs-excel-btn { white-space: nowrap; }
+.drs-excel-mobile { display: none; }
+
+.drs-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.drs-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.drs-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.drs-stat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.drs-stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8f4fc;
+  color: var(--primary);
+  font-size: 1.15rem;
+}
+.drs-stat-value {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1.1;
+}
+.drs-stat-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.drs-top-drugs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.drs-top-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f7fafd;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.drs-top-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 0;
+  word-break: break-word;
+}
+.drs-top-qty {
+  flex-shrink: 0;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.drs-list-title {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.drs-list-hint {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.drs-table th {
+  background: var(--primary);
+  color: #fff;
+  white-space: nowrap;
+}
+.drs-drugs-cell {
+  max-width: 360px;
+}
+.drs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  margin: 2px 2px;
+  background: #eef6fb;
+  border: 1px solid #d6eaf8;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+.drs-chip b {
+  color: var(--primary);
+}
+.drs-limit-note {
+  margin: 12px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.muted { color: #94a3b8; }
+
+@media (max-width: 900px) {
+  .drs-filter-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .drs-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .drs-filter-grid {
+    grid-template-columns: 1fr;
+  }
+  .drs-excel-btn { display: none; }
+  .drs-excel-mobile { display: inline-flex; }
+  .drs-header { margin-bottom: 12px; }
+  .drs-title { font-size: 1.15rem; }
+
+  .drs-table thead { display: none; }
+  .drs-table,
+  .drs-table tbody,
+  .drs-table tr,
+  .drs-table td {
+    display: block;
+    width: 100%;
+  }
+  .drs-table {
+    min-width: 0 !important;
+  }
+  .drs-table tr {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .drs-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px dashed #e8edf2;
+    text-align: right;
+  }
+  .drs-table td:last-child {
+    border-bottom: none;
+    justify-content: flex-end;
+  }
+  .drs-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: left;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
+  .drs-drugs-cell {
+    max-width: none;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+}
+</style>
+{% endblock content %}

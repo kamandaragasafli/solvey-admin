@@ -2,28 +2,38 @@ from datetime import datetime as dt
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.db import IntegrityError
-from django.db.models import Count, F, Value
+from django.db import IntegrityError, transaction
+from django.db.models import Count, F, Q, Sum, Value
+from django.db.models.deletion import ProtectedError
 from django.db.models.functions import Coalesce
-from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
-from django.db import transaction
 from datetime import date
 from django.contrib.auth.decorators import login_required
-
+from medicine.models import Medical
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from django.http import HttpResponse
 
 from doctors.models import Doctors
 from medicine.models import Medical
 from regions.models import City, Hospital, Region
 
-from .models import Istifadeci, Vizit, VizitPreparat, AptekVizit, AptekVizitPreparat
+from .models import (
+    Istifadeci,
+    Vizit,
+    VizitPreparat,
+    AptekVizit,
+    AptekVizitPreparat,
+    DayRecipe,
+    DayRecipeDrug,
+    WeeklySchedule,
+    WeeklyScheduleDay,
+    WeeklyScheduleVisit,
+)
 from .utils import (
     menecer_rehber_required,
     rehber_required,
@@ -42,10 +52,7 @@ ROL_BASLIQLARI = {
 }
 
 EXCEL_PREP_ORDER = [
-    'Solseda', 'Opsidol', 'Zemovar', 'Soltrop', 'Fensavin', 'Soltep', 'Litasol',
-    'Prostazolin', 'Provital', 'Heptrazol', 'Vitomer Kids', 'Fesola', 'Kartovey',
-    'Betasol', 'Genosfer', 'Serrasol', 'Kalvey', 'Vitomer D3', 'Levastronq',
-    'Opeblok', 'Ropsol', 'Painstop', 'Moxivista',
+    drug.med_name for drug in Medical.objects.filter(status=True).order_by('med_name')
 ]
 
 
@@ -198,6 +205,8 @@ def login_view(request):
         if login and sifre:
             istifadeci = Istifadeci.authenticate(login, sifre)
             if istifadeci:
+                # Köhnə sessiya cookie-ni təzələ, məlumatı saxla
+                request.session.cycle_key()
                 vizit_session_yaz(request, istifadeci)
                 if istifadeci.rol == Istifadeci.ROL_REHBER:
                     return redirect('vizit:admin_panel')
@@ -215,6 +224,7 @@ def login_view(request):
 
 def logout_view(request):
     vizit_session_temizle(request)
+    request.session.flush()
     return redirect('vizit:login')
 
 
@@ -288,11 +298,50 @@ def admin_panel_view(request):
                 messages.error(request, '❌ Ad/soyad və rayon mütləqdir.')
             return _admin_redirect(tab)
 
-    # 3. İSTİFADƏÇİ SİLMƏ (GET metodu ilə)
+    # 3. İSTİFADƏÇİ SİLMƏ — əlaqəli vizit/aptek qeydləri ilə birlikdə
     if 'del_user' in request.GET:
-        Istifadeci.objects.filter(pk=int(request.GET['del_user'])).delete()
-        messages.success(request, '✅ İstifadəçi silindi.')
+        try:
+            uid = int(request.GET['del_user'])
+        except (TypeError, ValueError):
+            messages.error(request, '❌ Yanlış istifadəçi.')
+            return _admin_redirect('istifadeciler')
+
+        user = Istifadeci.objects.filter(pk=uid).first()
+        if not user:
+            messages.error(request, '❌ İstifadəçi tapılmadı.')
+            return _admin_redirect('istifadeciler')
+
+        if request.session.get('istifadeci_id') == user.pk:
+            messages.error(request, '❌ Öz hesabınızı silə bilməzsiniz.')
+            return _admin_redirect('istifadeciler')
+
+        ad = user.ad
+        try:
+            with transaction.atomic():
+                # PROTECT olan əlaqələr əvvəl silinir
+                Vizit.objects.filter(istifadeci=user).delete()
+                AptekVizit.objects.filter(user=user).delete()
+                user.delete()
+            messages.success(request, f'✅ İstifadəçi silindi: {ad}')
+        except ProtectedError:
+            messages.error(
+                request,
+                f'❌ {ad} silinə bilmədi — əlaqəli qorunan qeydlər var.',
+            )
         return _admin_redirect('istifadeciler')
+
+    # Əvvəl deaktiv edilmiş (__silindi_) istifadəçiləri təmizlə
+    if tab == 'istifadeciler':
+        for stale in list(Istifadeci.objects.filter(login__contains='__silindi_')):
+            if request.session.get('istifadeci_id') == stale.pk:
+                continue
+            try:
+                with transaction.atomic():
+                    Vizit.objects.filter(istifadeci=stale).delete()
+                    AptekVizit.objects.filter(user=stale).delete()
+                    stale.delete()
+            except ProtectedError:
+                pass
 
     # 4. SƏHİFƏNİ YÜKLƏMƏ
     return render(
@@ -300,7 +349,11 @@ def admin_panel_view(request):
         'vizit/admin_panel.html',
         {
             'tab': tab,
-            'istifadeciler': Istifadeci.objects.prefetch_related('bolgeler').order_by('rol', 'ad'),
+            'istifadeciler': (
+                Istifadeci.objects.filter(aktiv=True)
+                .prefetch_related('bolgeler')
+                .order_by('rol', 'ad')
+            ),
             'bolgeler': Region.objects.order_by('region_name'),
             'rayonlar': City.objects.select_related('region').order_by('region__region_name', 'city_name'),
             'ixtisaslar': _ixtisas_secimleri(),
@@ -698,7 +751,7 @@ def ajax_rayonlar(request):
     data = [{'id': r['id'], 'ad': r['city_name']} for r in rayonlar]
     return JsonResponse(data, safe=False)
 
-@login_required
+@vizit_login_required
 def yeni_aptek_vizit(request):
     user_id = request.session.get('istifadeci_id')
     user_rol = request.session.get('rol')
@@ -721,28 +774,18 @@ def yeni_aptek_vizit(request):
                 aptek_iscisi  = request.POST.get('aptek_iscisi', '').strip()
                 qeyd          = request.POST.get('qeyd', '').strip()
 
-                # Validasiya
+                # Validasiya — yalnız bölgə mütləqdir, digər sahələr ixtiyaridir
                 if not bolge_id:
                     messages.error(request, "Bölgə seçilməyib!")
                     return redirect('vizit:yeni_aptek_vizit')
-                
-                if not aptek_ad:
-                    messages.error(request, "Aptekin adı daxil edilməyib!")
-                    return redirect('vizit:yeni_aptek_vizit')
-                
-                if not ref_veziyyeti:
-                    messages.error(request, "Rəf vəziyyəti seçilməyib!")
-                    return redirect('vizit:yeni_aptek_vizit')
 
-                # Bakı yoxlaması
                 bolge = Region.objects.filter(id=bolge_id).first()
                 is_baki = bolge and bolge.region_type == 'Bakı'
-                
-                if not is_baki and not rayon_id:
-                    messages.error(request, "Rayon seçilməyib!")
-                    return redirect('vizit:yeni_aptek_vizit')
-                
                 if is_baki:
+                    rayon_id = None
+                elif rayon_id:
+                    rayon_id = rayon_id
+                else:
                     rayon_id = None
 
                 # AptekVizit yarat
@@ -750,7 +793,7 @@ def yeni_aptek_vizit(request):
                     user_id=user_id,
                     bolge_id=bolge_id,
                     rayon_id=rayon_id,
-                    aptek_ad=aptek_ad,
+                    aptek_ad=aptek_ad or "—",
                     aptek_nomre=aptek_nomre or None,
                     tarix=timezone.now().date(),
                     vaxt=timezone.now().time(),
@@ -797,19 +840,363 @@ def yeni_aptek_vizit(request):
     # ✅ Bugünkü vizitləri filtrələ
     bugun_vizitler = AptekVizit.objects.filter(
         tarix=date.today()
-    ).select_related('rayon', 'bolge', 'user').order_by('-id')
+    ).select_related('rayon', 'bolge', 'user').prefetch_related('preparatlar').order_by('-id')
 
     # ✅ Rəhbər deyilsə, yalnız öz vizitlərini görsün
     if user_rol not in [Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB]:
         bugun_vizitler = bugun_vizitler.filter(user_id=user_id)
 
+    from .aptek_vizit_pdf import aptek_vizit_share_context
+    share_ctx = aptek_vizit_share_context(request)
+
     return render(request, 'vizit/aptek-vizit.html', {
-        'bolgeler': bolgeler,              # ✅ Filtrlənmiş bölgələr
-        'preparatlar': preparatlar,        # ✅ Aktiv dərmanlar
-        'bugun_vizitler': bugun_vizitler,  # ✅ Filtrlənmiş vizitlər
+        'bolgeler': bolgeler,
+        'preparatlar': preparatlar,
+        'bugun_vizitler': bugun_vizitler,
         'today': date.today(),
         'baki_bolge_ids': baki_bolge_ids,
+        **share_ctx,
     })
+def create_day_recipe(request):
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+    regions = _bolgeler_for_user(user_rol, user_bolge_ids)
+    drugs = Medical.objects.filter(status=True).order_by('id')
+    last_recipes = DayRecipeDrug.objects.all().order_by("-created_at", "-id")[:5]
+
+    selected_region = ""
+    selected_doctor = ""
+    selected_date = ""
+    doctors = Doctors.objects.none()
+
+    if request.method == "POST":
+        region_id = request.POST.get("region", "")
+        doctor_id = request.POST.get("doctor", "")
+        date_str = request.POST.get("date", "")
+
+        selected_region = region_id
+        selected_doctor = doctor_id
+        selected_date = date_str
+
+        # Tarixi parse et
+        try:
+            istifade_olunacaq_tarix = date.fromisoformat(date_str)
+        except ValueError:
+            messages.error(request, "Zəhmət olmasa düzgün tarix seçin.")
+            doctors = Doctors.objects.filter(bolge_id=region_id).order_by("id") if region_id else Doctors.objects.none()
+            return render(request, "vizit/add-day-recipe.html", {
+                "regions": regions,
+                "doctors": doctors,
+                "drugs": drugs,
+                "selected_region": selected_region,
+                "selected_doctor": selected_doctor,
+                "selected_doctor_name": _doctor_display_name(selected_doctor),
+                "selected_date": selected_date
+            })
+
+        # Həkimləri göstər
+        doctors = Doctors.objects.filter(bolge_id=region_id) if region_id else Doctors.objects.none()
+
+        # Region və həkim yoxdursa
+        if not (region_id and doctor_id):
+            messages.error(request, "Zəhmət olmasa bütün sahələri doldurun.")
+            return render(request, "vizit/add-day-recipe.html", {
+                "regions": regions,
+                "doctors": doctors,
+                "drugs": drugs,
+                "selected_region": selected_region,
+                "selected_doctor": selected_doctor,
+                "selected_doctor_name": _doctor_display_name(selected_doctor),
+                "selected_date": selected_date
+            })
+
+        # DayRecipe yarat
+        recipe = DayRecipe.objects.create(
+            region_id=region_id,
+            dr_id=doctor_id,
+            date=istifade_olunacaq_tarix,
+            created_by_id=request.session.get('istifadeci_id')
+        )
+        doctor = Doctors.objects.get(id=doctor_id)
+
+        # Əlavə olunan dərmanları qeyd et
+        for key in request.POST:
+            if key.startswith("quantity_"):
+                drug_id = key.split("_")[1]
+                count = request.POST.get(key)
+                if count and float(count) > 0:
+                    DayRecipeDrug.objects.create(
+                        recipe=recipe,
+                        drug_id=drug_id,
+                        number=count
+                    )
+
+        messages.success(request, f"{doctor.ad} həkimə günlük resept {selected_date} tarixi ilə əlavə olundu.")
+        return redirect('vizit:create_day_recipe')
+
+    else:
+        doctors = Doctors.objects.none()
+
+    return render(request, "vizit/add-day-recipe.html", {
+        "regions": regions,
+        "doctors": doctors,
+        "last_recipes": last_recipes,
+        "drugs": drugs,
+        "selected_region": selected_region,
+        "selected_doctor": selected_doctor,
+        "selected_doctor_name": _doctor_display_name(selected_doctor),
+        "selected_date": selected_date
+    })
+
+
+def _doctor_display_name(pk):
+    if pk is None or pk == "":
+        return ""
+    try:
+        ad = Doctors.objects.filter(pk=int(pk)).values_list("ad", flat=True).first()
+        return ad or ""
+    except (ValueError, TypeError):
+        return ""
+
+
+def ajax_doctors_by_region(request):
+    region_id = request.GET.get('region_id')
+    if region_id:
+        doctors = Doctors.objects.filter(bolge_id=region_id).values('id', 'ad', 'ixtisas')
+        doctors_list = list(doctors)
+        print(f"DEBUG: region_id={region_id}, doctors_count={len(doctors_list)}")
+        print(f"DEBUG: doctors_list={doctors_list[:3] if doctors_list else 'empty'}")
+        return JsonResponse({'doctors': doctors_list})
+    else:
+        print("DEBUG: No region_id provided")
+        return JsonResponse({'doctors': []})
+
+
+def _day_recipe_filtered_qs(request):
+    """Günlük resept statistikası üçün ortaq filtr queryset."""
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+
+    filter_region = (request.GET.get('region_id') or '').strip()
+    filter_date_from = (request.GET.get('date_from') or '').strip()
+    filter_date_to = (request.GET.get('date_to') or '').strip()
+    search = (request.GET.get('search') or '').strip()
+
+    recipes = DayRecipe.objects.select_related(
+        'dr', 'region', 'created_by'
+    ).prefetch_related('drugs__drug')
+
+    if filter_region:
+        recipes = recipes.filter(region_id=filter_region)
+    elif user_rol not in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
+        recipes = recipes.filter(region_id__in=user_bolge_ids)
+
+    if filter_date_from:
+        recipes = recipes.filter(date__gte=filter_date_from)
+    if filter_date_to:
+        recipes = recipes.filter(date__lte=filter_date_to)
+
+    if search:
+        recipes = recipes.filter(
+            Q(dr__ad__icontains=search)
+            | Q(region__region_name__icontains=search)
+            | Q(created_by__login__icontains=search)
+            | Q(created_by__ad__icontains=search)
+            | Q(drugs__drug__med_name__icontains=search)
+            | Q(drugs__drug__med_full_name__icontains=search)
+        ).distinct()
+
+    return recipes.order_by('-date', '-created_at'), {
+        'filter_region': filter_region,
+        'filter_date_from': filter_date_from,
+        'filter_date_to': filter_date_to,
+        'search': search,
+    }
+
+
+def day_recipe_stats(request):
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+    regions = _bolgeler_for_user(user_rol, user_bolge_ids)
+
+    recipes, filters = _day_recipe_filtered_qs(request)
+
+    total_recipes = recipes.count()
+    drug_agg = DayRecipeDrug.objects.filter(recipe__in=recipes).aggregate(
+        line_count=Count('id'),
+        qty_sum=Sum('number'),
+    )
+    total_drug_lines = drug_agg['line_count'] or 0
+    total_quantity = drug_agg['qty_sum'] or 0
+
+    top_drugs = list(
+        DayRecipeDrug.objects.filter(recipe__in=recipes)
+        .values('drug__med_name', 'drug__med_full_name')
+        .annotate(total=Sum('number'))
+        .order_by('-total')[:8]
+    )
+
+    recipe_rows = []
+    for recipe in recipes[:200]:
+        drug_lines = list(recipe.drugs.all())
+        row_total = sum(float(line.number or 0) for line in drug_lines)
+        recipe_rows.append({
+            'recipe': recipe,
+            'drugs': drug_lines,
+            'row_total': row_total,
+        })
+
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+
+    context = {
+        'regions': regions,
+        'recipe_rows': recipe_rows,
+        'total_recipes': total_recipes,
+        'total_drug_lines': total_drug_lines,
+        'total_quantity': total_quantity,
+        'top_drugs': top_drugs,
+        'query_string': query_params.urlencode(),
+        **filters,
+    }
+    return render(request, 'vizit/day-recipe-stats.html', context)
+
+
+def export_day_recipe_stats(request):
+    recipes, filters = _day_recipe_filtered_qs(request)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Günlük Qeydiyyat"
+
+    header_fill = PatternFill(start_color="1A5276", end_color="1A5276", fill_type="solid")
+    header_font = Font(name="Segoe UI", bold=True, color="FFFFFF", size=11)
+    thin = Border(
+        left=Side(style="thin", color="BFCFDF"),
+        right=Side(style="thin", color="BFCFDF"),
+        top=Side(style="thin", color="BFCFDF"),
+        bottom=Side(style="thin", color="BFCFDF"),
+    )
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+    headers = [
+        "№", "Tarix", "Bölgə", "Həkim", "İstifadəçi",
+        "Dərman", "Say", "Yüklənmə",
+    ]
+    for col, title in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=title)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center
+        cell.border = thin
+
+    row_num = 2
+    idx = 1
+    for recipe in recipes:
+        region_name = recipe.region.region_name if recipe.region_id else ""
+        doctor_name = recipe.dr.ad if recipe.dr_id else ""
+        user_name = ""
+        if recipe.created_by_id:
+            user_name = recipe.created_by.ad or recipe.created_by.login or ""
+        date_str = recipe.date.strftime("%d.%m.%Y") if recipe.date else ""
+        created_str = ""
+        if recipe.created_at:
+            created_at = recipe.created_at
+            if timezone.is_aware(created_at):
+                created_at = timezone.localtime(created_at)
+            created_str = created_at.strftime("%d.%m.%Y %H:%M")
+        drug_lines = list(recipe.drugs.all())
+        if not drug_lines:
+            values = [idx, date_str, region_name, doctor_name, user_name, "—", 0, created_str]
+            for col, val in enumerate(values, 1):
+                cell = ws.cell(row=row_num, column=col, value=val)
+                cell.border = thin
+                cell.alignment = center if col in (1, 2, 7, 8) else left
+            row_num += 1
+            idx += 1
+            continue
+
+        for line in drug_lines:
+            drug = line.drug
+            drug_name = (drug.med_full_name or drug.med_name) if drug else ""
+            values = [
+                idx, date_str, region_name, doctor_name, user_name,
+                drug_name, float(line.number or 0), created_str,
+            ]
+            for col, val in enumerate(values, 1):
+                cell = ws.cell(row=row_num, column=col, value=val)
+                cell.border = thin
+                cell.alignment = center if col in (1, 2, 7, 8) else left
+            row_num += 1
+            idx += 1
+
+    widths = [6, 12, 16, 28, 18, 36, 10, 16]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    ws.auto_filter.ref = f"A1:H{max(row_num - 1, 1)}"
+    ws.freeze_panes = "A2"
+
+    # Xülasə sheet
+    ws2 = wb.create_sheet("Xülasə")
+    ws2["A1"] = "Günlük qeydiyyat xülasəsi"
+    ws2["A1"].font = Font(bold=True, size=13, color="1A5276")
+    ws2["A3"] = "Bölgə filtri"
+    ws2["B3"] = filters["filter_region"] or "Hamısı"
+    ws2["A4"] = "Tarixdən"
+    ws2["B4"] = filters["filter_date_from"] or "—"
+    ws2["A5"] = "Tarixədək"
+    ws2["B5"] = filters["filter_date_to"] or "—"
+    ws2["A6"] = "Axtarış"
+    ws2["B6"] = filters["search"] or "—"
+    ws2["A8"] = "Resept sayı"
+    ws2["B8"] = recipes.count()
+    qty = DayRecipeDrug.objects.filter(recipe__in=recipes).aggregate(s=Sum("number"))["s"] or 0
+    ws2["A9"] = "Ümumi qutu/say"
+    ws2["B9"] = float(qty)
+    ws2.column_dimensions["A"].width = 18
+    ws2.column_dimensions["B"].width = 24
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    filename = f"gunluk_qeydiyyat_{date.today().isoformat()}.xlsx"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
+
+
+def del_day_recipe(request, id):
+    rm_recipe = get_object_or_404(DayRecipeDrug, id=id)
+    doctor = rm_recipe.recipe.dr
+    doctor_id = doctor.id if doctor else None
+    rm_recipe.delete()
+
+    next_url = request.GET.get('next')
+    if next_url == 'create_day_recipe':
+        return redirect('vizit:create_day_recipe')
+    if next_url == 'day_recipe_stats':
+        return redirect('vizit:day_recipe_stats')
+    if doctor_id:
+        return redirect('vizit:doctor_detail', doctor_id=doctor_id)
+    return redirect('vizit:day_recipe_stats')
+
+
+def del_day_recipe_record(request, id):
+    """Bütün günlük resept qeydini silir."""
+    recipe = get_object_or_404(DayRecipe, id=id)
+    recipe.delete()
+    messages.success(request, "Günlük qeydiyyat silindi.")
+
+    params = request.GET.copy()
+    params.pop('next', None)
+    url = reverse('vizit:day_recipe_stats')
+    if params:
+        url = f"{url}?{params.urlencode()}"
+    return redirect(url)
+
+
 def export_to_excel(request):
     # 1. Filtrləri qəbul edirik
     bolge_id = request.GET.get('bolge_id')

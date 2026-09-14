@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'depo_sales/css/report.css' %}">
+
+<div class="depo-hub">
+  <header class="depo-hub__header">
+    <div class="depo-hub__title-block">
+      <p class="depo-hub__eyebrow">1C import</p>
+      <h1 class="depo-hub__title">Depo Satışları</h1>
+      <p class="depo-hub__subtitle">
+        Pivot Excel faylını yükləyin — dərman × şəhər matrisi avtomatik qurulur.
+      </p>
+    </div>
+    <div class="depo-hub__stat">
+      <span class="depo-hub__stat-value">{{ reports|length }}</span>
+      <span class="depo-hub__stat-label">son hesabat</span>
+    </div>
+  </header>
+
+  <div class="depo-hub__grid">
+    <section class="depo-panel depo-panel--form">
+      <div class="depo-panel__head">
+        <div class="depo-panel__icon" aria-hidden="true">
+          <i class="bi bi-cloud-upload"></i>
+        </div>
+        <div>
+          <h2 class="depo-panel__title">Yeni hesabat yüklə</h2>
+          <p class="depo-panel__desc">Depo və tarixi seçin, sonra .xlsx faylı əlavə edin.</p>
+        </div>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" class="depo-form">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <div class="depo-form__row">
+          <div class="depo-field">
+            <label for="{{ form.depo.id_for_label }}">Depo <span class="req">*</span></label>
+            {{ form.depo }}
+            {{ form.depo.errors }}
+          </div>
+          <div class="depo-field">
+            <label for="{{ form.report_date.id_for_label }}">Tarix <span class="req">*</span></label>
+            {{ form.report_date }}
+            {{ form.report_date.errors }}
+          </div>
+        </div>
+
+        <div class="depo-field">
+          <label for="{{ form.file.id_for_label }}">Excel faylı <span class="req">*</span></label>
+          <div class="depo-file">
+            {{ form.file }}
+          </div>
+          {{ form.file.errors }}
+          <p class="depo-field__hint">Yalnız .xlsx / .xlsm — 1C «Продажи» pivot formatı</p>
+        </div>
+
+        <div class="depo-form__actions">
+          <button type="submit" class="depo-btn depo-btn--primary">
+            <i class="bi bi-upload"></i>
+            Yüklə və hesabla
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="depo-panel depo-panel--list">
+      <div class="depo-panel__head">
+        <div class="depo-panel__icon depo-panel__icon--muted" aria-hidden="true">
+          <i class="bi bi-clock-history"></i>
+        </div>
+        <div>
+          <h2 class="depo-panel__title">Son yükləmələr</h2>
+          <p class="depo-panel__desc">Son 20 hesabat — açmaq üçün klikləyin.</p>
+        </div>
+      </div>
+
+      {% if reports %}
+        <ul class="depo-reports">
+          {% for r in reports %}
+            <li>
+              <a href="{% url 'depo_sales:report_detail' r.id %}" class="depo-report-item">
+                <span class="depo-report-item__main">
+                  <span class="depo-report-item__name">{{ r.depo.name }}</span>
+                  <span class="depo-report-item__meta">
+                    <i class="bi bi-calendar3"></i>
+                    {{ r.report_date|date:"d.m.Y" }}
+                  </span>
+                </span>
+                <span class="depo-report-item__arrow" aria-hidden="true">
+                  <i class="bi bi-chevron-right"></i>
+                </span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="depo-empty">
+          <i class="bi bi-inbox"></i>
+          <p>Hələ heç bir hesabat yüklənməyib.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

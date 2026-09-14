@@ -1,0 +1,152 @@
+{% extends 'vizit/base.html' %}
+
+{% block title %}{% if is_edit %}Qrafiq redaktə{% else %}Yeni qrafiq{% endif %} — Solvey Pharma{% endblock %}
+{% block page_title %}{% if is_edit %}Qrafiq redaktə{% else %}Yeni həftəlik qrafiq{% endif %}{% endblock %}
+
+{% block content %}
+<div class="wq-page">
+  <div class="wq-header">
+    <div>
+      <h1 class="wq-title"><i class="fa-solid fa-calendar-plus"></i> {% if is_edit %}Qrafiqi redaktə et{% else %}Yeni həftəlik qrafiq{% endif %}</h1>
+     
+    </div>
+    <a href="{% url 'vizit:weekly_schedule_list' %}" class="btn btn-outline"><i class="fa-solid fa-arrow-left"></i> Siyahı</a>
+  </div>
+
+  <form method="post" class="wq-form">
+    {% csrf_token %}
+
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-calendar-day"></i> Həftə və imzalar</div>
+      <div class="wq-meta-grid">
+        <div>
+          <label>Həftə tarixi</label>
+          <input type="date" name="week_start" class="form-control" value="{{ week_start }}" required>
+        </div>
+        <div>
+          <label>Menecer <span class="wq-hint">(ixtiyari)</span></label>
+          <input type="text" name="menecer_name" class="form-control" value="{{ menecer_name }}" placeholder="Boş buraxıla bilər">
+        </div>
+        <div>
+          <label>İdarə heyətinin sədri <span class="wq-hint">(ixtiyari)</span></label>
+          <input type="text" name="sedr_name" class="form-control" value="{{ sedr_name }}" placeholder="Boş buraxıla bilər">
+        </div>
+        <div>
+          <label>Qeyd (ixtiyari)</label>
+          <input type="text" name="note" class="form-control" value="{{ note }}" placeholder="Əlavə qeyd">
+        </div>
+      </div>
+    </div>
+
+    <div class="wq-days">
+      {% for d in days %}
+      <div class="wq-day-card card">
+        <div class="wq-day-head">{{ d.label }}</div>
+        <div class="wq-day-body">
+          <div>
+            <label>Bölgə</label>
+            <select name="region_{{ d.weekday }}" class="form-control">
+              <option value="">Seçin...</option>
+              {% for r in regions %}
+              <option value="{{ r.id }}" {% if d.region_id|stringformat:"s" == r.id|stringformat:"s" %}selected{% endif %}>
+                {{ r.region_name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>Qrafik</label>
+            <input type="text" name="qrafik_{{ d.weekday }}" class="form-control"
+                   value="{{ d.qrafik }}">
+          </div>
+          <div>
+            <label>Vizit yerləri <span class="wq-hint">(hər sətir = 1 yer)</span></label>
+            <textarea name="visits_{{ d.weekday }}" class="form-control wq-visits" rows="6"
+                      >{{ d.visit_lines }}</textarea>
+          </div>
+          <div>
+            <label>T/N <span class="wq-hint">(ixtiyari)</span></label>
+            <input type="text" name="tn_{{ d.weekday }}" class="form-control" value="{{ d.tn }}" placeholder="Boş buraxıla bilər">
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="wq-submit-row">
+      <button type="submit" class="btn btn-success btn-lg"><i class="fa-solid fa-save"></i> Yadda saxla</button>
+      <a href="{% url 'vizit:weekly_schedule_list' %}" class="btn btn-outline">Ləğv et</a>
+    </div>
+  </form>
+</div>
+
+<style>
+.wq-page { max-width: 1200px; margin: 0 auto; }
+.wq-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 14px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.wq-title {
+  margin: 0; font-size: 1.3rem; color: var(--primary);
+  display: flex; gap: 10px; align-items: center;
+}
+.wq-subtitle { margin: 6px 0 0; color: var(--text-muted); font-size: .9rem; }
+.wq-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.wq-days {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.wq-day-card {
+  margin-bottom: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.wq-day-head {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: .85rem;
+  text-align: center;
+  padding: 10px 8px;
+}
+.wq-day-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wq-visits {
+  min-height: 120px;
+  resize: vertical;
+  font-size: .85rem;
+  line-height: 1.4;
+}
+.wq-hint {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #94a3b8;
+  font-size: .7rem;
+}
+.wq-submit-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 30px;
+}
+@media (max-width: 1100px) {
+  .wq-days { grid-template-columns: repeat(3, 1fr); }
+  .wq-meta-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 700px) {
+  .wq-days { grid-template-columns: 1fr; }
+  .wq-meta-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

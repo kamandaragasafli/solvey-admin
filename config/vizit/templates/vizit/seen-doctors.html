@@ -1,0 +1,629 @@
+{% extends 'vizit/base.html' %}
+
+{% block title %}Görülən Həkimlər — Solvey Pharma{% endblock %}
+{% block page_title %}Görülən Həkimlər{% endblock %}
+
+{% block content %}
+<div class="sd-page">
+  <div class="sd-header">
+    <h1 class="sd-title"><i class="fa-solid fa-stethoscope"></i> Görülən Həkimlər</h1>
+    <p class="sd-subtitle">Bölgə seçin, axtarın, həkimə basıb <strong>Gördüm</strong> edin — {{ today|date:"d.m.Y" }}</p>
+  </div>
+
+  <div class="sd-toolbar">
+    {% csrf_token %}
+    <form method="get" class="sd-bolge-form" id="sd-bolge-form">
+      <label for="bolge_id">Bölgə</label>
+      <select name="bolge_id" id="bolge_id" class="sd-input" onchange="this.form.submit()">
+        <option value="">Seçin...</option>
+        {% for b in bolgeler %}
+        <option value="{{ b.id }}" {% if selected_bolge_id|stringformat:"s" == b.id|stringformat:"s" %}selected{% endif %}>
+          {{ b.region_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </form>
+    <div class="sd-search-box">
+      <label for="sd-search">Axtarış</label>
+      <div class="sd-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="sd-search" class="sd-input"
+               placeholder="Həkim adı yazın..." autocomplete="off"
+               {% if not selected_bolge %}disabled{% endif %}>
+      </div>
+    </div>
+  </div>
+
+  {% if selected_bolge %}
+  <div class="sd-stats">
+    <div class="sd-stat">
+      <i class="fa-solid fa-circle-check"></i>
+      Görülən: <strong id="sd-seen-count">{{ seen_count }}</strong>
+    </div>
+    <div class="sd-stat">
+      <i class="fa-solid fa-list"></i>
+      Siyahıda: <strong id="sd-visible-count">{{ total_count }}</strong>
+      <span class="sd-stat-muted">/ <span id="sd-total-count">{{ total_count }}</span></span>
+    </div>
+  </div>
+
+  {% if doctors %}
+  <div class="sd-list" id="sd-list"
+       data-bolge="{{ selected_bolge_id }}"
+       data-toggle-url="{% url 'vizit:seen_doctors_toggle' %}">
+    {% for d in doctors %}
+    <button type="button"
+            class="sd-card{% if d.seen %} is-seen{% endif %}"
+            data-hekim-id="{{ d.id }}"
+            aria-pressed="{{ d.seen|yesno:'true,false' }}">
+      <div class="sd-avatar" aria-hidden="true">{{ d.ad|slice:":1"|upper }}</div>
+      <div class="sd-card-main">
+        <div class="sd-card-name">{{ d.ad }}</div>
+        <div class="sd-card-meta">
+          {% if d.ixtisas %}<span class="sd-chip">{{ d.ixtisas }}</span>{% endif %}
+          {% if d.klinika %}<span class="sd-chip">{{ d.klinika }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="sd-card-badge">
+        <span class="sd-seen-label">{% if d.seen %}Gördüm{% else %}Görməmişəm{% endif %}</span>
+        <span class="sd-dot"><i class="fa-solid {% if d.seen %}fa-check{% else %}fa-plus{% endif %}"></i></span>
+      </div>
+    </button>
+    {% endfor %}
+  </div>
+  <p class="sd-no-match" id="sd-no-match" hidden>Axtarışa uyğun həkim tapılmadı.</p>
+  {% else %}
+  <div class="sd-empty">Bu bölgədə aktiv həkim yoxdur.</div>
+  {% endif %}
+  {% else %}
+  <div class="sd-empty">
+    <i class="fa-solid fa-map-location-dot"></i>
+    <p>Başlamaq üçün bölgə seçin.</p>
+  </div>
+  {% endif %}
+
+  <section class="sd-seen-panel">
+    <div class="sd-seen-head">
+      <h2><i class="fa-solid fa-list-check"></i> {{ user_ad }} Görülən həkimlər</h2>
+      <div class="sd-seen-actions">
+        <span class="sd-seen-total">Bugün: <strong id="sd-seen-total">{{ seen_total }}</strong></span>
+        <button type="button" class="sd-share-btn" id="sd-share-btn">
+          <i class="fa-solid fa-share-nodes"></i> Paylaş
+        </button>
+        <a href="{% url 'vizit:seen_doctors_pdf' %}" class="sd-pdf-btn" target="_blank">
+          <i class="fa-solid fa-file-pdf"></i> PDF
+        </a>
+      </div>
+    </div>
+    <div class="sd-table-wrap">
+      <table class="sd-table" id="sd-seen-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Həkim</th>
+            <th>İxtisas</th>
+            <th>Klinika</th>
+            <th>Bölgə</th>
+            <th>Vaxt</th>
+          </tr>
+        </thead>
+        <tbody id="sd-seen-tbody">
+          {% for r in seen_rows %}
+          <tr data-hekim-id="{{ r.id }}">
+            <td data-label="#">{{ forloop.counter }}</td>
+            <td data-label="Həkim"><strong>{{ r.ad }}</strong></td>
+            <td data-label="İxtisas">{{ r.ixtisas|default:"—" }}</td>
+            <td data-label="Klinika">{{ r.klinika|default:"—" }}</td>
+            <td data-label="Bölgə">{{ r.bolge|default:"—" }}</td>
+            <td data-label="Vaxt">{{ r.vaxt|date:"H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr class="sd-empty-row" id="sd-empty-row">
+            <td colspan="6">Hələ görülən həkim yoxdur — yuxarıdan seçib basın.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div class="sd-share-sheet" id="sd-share-sheet" hidden>
+  <div class="sd-share-card">
+    <div class="sd-share-head">
+      <strong>PDF paylaş</strong>
+      <button type="button" class="sd-share-close" id="sd-share-close" aria-label="Bağla">&times;</button>
+    </div>
+    <p class="sd-share-hint">Telefondan birbaşa WhatsApp və digər tətbiqlərə göndərin.</p>
+    <div class="sd-share-btns">
+      <button type="button" class="sd-share-action" id="sd-share-native" style="background:#1a5276;">
+        <i class="fa-solid fa-share-nodes"></i> Birbaşa paylaş (PDF)
+      </button>
+      <a class="sd-share-action" id="sd-share-wa" style="background:#25D366;" target="_blank" rel="noopener">
+        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+      </a>
+      <a class="sd-share-action" id="sd-share-tg" style="background:#2AABEE;" target="_blank" rel="noopener">
+        <i class="fa-brands fa-telegram"></i> Telegram
+      </a>
+      <button type="button" class="sd-share-action sd-share-copy" id="sd-share-copy">
+        <i class="fa-solid fa-link"></i> Linki kopyala
+      </button>
+    </div>
+    <p class="sd-share-status" id="sd-share-status"></p>
+  </div>
+</div>
+
+<style>
+.sd-page { max-width: 860px; margin: 0 auto; padding-bottom: 24px; }
+.sd-header { margin-bottom: 14px; }
+.sd-title {
+  margin: 0; font-size: 1.45rem; color: #1a5276; font-weight: 800;
+  display: flex; gap: 10px; align-items: center; letter-spacing: -.02em;
+}
+.sd-title i { color: #2980b9; }
+.sd-subtitle { margin: 6px 0 0; color: #7f8c8d; font-size: .9rem; line-height: 1.4; }
+
+.sd-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #dce6f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 12px rgba(26,82,118,.08);
+  margin-bottom: 14px;
+}
+.sd-toolbar label {
+  display: block; margin-bottom: 6px;
+  font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: #64748b;
+}
+.sd-input {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #d0dbe8;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: .95rem;
+  background: #f8fafc;
+  color: #1c2833;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.sd-input:focus {
+  border-color: #2980b9;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(41,128,185,.15);
+}
+.sd-input:disabled { opacity: .55; cursor: not-allowed; }
+.sd-search-wrap { position: relative; }
+.sd-search-wrap i {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  color: #94a3b8; font-size: .9rem; pointer-events: none;
+}
+.sd-search-wrap .sd-input { padding-left: 38px; }
+
+.sd-stats {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.sd-stat {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #fff; border: 1px solid #dce6f0; border-radius: 999px;
+  padding: 7px 14px; font-size: .86rem; color: #475569;
+}
+.sd-stat i { color: #27ae60; }
+.sd-stat strong { color: #1a5276; }
+.sd-stat-muted { color: #94a3b8; }
+
+.sd-list { display: grid; gap: 8px; margin-bottom: 8px; }
+.sd-card {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left;
+  padding: 12px 14px;
+  border: 1px solid #dce6f0;
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, box-shadow .15s, transform .1s;
+  box-shadow: 0 1px 4px rgba(26,82,118,.05);
+}
+.sd-card:hover { border-color: #a8c4db; box-shadow: 0 4px 14px rgba(26,82,118,.1); }
+.sd-card:active { transform: scale(.995); }
+.sd-card.is-seen {
+  background: linear-gradient(90deg, #eafaf1 0%, #fff 55%);
+  border-color: #27ae60;
+}
+.sd-card.sd-hide { display: none !important; }
+.sd-avatar {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: #e8f1f8; color: #1a5276; font-weight: 800; font-size: .95rem;
+}
+.sd-card.is-seen .sd-avatar { background: #d5f5e3; color: #1e8449; }
+.sd-card-main { flex: 1; min-width: 0; }
+.sd-card-name {
+  font-weight: 700; color: #1c2833; font-size: .98rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sd-card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.sd-chip {
+  font-size: .72rem; color: #64748b; background: #f1f5f9;
+  border-radius: 6px; padding: 2px 8px;
+}
+.sd-card-badge {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  font-weight: 700; font-size: .8rem; color: #94a3b8;
+}
+.sd-card.is-seen .sd-card-badge { color: #1e8449; }
+.sd-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 2px solid #cbd5e1; color: #94a3b8; font-size: .75rem;
+}
+.sd-card.is-seen .sd-dot {
+  background: #27ae60; border-color: #27ae60; color: #fff;
+}
+.sd-no-match, .sd-empty {
+  text-align: center; color: #94a3b8; padding: 28px 12px;
+  background: #fff; border: 1px dashed #d0dbe8; border-radius: 14px;
+  margin-bottom: 14px;
+}
+.sd-empty i { font-size: 1.6rem; display: block; margin-bottom: 8px; opacity: .7; }
+
+.sd-seen-panel {
+  margin-top: 16px;
+  background: #fff;
+  border: 1px solid #dce6f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 12px rgba(26,82,118,.08);
+}
+.sd-seen-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.sd-seen-head h2 {
+  margin: 0; font-size: 1.02rem; color: #1a5276;
+  display: flex; gap: 8px; align-items: center;
+}
+.sd-seen-total { color: #7f8c8d; font-size: .88rem; }
+.sd-seen-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sd-share-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #25D366; color: #fff; border: 0; cursor: pointer;
+  font-weight: 700; font-size: .82rem; padding: 8px 14px;
+  border-radius: 8px;
+}
+.sd-pdf-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #c0392b; color: #fff !important; text-decoration: none;
+  font-weight: 700; font-size: .82rem; padding: 8px 14px;
+  border-radius: 8px; transition: background .15s;
+}
+.sd-pdf-btn:hover { background: #a93226; color: #fff; }
+.sd-share-sheet {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(15, 23, 42, .45);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px;
+}
+.sd-share-sheet[hidden] { display: none !important; }
+.sd-share-card {
+  width: min(420px, 100%);
+  background: #fff;
+  border-radius: 16px 16px 12px 12px;
+  padding: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.2);
+}
+.sd-share-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; font-size: 1.05rem; color: #1a5276;
+}
+.sd-share-close {
+  border: 0; background: transparent; font-size: 1.6rem; line-height: 1;
+  cursor: pointer; color: #64748b;
+}
+.sd-share-hint { margin: 0 0 14px; color: #64748b; font-size: .88rem; }
+.sd-share-btns { display: grid; gap: 8px; }
+.sd-share-action {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 12px; border: 0; border-radius: 10px;
+  color: #fff !important; font-weight: 700; font-size: .92rem;
+  text-decoration: none; cursor: pointer;
+}
+.sd-share-copy { background: #f1f5f9 !important; color: #1a5276 !important; border: 1px solid #dce6f0 !important; }
+.sd-share-status { min-height: 1.2em; margin: 10px 0 0; font-size: .85rem; color: #1a5276; }
+.sd-table-wrap { overflow-x: auto; }
+.sd-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.sd-table th {
+  text-align: left; padding: 10px 8px; color: #64748b;
+  border-bottom: 1px solid #e2e8f0; font-size: .72rem;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.sd-table td {
+  padding: 11px 8px; border-bottom: 1px solid #f1f5f9; color: #334155;
+  vertical-align: middle;
+}
+.sd-empty-row td { text-align: center; color: #94a3b8; padding: 20px !important; }
+
+@media (max-width: 700px) {
+  .sd-toolbar { grid-template-columns: 1fr; }
+  .sd-card-badge .sd-seen-label { display: none; }
+  .sd-table thead { display: none; }
+  .sd-table tr[data-hekim-id] {
+    display: block; border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 10px; margin-bottom: 8px;
+  }
+  .sd-table td {
+    display: flex; justify-content: space-between; gap: 10px;
+    border: 0; padding: 4px 0;
+  }
+  .sd-table td::before {
+    content: attr(data-label); color: #94a3b8; font-weight: 600;
+  }
+}
+</style>
+
+{{ share_url|json_script:"sd-share-url" }}
+{{ pdf_filename|json_script:"sd-pdf-filename" }}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var search = document.getElementById("sd-search");
+  var list = document.getElementById("sd-list");
+  var noMatch = document.getElementById("sd-no-match");
+  var visibleCount = document.getElementById("sd-visible-count");
+  var totalCountEl = document.getElementById("sd-total-count");
+  var seenCountEl = document.getElementById("sd-seen-count");
+  var seenTotalEl = document.getElementById("sd-seen-total");
+  var tbody = document.getElementById("sd-seen-tbody");
+  var csrfInput = document.querySelector("[name=csrfmiddlewaretoken]");
+  var cards = list ? list.querySelectorAll(".sd-card") : [];
+
+  if (totalCountEl) totalCountEl.textContent = String(cards.length);
+
+  function norm(s) {
+    return String(s || "")
+      .replace(/İ/g, "i").replace(/I/g, "i")
+      .replace(/Ə/g, "e").replace(/ə/g, "e")
+      .replace(/Ö/g, "o").replace(/ö/g, "o")
+      .replace(/Ü/g, "u").replace(/ü/g, "u")
+      .replace(/Ş/g, "s").replace(/ş/g, "s")
+      .replace(/Ç/g, "c").replace(/ç/g, "c")
+      .replace(/Ğ/g, "g").replace(/ğ/g, "g")
+      .toLowerCase()
+      .trim();
+  }
+
+  function filterCards() {
+    if (!cards.length) return;
+    var q = norm(search ? search.value : "");
+    var shown = 0;
+    for (var i = 0; i < cards.length; i++) {
+      var btn = cards[i];
+      var nameEl = btn.querySelector(".sd-card-name");
+      var name = norm(nameEl ? nameEl.textContent : "");
+      var ok = !q || name.indexOf(q) !== -1;
+      if (ok) {
+        btn.classList.remove("sd-hide");
+        shown++;
+      } else {
+        btn.classList.add("sd-hide");
+      }
+    }
+    if (visibleCount) visibleCount.textContent = String(shown);
+    if (noMatch) {
+      if (shown === 0 && q) noMatch.removeAttribute("hidden");
+      else noMatch.setAttribute("hidden", "hidden");
+    }
+  }
+
+  if (search) {
+    search.oninput = filterCards;
+    search.onkeyup = filterCards;
+    search.onkeydown = function (e) {
+      if (e.key === "Enter" || e.keyCode === 13) {
+        e.preventDefault();
+        return false;
+      }
+    };
+  }
+
+  function csrfToken() {
+    if (csrfInput && csrfInput.value) return csrfInput.value;
+    var m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
+    return m ? decodeURIComponent(m[1]) : "";
+  }
+
+  function renumberSeenTable() {
+    if (!tbody) return;
+    var rows = tbody.querySelectorAll("tr[data-hekim-id]");
+    for (var i = 0; i < rows.length; i++) {
+      var cell = rows[i].querySelector("td");
+      if (cell) cell.textContent = String(i + 1);
+    }
+    if (seenTotalEl) seenTotalEl.textContent = String(rows.length);
+  }
+
+  function removeEmptyRow() {
+    var empty = document.getElementById("sd-empty-row");
+    if (empty) empty.remove();
+  }
+
+  function ensureEmptyRow() {
+    if (!tbody) return;
+    if (tbody.querySelector("tr[data-hekim-id]")) return;
+    if (document.getElementById("sd-empty-row")) return;
+    var tr = document.createElement("tr");
+    tr.className = "sd-empty-row";
+    tr.id = "sd-empty-row";
+    tr.innerHTML = '<td colspan="6">Hələ görülən həkim yoxdur — yuxarıdan seçib basın.</td>';
+    tbody.appendChild(tr);
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function addSeenRow(doc) {
+    if (!tbody) return;
+    removeEmptyRow();
+    var existing = tbody.querySelector('tr[data-hekim-id="' + doc.id + '"]');
+    if (existing) existing.remove();
+    var tr = document.createElement("tr");
+    tr.setAttribute("data-hekim-id", String(doc.id));
+    tr.innerHTML =
+      '<td data-label="#">1</td>' +
+      '<td data-label="Həkim"><strong>' + escapeHtml(doc.ad || "") + "</strong></td>" +
+      '<td data-label="İxtisas">' + escapeHtml(doc.ixtisas || "—") + "</td>" +
+      '<td data-label="Klinika">' + escapeHtml(doc.klinika || "—") + "</td>" +
+      '<td data-label="Bölgə">' + escapeHtml(doc.bolge || "—") + "</td>" +
+      '<td data-label="Vaxt">' + escapeHtml(doc.vaxt || "") + "</td>";
+    tbody.insertBefore(tr, tbody.firstChild);
+    renumberSeenTable();
+  }
+
+  function removeSeenRow(hekimId) {
+    if (!tbody) return;
+    var tr = tbody.querySelector('tr[data-hekim-id="' + hekimId + '"]');
+    if (tr) tr.remove();
+    renumberSeenTable();
+    ensureEmptyRow();
+  }
+
+  if (list) {
+    var bolgeId = list.getAttribute("data-bolge");
+    var toggleUrl = list.getAttribute("data-toggle-url");
+    list.addEventListener("click", function (e) {
+      var btn = e.target.closest(".sd-card");
+      if (!btn || btn.disabled) return;
+      btn.disabled = true;
+      var body = new URLSearchParams();
+      body.set("hekim_id", btn.getAttribute("data-hekim-id"));
+      body.set("bolge_id", bolgeId);
+      body.set("csrfmiddlewaretoken", csrfToken());
+      fetch(toggleUrl, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken(),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+        credentials: "same-origin",
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data.ok) throw new Error(data.error || "Xəta");
+          var label = btn.querySelector(".sd-seen-label");
+          var icon = btn.querySelector(".sd-dot i");
+          if (data.seen) {
+            btn.classList.add("is-seen");
+            if (label) label.textContent = "Gördüm";
+            if (icon) icon.className = "fa-solid fa-check";
+            if (seenCountEl) seenCountEl.textContent = String(Number(seenCountEl.textContent || 0) + 1);
+            if (data.doctor) addSeenRow(data.doctor);
+          } else {
+            btn.classList.remove("is-seen");
+            if (label) label.textContent = "Görməmişəm";
+            if (icon) icon.className = "fa-solid fa-plus";
+            if (seenCountEl) seenCountEl.textContent = String(Math.max(0, Number(seenCountEl.textContent || 0) - 1));
+            removeSeenRow(btn.getAttribute("data-hekim-id"));
+          }
+        })
+        .catch(function (err) {
+          alert((err && err.message) || "Saxlanılmadı");
+        })
+        .finally(function () {
+          btn.disabled = false;
+        });
+    });
+  }
+
+  // —— PDF Paylaş ——
+  var shareUrlEl = document.getElementById("sd-share-url");
+  var pdfNameEl = document.getElementById("sd-pdf-filename");
+  var shareUrl = shareUrlEl ? JSON.parse(shareUrlEl.textContent) : "";
+  var filename = pdfNameEl ? JSON.parse(pdfNameEl.textContent) : "Gorulen hekimler.pdf";
+  var pdfUrl = "{% url 'vizit:seen_doctors_pdf' %}?download=1";
+  var title = "{{ user_ad|escapejs }} Görülən həkimlər — {{ today|date:'d.m.Y' }}";
+  var text = title + "\n" + shareUrl;
+
+  var sheet = document.getElementById("sd-share-sheet");
+  var statusEl = document.getElementById("sd-share-status");
+  var openBtn = document.getElementById("sd-share-btn");
+  var closeBtn = document.getElementById("sd-share-close");
+  var nativeBtn = document.getElementById("sd-share-native");
+  var copyBtn = document.getElementById("sd-share-copy");
+  var wa = document.getElementById("sd-share-wa");
+  var tg = document.getElementById("sd-share-tg");
+
+  if (wa) wa.href = "https://wa.me/?text=" + encodeURIComponent(text);
+  if (tg) tg.href = "https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(title);
+
+  function setStatus(msg) { if (statusEl) statusEl.textContent = msg || ""; }
+  function openSheet() { if (sheet) { sheet.hidden = false; setStatus(""); } }
+  function closeSheet() { if (sheet) sheet.hidden = true; }
+
+  async function shareNative() {
+    var res = await fetch(pdfUrl, { credentials: "same-origin" });
+    if (!res.ok) throw new Error("PDF yüklənmədi");
+    var blob = await res.blob();
+    var file = new File([blob], filename, { type: "application/pdf" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: title, text: title });
+      return true;
+    }
+    if (navigator.share) {
+      await navigator.share({ title: title, text: title, url: shareUrl });
+      return true;
+    }
+    return false;
+  }
+
+  if (openBtn) {
+    openBtn.addEventListener("click", async function () {
+      try {
+        var ok = await shareNative();
+        if (!ok) openSheet();
+      } catch (e) {
+        if (e && e.name === "AbortError") return;
+        openSheet();
+      }
+    });
+  }
+  if (closeBtn) closeBtn.addEventListener("click", closeSheet);
+  if (sheet) {
+    sheet.addEventListener("click", function (e) {
+      if (e.target === sheet) closeSheet();
+    });
+  }
+  if (nativeBtn) {
+    nativeBtn.addEventListener("click", async function () {
+      setStatus("PDF hazırlanır...");
+      try {
+        var ok = await shareNative();
+        setStatus(ok ? "Paylaşıldı." : "Bu brauzer birbaşa paylaşımı dəstəkləmir — WhatsApp və ya linkdən istifadə edin.");
+      } catch (e) {
+        if (e && e.name === "AbortError") { setStatus(""); return; }
+        setStatus("Paylaşım alınmadı. WhatsApp və ya linkdən istifadə edin.");
+      }
+    });
+  }
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async function () {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setStatus("Link kopyalandı — istədiyiniz yerə yapışdırın.");
+      } catch (e) {
+        setStatus(shareUrl);
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

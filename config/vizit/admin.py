@@ -1,5 +1,15 @@
 from django.contrib import admin
-from .models import Istifadeci, Vizit, VizitPreparat, AptekVizit, AptekVizitPreparat
+from .models import (
+    Istifadeci,
+    Vizit,
+    VizitPreparat,
+    AptekVizit,
+    AptekVizitPreparat,
+    WeeklySchedule,
+    WeeklyScheduleDay,
+    WeeklyScheduleVisit,
+    GorulenHekim,
+)
 
 # Register your models here.
 class IstifadeciAdmin(admin.ModelAdmin):
@@ -14,6 +24,31 @@ admin.site.register(Vizit)
 admin.site.register(VizitPreparat)
 admin.site.register(AptekVizit)
 admin.site.register(AptekVizitPreparat)
+
+
+class WeeklyScheduleDayInline(admin.TabularInline):
+    model = WeeklyScheduleDay
+    extra = 0
+
+
+@admin.register(WeeklySchedule)
+class WeeklyScheduleAdmin(admin.ModelAdmin):
+    list_display = ("week_start", "created_by", "menecer_name", "created_at")
+    list_filter = ("week_start",)
+    inlines = [WeeklyScheduleDayInline]
+
+
+@admin.register(WeeklyScheduleVisit)
+class WeeklyScheduleVisitAdmin(admin.ModelAdmin):
+    list_display = ("place_name", "day", "position")
+    search_fields = ("place_name",)
+
+
+@admin.register(GorulenHekim)
+class GorulenHekimAdmin(admin.ModelAdmin):
+    list_display = ("hekim", "bolge", "istifadeci", "seen_date", "seen_at")
+    list_filter = ("seen_date", "bolge")
+    search_fields = ("hekim__ad", "istifadeci__ad")
 
 
 

@@ -46,10 +46,17 @@ def rehber_required(view_func):
 
 
 def vizit_session_yaz(request, istifadeci):
+    """Giriş sessiyasını yazır — brauzer bağlansa belə qalır (çıxışa qədər)."""
     for key, value in istifadeci.session_dict().items():
         request.session[key] = value
+    # 1 il və ya global SESSION_COOKIE_AGE; brauzer bağlananda silinməsin
+    request.session.set_expiry(60 * 60 * 24 * 365)
+    request.session.modified = True
+    request.session.save()
 
 
 def vizit_session_temizle(request):
-    for key in ('istifadeci_id', 'ad', 'rol', 'bolge_id'):
+    """Yalnız çıxış düyməsində çağırılır."""
+    for key in ('istifadeci_id', 'ad', 'rol', 'bolge_id', 'bolge_ids', 'qrup'):
         request.session.pop(key, None)
+    request.session.modified = True
