@@ -527,7 +527,7 @@ def evvele_qaliq(request):
                 drug_name = movement.drug.med_name
                 movement.delete()
                 messages.success(request, f'Qalıq düzəlişi silindi: {drug_name}.')
-    else:
+            else:
                 messages.error(request, 'Silinəcək qeyd tapılmadı.')
             return redirect(f"{reverse('aptek:evvele_qaliq')}?month={selected_month}")
 
