@@ -527,7 +527,7 @@ def evvele_qaliq(request):
                 drug_name = movement.drug.med_name
                 movement.delete()
                 messages.success(request, f'Qalıq düzəlişi silindi: {drug_name}.')
-            else:
+    else:
                 messages.error(request, 'Silinəcək qeyd tapılmadı.')
             return redirect(f"{reverse('aptek:evvele_qaliq')}?month={selected_month}")
 
@@ -1447,7 +1447,7 @@ def aptek_list(request):
                 messages.error(request, str(exc))
             except Exception:
                 messages.error(request, 'PDF emal edilərkən xəta baş verdi.')
-            return redirect('aptek:anbar_dashboard')
+        return redirect('aptek:anbar_dashboard')
 
         if request.POST.get('manual_qaime') == '1':
             aptek_id = request.POST.get('manual_aptek') or ''

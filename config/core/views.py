@@ -669,9 +669,34 @@ def user_login(request):
             if hasattr(user, "is_active") and not user.is_active:
                 messages.error(request, "Bu hesab deaktiv edilib.")
                 return render(request, 'login.html')
+
+            # Vizit (İstifadeci) hesabları əsas admin panelə (/admin) gire bilməz
+            from vizit.models import Istifadeci
+            if (
+                not user.is_superuser
+                and Istifadeci.objects.filter(login__iexact=username, aktiv=True).exists()
+            ):
+                messages.error(
+                    request,
+                    "Bu hesab yalnız vizit paneli üçündür. /vizit/login/ ünvanından daxil olun.",
+                )
+                return render(request, 'login.html')
+
+            if not (user.is_staff or user.is_superuser):
+                messages.error(request, "Bu panelə giriş icazəniz yoxdur.")
+                return render(request, 'login.html')
+
             login(request, user)
-            return redirect('/admin')  # Superuser admin panelə
+            return redirect('/admin')
         else:
+            # Django User yoxdursa, amma vizit hesabıdırsa — düzgün yerə yönləndir
+            from vizit.models import Istifadeci
+            if Istifadeci.authenticate(username, password):
+                messages.info(
+                    request,
+                    "Bu hesab vizit paneli üçündür. Oradan daxil olun.",
+                )
+                return redirect('/vizit/login/')
             messages.error(request, "İstifadəçi adı və ya şifrə yanlışdır.")
             return render(request, 'login.html')
     

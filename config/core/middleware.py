@@ -1,6 +1,5 @@
-import os
-from pathlib import Path
 from django.conf import settings
+from django.contrib.auth import logout
 from django.shortcuts import redirect
 
 
@@ -33,5 +32,31 @@ class LoginRequiredMiddleware:
 
         if not request.user.is_authenticated and normalized_path not in self.EXEMPT_PATHS:
             return redirect('/login/')
+
+        # Əsas admin yalnız staff/superuser — vizit hesabları buraya gire bilməz
+        if (
+            request.user.is_authenticated
+            and normalized_path not in self.EXEMPT_PATHS
+            and not (request.user.is_staff or request.user.is_superuser)
+        ):
+            logout(request)
+            return redirect('/login/')
+
+        # Aktiv vizit (İstifadeci) login-i ilə eyni username → adminə icazə yoxdur
+        if (
+            request.user.is_authenticated
+            and not request.user.is_superuser
+            and normalized_path not in self.EXEMPT_PATHS
+        ):
+            try:
+                from vizit.models import Istifadeci
+                if Istifadeci.objects.filter(
+                    login__iexact=request.user.username,
+                    aktiv=True,
+                ).exists():
+                    logout(request)
+                    return redirect('/vizit/login/')
+            except Exception:
+                pass
 
         return self.get_response(request)
