@@ -30,6 +30,7 @@
     {% for p_ad in prep_sira %}
     <td>{{ p_ad }}</td>
     {% endfor %}
+    <td>Qeyd</td>
   </tr>
 
   {% if not vizitler %}
@@ -52,6 +53,7 @@
           <td></td>
         {% endif %}
       {% endfor %}
+      <td style="white-space:normal;max-width:220px;">{{ v.qeyd|default:"" }}</td>
     </tr>
     {% endfor %}
   {% endif %}

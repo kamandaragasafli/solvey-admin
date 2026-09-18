@@ -42,6 +42,14 @@ from .aptek_vizit_pdf import (
     aptek_vizit_pdf,
     aptek_vizit_shared_pdf,
 )
+from .vizit_day_pdf import (
+    vizit_day_pdf,
+    vizit_day_shared_pdf,
+)
+from .day_recipe_pdf import (
+    day_recipe_pdf,
+    day_recipe_shared_pdf,
+)
 
 app_name = 'vizit'
 
@@ -80,4 +88,8 @@ urlpatterns = [
     path('gorulen-hekimler/paylas/<path:token>/', seen_doctors_shared_pdf, name='seen_doctors_shared_pdf'),
     path('aptek-vizit/pdf/', aptek_vizit_pdf, name='aptek_vizit_pdf'),
     path('aptek-vizit/paylas/<path:token>/', aptek_vizit_shared_pdf, name='aptek_vizit_shared_pdf'),
+    path('pdf/', vizit_day_pdf, name='vizit_day_pdf'),
+    path('paylas/<path:token>/', vizit_day_shared_pdf, name='vizit_day_shared_pdf'),
+    path('gunluk-qeydiyyat/pdf/', day_recipe_pdf, name='day_recipe_pdf'),
+    path('gunluk-qeydiyyat/paylas/<path:token>/', day_recipe_shared_pdf, name='day_recipe_shared_pdf'),
 ]

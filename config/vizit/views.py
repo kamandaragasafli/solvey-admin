@@ -178,11 +178,12 @@ def _excel_export_rows(vizitler_qs):
     rows = []
     for vizit in vizitler_qs.order_by('tarix', 'vaxt'):
         rows.append({
-            'hekim': vizit.hekim.ad,
-            'ixtisas_kod': vizit.hekim.ixtisas,
-            'kateqoriya': vizit.hekim.kategoriya,
+            'hekim': vizit.hekim.ad if vizit.hekim_id else '',
+            'ixtisas_kod': vizit.hekim.ixtisas if vizit.hekim_id else '',
+            'kateqoriya': vizit.hekim.kategoriya if vizit.hekim_id else '',
             'rayon': vizit.rayon.get_city_name_display() if vizit.rayon else '',
             'munasibat': vizit.munasibat,
+            'qeyd': (vizit.qeyd or '').strip(),
             'preps_list': [vp.preparat.med_name for vp in vizit.preparatlar.all()],
         })
     return rows
@@ -381,7 +382,9 @@ def yeni_vizit_view(request):
     if request.method == 'POST' and 'vizit_bagla' in request.POST:
         hekim_id = request.POST.get('hekim_id')
         bolge_id = request.POST.get('bolge_id')
+        rayon_id = (request.POST.get('rayon_id') or '').strip()
         munasibat = request.POST.get('munasibat', '')
+        qeyd = (request.POST.get('qeyd') or '').strip()
         preparatlar = request.POST.getlist('preparatlar[]')
 
         # Seçimi sessiyada yadda saxlayırıq ki, növbəti dəfə avtomatik seçilsin
@@ -398,7 +401,9 @@ def yeni_vizit_view(request):
                     istifadeci_id=user_id,
                     hekim_id=int(hekim_id),
                     bolge_id=int(bolge_id),
+                    rayon_id=int(rayon_id) if rayon_id.isdigit() else None,
                     munasibat=munasibat,
+                    qeyd=qeyd or None,
                     tarix=bugun,
                     vaxt=timezone.localtime().time().replace(second=0, microsecond=0),
                 )
@@ -415,13 +420,20 @@ def yeni_vizit_view(request):
 
     # GET sorğusu və ya Səhifənin açılması
     # Vizitləri filtrələmək: Rəhbərlər hamını, digərləri yalnız özünü görsün
-    vizitler_query = Vizit.objects.filter(tarix=bugun)
+    vizitler_query = (
+        Vizit.objects.filter(tarix=bugun)
+        .select_related('hekim', 'rayon', 'istifadeci')
+        .prefetch_related('preparatlar__preparat')
+    )
     
     if user_rol not in [Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB]:
         vizitler_query = vizitler_query.filter(istifadeci_id=user_id)
 
     # Son seçilən bölgəni sessiyadan oxuyuruq
     selected_bolge_id = request.session.get('son_bolge_id')
+
+    from .vizit_day_pdf import vizit_day_share_context
+    share_ctx = vizit_day_share_context(request)
 
     return render(request, 'vizit/create-vizit.html', {
         'bolgeler': _bolgeler_for_user(user_rol, user_bolge_ids),
@@ -430,6 +442,7 @@ def yeni_vizit_view(request):
         'bugun_vizitler': vizitler_query.order_by('-id'),
         'user_rol': user_rol,
         'bugun_tarix': bugun,
+        **share_ctx,
     })
 
 
@@ -457,9 +470,11 @@ def _hekimler_list(request, bolge_id=None, rayon_id=None):
         {
             'id': d.id,
             'ad_soyad': d.ad,
-            'ixtisas_kod': d.ixtisas,
-            'kateqoriya': d.kategoriya,
-            'derece': d.derece,
+            'ixtisas_kod': d.ixtisas or '',
+            'ixtisas': d.ixtisas or '',
+            'kateqoriya': d.kategoriya or '',
+            'kategoriya': d.kategoriya or '',
+            'derece': d.derece or '',
         }
         for d in qs.order_by('ad')
     ]
@@ -569,8 +584,12 @@ def hesabat_view(request):
 @vizit_login_required
 def excel_export_view(request):
     f = _filtered_vizit_qs(request)
-    prep_sira = _excel_prep_sira()
     vizitler = _excel_export_rows(f['qs'])
+    # Yalnız hesabatda işarələnmiş (işlənilən) dərman sütunları
+    used_preps = set()
+    for row in vizitler:
+        used_preps.update(row['preps_list'])
+    prep_sira = [name for name in _excel_prep_sira() if name in used_preps]
 
     tarix_aralig = _format_tarix_aralig(f['filter_tarix_bas'], f['filter_tarix_son'])
     rol_basliq = ROL_BASLIQLARI.get(f['user_rol'], 'Vizit')
@@ -586,7 +605,7 @@ def excel_export_view(request):
             'tarix_aralig': tarix_aralig,
             'prep_sira': prep_sira,
             'vizitler': vizitler,
-            'colspan_count': 6 + len(prep_sira),
+            'colspan_count': 7 + len(prep_sira),
         },
     )
     response['Content-Type'] = 'application/vnd.ms-excel; charset=utf-8'
@@ -840,11 +859,27 @@ def yeni_aptek_vizit(request):
     # ✅ Bugünkü vizitləri filtrələ
     bugun_vizitler = AptekVizit.objects.filter(
         tarix=date.today()
-    ).select_related('rayon', 'bolge', 'user').prefetch_related('preparatlar').order_by('-id')
+    ).select_related('rayon', 'bolge', 'user').prefetch_related('preparatlar__preparat').order_by('-id')
 
     # ✅ Rəhbər deyilsə, yalnız öz vizitlərini görsün
     if user_rol not in [Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB]:
         bugun_vizitler = bugun_vizitler.filter(user_id=user_id)
+
+    bugun_list = []
+    for v in bugun_vizitler:
+        preps = list(v.preparatlar.all())
+
+        def _names(pred):
+            names = []
+            for p in preps:
+                if pred(p) and p.preparat_id:
+                    names.append(p.preparat.med_full_name or p.preparat.med_name)
+            return ", ".join(names) if names else "—"
+
+        v.display_sorusulan = _names(lambda p: p.sorusulub)
+        v.display_satilib = _names(lambda p: p.satilib)
+        v.display_yoxdur = _names(lambda p: not p.movcuddur)
+        bugun_list.append(v)
 
     from .aptek_vizit_pdf import aptek_vizit_share_context
     share_ctx = aptek_vizit_share_context(request)
@@ -852,17 +887,40 @@ def yeni_aptek_vizit(request):
     return render(request, 'vizit/aptek-vizit.html', {
         'bolgeler': bolgeler,
         'preparatlar': preparatlar,
-        'bugun_vizitler': bugun_vizitler,
+        'bugun_vizitler': bugun_list,
         'today': date.today(),
         'baki_bolge_ids': baki_bolge_ids,
         **share_ctx,
     })
+@vizit_login_required
 def create_day_recipe(request):
+    user_id = request.session.get('istifadeci_id')
     user_rol = request.session.get('rol')
     user_bolge_ids = request.session.get('bolge_ids', [])
     regions = _bolgeler_for_user(user_rol, user_bolge_ids)
     drugs = Medical.objects.filter(status=True).order_by('id')
-    last_recipes = DayRecipeDrug.objects.all().order_by("-created_at", "-id")[:5]
+    bugun = timezone.localdate()
+
+    last_qs = (
+        DayRecipeDrug.objects.select_related(
+            'recipe__dr', 'recipe__region', 'drug'
+        ).order_by('-created_at', '-id')
+    )
+    if user_rol not in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
+        last_qs = last_qs.filter(recipe__created_by_id=user_id)
+    last_recipes = last_qs[:5]
+
+    today_recipes = (
+        DayRecipe.objects.filter(date=bugun)
+        .select_related('dr', 'region')
+        .prefetch_related('drugs__drug')
+        .order_by('-created_at')
+    )
+    if user_rol not in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
+        today_recipes = today_recipes.filter(created_by_id=user_id)
+
+    from .day_recipe_pdf import day_recipe_share_context
+    share_ctx = day_recipe_share_context(request)
 
     selected_region = ""
     selected_doctor = ""
@@ -888,10 +946,14 @@ def create_day_recipe(request):
                 "regions": regions,
                 "doctors": doctors,
                 "drugs": drugs,
+                "last_recipes": last_recipes,
+                "today_recipes": today_recipes,
+                "today_count": today_recipes.count(),
                 "selected_region": selected_region,
                 "selected_doctor": selected_doctor,
                 "selected_doctor_name": _doctor_display_name(selected_doctor),
-                "selected_date": selected_date
+                "selected_date": selected_date,
+                **share_ctx,
             })
 
         # Həkimləri göstər
@@ -904,10 +966,14 @@ def create_day_recipe(request):
                 "regions": regions,
                 "doctors": doctors,
                 "drugs": drugs,
+                "last_recipes": last_recipes,
+                "today_recipes": today_recipes,
+                "today_count": today_recipes.count(),
                 "selected_region": selected_region,
                 "selected_doctor": selected_doctor,
                 "selected_doctor_name": _doctor_display_name(selected_doctor),
-                "selected_date": selected_date
+                "selected_date": selected_date,
+                **share_ctx,
             })
 
         # DayRecipe yarat
@@ -941,13 +1007,15 @@ def create_day_recipe(request):
         "regions": regions,
         "doctors": doctors,
         "last_recipes": last_recipes,
+        "today_recipes": today_recipes,
+        "today_count": today_recipes.count(),
         "drugs": drugs,
         "selected_region": selected_region,
         "selected_doctor": selected_doctor,
         "selected_doctor_name": _doctor_display_name(selected_doctor),
-        "selected_date": selected_date
+        "selected_date": selected_date,
+        **share_ctx,
     })
-
 
 def _doctor_display_name(pk):
     if pk is None or pk == "":
@@ -1014,6 +1082,7 @@ def _day_recipe_filtered_qs(request):
     }
 
 
+@rehber_required
 def day_recipe_stats(request):
     user_rol = request.session.get('rol')
     user_bolge_ids = request.session.get('bolge_ids', [])
@@ -1062,6 +1131,7 @@ def day_recipe_stats(request):
     return render(request, 'vizit/day-recipe-stats.html', context)
 
 
+@rehber_required
 def export_day_recipe_stats(request):
     recipes, filters = _day_recipe_filtered_qs(request)
 

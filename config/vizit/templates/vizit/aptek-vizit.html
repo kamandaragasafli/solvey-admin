@@ -480,9 +480,11 @@
                     <thead>
                         <tr>
                             <th>Aptek</th>
-                            <th>Aptek Nömrəsi</th>
-                            <th>Rayon</th>
-                            <th>Rəf Vəziyyəti</th>
+                            <th>Bölgə</th>
+                            <th>Soruşulan</th>
+                            <th>Satılıb</th>
+                            <th>Yoxdur</th>
+                            <th>Qeyd</th>
                             <th>Vaxt</th>
                         </tr>
                     </thead>
@@ -490,10 +492,12 @@
                         {% for vizit in bugun_vizitler %}
                         <tr>
                             <td style="font-weight: 600;">{{ vizit.aptek_ad }}</td>
-                            <td>{{ vizit.aptek_nomre|default:"—" }}</td>
-                            <td>{% if vizit.rayon %}{{ vizit.rayon.city_name }}{% else %}—{% endif %}</td>
-                            <td>{% with p=vizit.preparatlar.all|first %}{{ p.ref_vez|default:"—" }}{% endwith %}</td>
-                            <td>{{ vizit.created_at|date:"H:i" }}</td>
+                            <td>{% if vizit.bolge %}{{ vizit.bolge.region_name }}{% else %}—{% endif %}</td>
+                            <td style="max-width:140px;white-space:normal;">{{ vizit.display_sorusulan }}</td>
+                            <td style="max-width:140px;white-space:normal;">{{ vizit.display_satilib }}</td>
+                            <td style="max-width:140px;white-space:normal;">{{ vizit.display_yoxdur }}</td>
+                            <td style="max-width:160px;white-space:normal;">{{ vizit.qeyd|default:"—" }}</td>
+                            <td>{{ vizit.vaxt|time:"H:i" }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

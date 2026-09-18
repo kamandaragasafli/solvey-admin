@@ -15,11 +15,11 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
-from .models import AptekVizit, Istifadeci
+from .models import Istifadeci, Vizit
 from .utils import vizit_login_required
 
 _PDF_FONTS_READY = False
-_SHARE_SALT = "vizit-aptek-vizit-pdf"
+_SHARE_SALT = "vizit-day-vizit-pdf"
 _SHARE_MAX_AGE = 60 * 60 * 24 * 30
 
 
@@ -33,8 +33,8 @@ def _ensure_pdf_fonts():
     if not regular.exists():
         regular = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
         bold = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
-    pdfmetrics.registerFont(TTFont("AV", str(regular)))
-    pdfmetrics.registerFont(TTFont("AV-Bold", str(bold if bold.exists() else regular)))
+    pdfmetrics.registerFont(TTFont("VD", str(regular)))
+    pdfmetrics.registerFont(TTFont("VD-Bold", str(bold if bold.exists() else regular)))
     _PDF_FONTS_READY = True
 
 
@@ -45,57 +45,52 @@ def _safe_filename(name):
 
 
 def _pdf_content_disposition(filename, disposition="inline"):
-    ascii_name = filename.encode("ascii", "ignore").decode("ascii") or "aptek_vizit.pdf"
+    ascii_name = filename.encode("ascii", "ignore").decode("ascii") or "vizit.pdf"
     return (
         f'{disposition}; filename="{ascii_name}"; '
         f"filename*=UTF-8''{quote(filename)}"
     )
 
 
-def _drug_name(vp):
-    if not vp.preparat_id:
-        return ""
-    return (vp.preparat.med_full_name or vp.preparat.med_name or "").strip()
-
-
-def _join_names(names):
-    names = [n for n in names if n]
-    return ", ".join(names) if names else "—"
-
-
-def _aptek_rows_for_user(user_id, day, user_rol=None):
+def _day_rows_for_user(user_id, day, user_rol=None):
     qs = (
-        AptekVizit.objects.filter(tarix=day)
-        .select_related("rayon", "bolge", "user")
+        Vizit.objects.filter(tarix=day)
+        .select_related("hekim", "rayon", "bolge", "istifadeci")
         .prefetch_related("preparatlar__preparat")
         .order_by("vaxt", "id")
     )
     if user_rol not in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
-        qs = qs.filter(user_id=user_id)
+        qs = qs.filter(istifadeci_id=user_id)
 
     rows = []
     for v in qs:
-        preps = list(v.preparatlar.all())
-        sorusulan = _join_names([_drug_name(p) for p in preps if p.sorusulub])
-        satilib = _join_names([_drug_name(p) for p in preps if p.satilib])
-        # Mövcudluq: yoxdur seçilənlər (movcuddur=False)
-        yoxdur = _join_names([_drug_name(p) for p in preps if not p.movcuddur])
+        preps = [
+            (vp.preparat.med_full_name or vp.preparat.med_name)
+            for vp in v.preparatlar.all()
+            if vp.preparat_id
+        ]
         rows.append(
             {
-                "aptek": v.aptek_ad or "—",
-                "nomre": v.aptek_nomre or "—",
-                "bolge": v.bolge.region_name if v.bolge_id else "—",
-                "sorusulan": sorusulan,
-                "satilib": satilib,
-                "yoxdur": yoxdur,
+                "hekim": v.hekim.ad if v.hekim_id else "—",
+                "ixtisas": (v.hekim.ixtisas if v.hekim_id else "") or "—",
+                "kat": (v.hekim.kategoriya if v.hekim_id else "") or "—",
+                "rayon": (
+                    v.rayon.get_city_name_display()
+                    if v.rayon_id
+                    else "—"
+                ),
+                "munasibat": v.munasibat or "—",
+                "dermanlar": ", ".join(preps) if preps else "—",
                 "qeyd": (v.qeyd or "").strip() or "—",
                 "vaxt": v.vaxt.strftime("%H:%M") if v.vaxt else "",
+                "user": v.istifadeci.ad if v.istifadeci_id else "—",
             }
         )
     return rows
 
 
 def _break_long_token(c, token, font, size, max_w):
+    """Enə sığmayan tək parçanı hərflərlə sətirlərə bölür."""
     if not token:
         return []
     if c.stringWidth(token, font, size) <= max_w:
@@ -123,7 +118,9 @@ def _break_long_token(c, token, font, size, max_w):
 
 
 def _wrap_text(c, text, font, size, max_w):
+    """Mətni enə görə sətirlərə bölür (boşluqsuz uzun sözlər də)."""
     text = (text or "—").replace("\r", "\n").strip() or "—"
+    # Əvvəlcə əl ilə yazılmış sətir sonlarını da nəzərə al
     raw_parts = []
     for chunk in text.split("\n"):
         chunk = chunk.strip()
@@ -142,6 +139,7 @@ def _wrap_text(c, text, font, size, max_w):
                 lines.append(current)
                 current = ""
             continue
+        # Əvvəlcə söz özü enə sığmırsa parçala
         pieces = _break_long_token(c, word, font, size, max_w)
         for piece in pieces:
             if not current:
@@ -158,7 +156,7 @@ def _wrap_text(c, text, font, size, max_w):
     return lines or ["—"]
 
 
-def _build_aptek_vizit_pdf(user_ad, day, rows):
+def _build_day_vizit_pdf(user_ad, day, rows):
     _ensure_pdf_fonts()
     navy = HexColor("#1A5276")
     row_alt = HexColor("#F0F7FF")
@@ -171,24 +169,24 @@ def _build_aptek_vizit_pdf(user_ad, day, rows):
     buffer = BytesIO()
     page_w, page_h = landscape(A4)
     c = canvas.Canvas(buffer, pagesize=landscape(A4))
-    margin_x = 8 * mm
+    margin_x = 10 * mm
     margin_y = 10 * mm
 
-    title = f"{user_ad} Aptek Viziti"
+    title = f"{user_ad} Vizit"
     subtitle = f"Tarix: {day:%d.%m.%Y}  ·  Cəmi: {len(rows)}"
 
     def draw_header(y_top):
         c.setFillColor(navy)
-        c.setFont("AV-Bold", 14)
+        c.setFont("VD-Bold", 14)
         c.drawString(margin_x, y_top, title)
-        c.setFont("AV", 10)
+        c.setFont("VD", 10)
         c.setFillColor(HexColor("#64748B"))
         c.drawString(margin_x, y_top - 6 * mm, subtitle)
         return y_top - 14 * mm
 
-    # Rayon və Rəf yoxdur — dərman/qeyd var
-    headers = ["#", "Aptek", "Bölgə", "Soruşulan", "Satılıb", "Yoxdur", "Qeyd", "Vaxt"]
-    widths = [7 * mm, 40 * mm, 32 * mm, 48 * mm, 42 * mm, 42 * mm, 50 * mm, 14 * mm]
+    # Rayon və Kateqoriya yoxdur; İxtisas qalır
+    headers = ["#", "Həkim", "İxtisas", "Münasibət", "Dərmanlar", "Qeyd", "Vaxt"]
+    widths = [8 * mm, 42 * mm, 18 * mm, 28 * mm, 95 * mm, 70 * mm, 16 * mm]
 
     def draw_table_header(y):
         x = margin_x
@@ -205,7 +203,7 @@ def _build_aptek_vizit_pdf(user_ad, day, rows):
             fill=1,
         )
         c.setFillColor(white)
-        c.setFont("AV-Bold", 7)
+        c.setFont("VD-Bold", font_size)
         for i, h in enumerate(headers):
             col_x.append(x)
             c.drawString(x, y - 4.5 * mm, h)
@@ -217,22 +215,21 @@ def _build_aptek_vizit_pdf(user_ad, day, rows):
 
     if not rows:
         c.setFillColor(HexColor("#94A3B8"))
-        c.setFont("AV", 10)
-        c.drawString(margin_x, y - 8 * mm, "Bu gün aptek viziti yoxdur.")
+        c.setFont("VD", 10)
+        c.drawString(margin_x, y - 8 * mm, "Bu gün vizit yoxdur.")
     else:
         for idx, r in enumerate(rows, 1):
             vals = [
                 str(idx),
-                r["aptek"],
-                r["bolge"],
-                r["sorusulan"],
-                r["satilib"],
-                r["yoxdur"],
+                r["hekim"],
+                r["ixtisas"],
+                r["munasibat"],
+                r["dermanlar"],
                 r["qeyd"],
                 r["vaxt"],
             ]
             wrapped = [
-                _wrap_text(c, val, "AV", font_size, widths[i] - 1.5 * mm)
+                _wrap_text(c, val, "VD", font_size, widths[i] - 1.5 * mm)
                 for i, val in enumerate(vals)
             ]
             n_lines = max(len(lines) for lines in wrapped)
@@ -264,7 +261,7 @@ def _build_aptek_vizit_pdf(user_ad, day, rows):
             )
 
             c.setFillColor(ink)
-            c.setFont("AV", font_size)
+            c.setFont("VD", font_size)
             for i, lines in enumerate(wrapped):
                 text_y = y - 3.2 * mm
                 for line_text in lines:
@@ -274,7 +271,7 @@ def _build_aptek_vizit_pdf(user_ad, day, rows):
 
     c.save()
     buffer.seek(0)
-    filename = f"{_safe_filename(user_ad)} Aptek Viziti.pdf"
+    filename = f"{_safe_filename(user_ad)} Vizit.pdf"
     return buffer.getvalue(), filename
 
 
@@ -283,12 +280,12 @@ def _pdf_for_request_user(request, day=None):
     user_ad = request.session.get("ad") or "İstifadəçi"
     user_rol = request.session.get("rol")
     day = day or timezone.localdate()
-    rows = _aptek_rows_for_user(user_id, day, user_rol)
-    return _build_aptek_vizit_pdf(user_ad, day, rows)
+    rows = _day_rows_for_user(user_id, day, user_rol)
+    return _build_day_vizit_pdf(user_ad, day, rows)
 
 
 @vizit_login_required
-def aptek_vizit_pdf(request):
+def vizit_day_pdf(request):
     pdf_bytes, filename = _pdf_for_request_user(request)
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     as_attachment = request.GET.get("download") == "1"
@@ -297,7 +294,7 @@ def aptek_vizit_pdf(request):
     return response
 
 
-def aptek_vizit_shared_pdf(request, token):
+def vizit_day_shared_pdf(request, token):
     try:
         data = signing.loads(token, salt=_SHARE_SALT, max_age=_SHARE_MAX_AGE)
         user_id = int(data["uid"])
@@ -308,25 +305,24 @@ def aptek_vizit_shared_pdf(request, token):
     user = Istifadeci.objects.filter(pk=user_id).first()
     user_ad = (user.ad if user else "") or "İstifadəçi"
     user_rol = user.rol if user else Istifadeci.ROL_NUMAYENDE
-    rows = _aptek_rows_for_user(user_id, day, user_rol)
-    pdf_bytes, filename = _build_aptek_vizit_pdf(user_ad, day, rows)
+    rows = _day_rows_for_user(user_id, day, user_rol)
+    pdf_bytes, filename = _build_day_vizit_pdf(user_ad, day, rows)
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = _pdf_content_disposition(filename, "inline")
     return response
 
 
-def aptek_vizit_share_context(request):
-    """Səhifə üçün share_url / pdf_filename."""
+def vizit_day_share_context(request):
     user_id = request.session.get("istifadeci_id")
     user_ad = request.session.get("ad") or "İstifadəçi"
     today = timezone.localdate()
     token = signing.dumps({"uid": user_id, "day": today.isoformat()}, salt=_SHARE_SALT)
     share_url = request.build_absolute_uri(
-        reverse("vizit:aptek_vizit_shared_pdf", args=[token])
+        reverse("vizit:vizit_day_shared_pdf", args=[token])
     )
     return {
         "user_ad": user_ad,
         "share_url": share_url,
-        "pdf_filename": f"{_safe_filename(user_ad)} Aptek Viziti.pdf",
+        "pdf_filename": f"{_safe_filename(user_ad)} Vizit.pdf",
         "today": today,
     }

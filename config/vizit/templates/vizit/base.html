@@ -49,10 +49,12 @@
                 <span class="nav-icon"><i class="fa-solid fa-user-check"></i></span>
                 <span>Görülən Həkimlər</span>
             </a>
+            {% if session_rol == 'rehber' %}
             <a href="{% url 'vizit:day_recipe_stats' %}"{% if request.resolver_match.url_name == 'day_recipe_stats' %} class="active"{% endif %}>
                 <span class="nav-icon"><i class="fa-solid fa-chart-bar"></i></span>
                 <span>Günlük Stat.</span>
             </a>
+            {% endif %}
             {% if session_rol == 'rehber' or session_rol == 'menecer' %}
             <a href="{% url 'vizit:hesabat' %}"{% if request.resolver_match.url_name == 'hesabat' %} class="active"{% endif %}>
                 <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>

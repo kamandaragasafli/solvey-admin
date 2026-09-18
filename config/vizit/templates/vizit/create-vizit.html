@@ -3,6 +3,45 @@
 {% block title %}Yeni Vizit — Solvey Pharma{% endblock %}
 {% block page_title %}Yeni vizit{% endblock %}
 
+{% block extra_css %}
+<style>
+.vd-share-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.vd-share-btn, .vd-pdf-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0; border-radius: 8px; padding: 8px 12px;
+  font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none;
+}
+.vd-share-btn { background: #25D366; color: #fff; }
+.vd-pdf-btn { background: #c0392b; color: #fff !important; }
+.vd-share-sheet {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(15, 23, 42, .45);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px;
+}
+.vd-share-sheet[hidden] { display: none !important; }
+.vd-share-card {
+  width: min(420px, 100%); background: #fff;
+  border-radius: 16px; padding: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.2);
+}
+.vd-share-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; color: #1a5276; font-size: 1.05rem;
+}
+.vd-share-close { border: 0; background: transparent; font-size: 1.6rem; cursor: pointer; color: #64748b; }
+.vd-share-hint { margin: 0 0 14px; color: #64748b; font-size: .88rem; }
+.vd-share-btns { display: grid; gap: 8px; }
+.vd-share-action {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 12px; border: 0; border-radius: 10px;
+  color: #fff; font-weight: 700; text-decoration: none; cursor: pointer;
+}
+.vd-share-copy { background: #334155; }
+.vd-share-status { margin: 10px 0 0; font-size: .85rem; color: #64748b; min-height: 1.2em; }
+</style>
+{% endblock %}
+
 {% block content %}
 {% if messages %}
     {% for message in messages %}
@@ -28,7 +67,9 @@
                 <select name="bolge_id" id="bolge_id" class="form-control" required>
                     <option value="">Bölgə seçin...</option>
                     {% for b in bolgeler %}
-                        <option value="{{ b.id }}" {% if b.id|stringformat:"s" == selected_bolge_id|stringformat:"s" %}selected{% endif %}>
+                        <option value="{{ b.id }}"
+                                data-region-type="{{ b.region_type }}"
+                                {% if b.id|stringformat:"s" == selected_bolge_id|stringformat:"s" %}selected{% endif %}>
                             {{ b.region_name }}
                         </option>
                     {% endfor %}
@@ -88,10 +129,17 @@
 </form>
 
 <div class="card">
-    <div class="card-title" style="justify-content:space-between;">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <span><i class="fas fa-calendar-alt"></i> Bu gün ({{ bugun_tarix }}) — {{ bugun_vizitler|length }} vizit</span>
         {% if bugun_vizitler %}
-        <button type="button" class="btn btn-outline no-print" onclick="window.print;"><i class="fas fa-print"></i> Çap et</button>
+        <span class="vd-share-actions no-print">
+            <button type="button" class="vd-share-btn" id="vd-share-btn">
+                <i class="fa-solid fa-share-nodes"></i> Paylaş
+            </button>
+            <a href="{% url 'vizit:vizit_day_pdf' %}" class="vd-pdf-btn" target="_blank">
+                <i class="fa-solid fa-file-pdf"></i> PDF
+            </a>
+        </span>
         {% endif %}
     </div>
 
@@ -133,6 +181,31 @@
     </ul>
     {% endif %}
 </div>
+
+<div class="vd-share-sheet" id="vd-share-sheet" hidden>
+  <div class="vd-share-card">
+    <div class="vd-share-head">
+      <strong>PDF paylaş</strong>
+      <button type="button" class="vd-share-close" id="vd-share-close" aria-label="Bağla">&times;</button>
+    </div>
+    <p class="vd-share-hint">Bugünkü vizitləri birbaşa WhatsApp və digər tətbiqlərə göndərin.</p>
+    <div class="vd-share-btns">
+      <button type="button" class="vd-share-action" id="vd-share-native" style="background:#1a5276;">
+        <i class="fa-solid fa-share-nodes"></i> Birbaşa paylaş (PDF)
+      </button>
+      <a class="vd-share-action" id="vd-share-wa" style="background:#25D366;" target="_blank" rel="noopener">
+        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+      </a>
+      <a class="vd-share-action" id="vd-share-tg" style="background:#2AABEE;" target="_blank" rel="noopener">
+        <i class="fa-brands fa-telegram"></i> Telegram
+      </a>
+      <button type="button" class="vd-share-action vd-share-copy" id="vd-share-copy">
+        <i class="fa-solid fa-link"></i> Linki kopyala
+      </button>
+    </div>
+    <p class="vd-share-status" id="vd-share-status"></p>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -162,9 +235,9 @@ document.addEventListener('DOMContentLoaded', function () {
     function fillHekimSelect(hekimler) {
         hekimler.forEach(h => {
             const opt = new Option(h.ad_soyad, h.id);
-            opt.dataset.ixtKod = h.ixtisas_kod || '';
-            opt.dataset.kat = h.kateqoriya || '';
-            opt.dataset.derece = h.derece || '';
+            opt.setAttribute('data-ixtisas', h.ixtisas_kod || h.ixtisas || '');
+            opt.setAttribute('data-kateqoriya', h.kateqoriya || h.kategoriya || '');
+            opt.setAttribute('data-derece', h.derece || '');
             hekimSelect.add(opt);
         });
         hekimSelect.disabled = false;
@@ -200,19 +273,18 @@ document.addEventListener('DOMContentLoaded', function () {
             rayonSelect.disabled = true;
             return;
         }
+        setBakiMode(isBakiBolge());
         if (isBakiBolge()) {
-            setBakiMode(true);
             loadHekimlerByBolge(bolgeId);
             return;
         }
-        setBakiMode(false);
+        rayonSelect.disabled = false;
         fetch(`${RAYONLAR_URL}?bolge_id=${bolgeId}`)
             .then(r => r.json())
             .then(data => {
-                data.rayonlar.forEach(r => {
+                (data.rayonlar || []).forEach(r => {
                     rayonSelect.add(new Option(r.ad, r.id));
                 });
-                rayonSelect.disabled = false;
                 loadHekimlerByBolge(bolgeId);
             });
     });
@@ -220,30 +292,22 @@ document.addEventListener('DOMContentLoaded', function () {
     rayonSelect.addEventListener('change', function () {
         const rayonId = this.value;
         const bolgeId = bolgeSelect.value;
-        resetHekimSelect('Həkim seçin...');
-        if (!bolgeId) {
-            return;
-        }
         if (!rayonId) {
-            loadHekimlerByBolge(bolgeId);
+            if (bolgeId) loadHekimlerByBolge(bolgeId);
             return;
         }
+        resetHekimSelect('Həkim seçin...');
         fetch(`${HEKIMLER_URL}?rayon_id=${rayonId}`)
             .then(r => r.json())
             .then(data => fillHekimSelect(data.hekimler));
     });
 
-        hekimSelect.addEventListener('change', function () {
+    hekimSelect.addEventListener('change', function () {
         if (!this.value || !hekimInfo) return;
-        
         const opt = this.options[this.selectedIndex];
-        
-        // Məlumatları yığırıq
-        const ixtisas = opt.dataset.ixtKod || '—';
-        const kat = opt.dataset.kat || '—';
-        const derece = opt.dataset.derece || '—';
-
-        // HTML-i formalaşdırırıq
+        const ixtisas = (opt.getAttribute('data-ixtisas') || '').trim() || '—';
+        const kat = (opt.getAttribute('data-kateqoriya') || '').trim() || '—';
+        const derece = (opt.getAttribute('data-derece') || '').trim() || '—';
         hekimInfo.innerHTML = `
             <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff; margin-top: 10px;">
                 <div style="margin-bottom: 5px;"><i class="fas fa-user-md"></i> İxtisas: <strong>${ixtisas}</strong></div>
@@ -251,7 +315,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div><i class="fas fa-graduation-cap"></i> Dərəcə: <strong>${derece}</strong></div>
             </div>
         `;
-        
         hekimInfo.classList.remove('hidden');
     });
 
@@ -281,6 +344,89 @@ document.addEventListener('DOMContentLoaded', function () {
         rayonSelect.disabled = false;
         hekimSelect.disabled = false;
     });
+});
+</script>
+
+{{ share_url|json_script:"vd-share-url" }}
+{{ pdf_filename|json_script:"vd-pdf-filename" }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var shareUrlEl = document.getElementById("vd-share-url");
+  var pdfNameEl = document.getElementById("vd-pdf-filename");
+  if (!shareUrlEl) return;
+  var shareUrl = JSON.parse(shareUrlEl.textContent);
+  var filename = pdfNameEl ? JSON.parse(pdfNameEl.textContent) : "Vizit.pdf";
+  var pdfUrl = "{% url 'vizit:vizit_day_pdf' %}?download=1";
+  var title = "{{ user_ad|escapejs }} Vizit — {{ today|date:'d.m.Y' }}";
+  var text = title + "\n" + shareUrl;
+
+  var sheet = document.getElementById("vd-share-sheet");
+  var statusEl = document.getElementById("vd-share-status");
+  var openBtn = document.getElementById("vd-share-btn");
+  var closeBtn = document.getElementById("vd-share-close");
+  var nativeBtn = document.getElementById("vd-share-native");
+  var copyBtn = document.getElementById("vd-share-copy");
+  var wa = document.getElementById("vd-share-wa");
+  var tg = document.getElementById("vd-share-tg");
+
+  if (wa) wa.href = "https://wa.me/?text=" + encodeURIComponent(text);
+  if (tg) tg.href = "https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(title);
+
+  function setStatus(msg) { if (statusEl) statusEl.textContent = msg || ""; }
+  function openSheet() { if (sheet) { sheet.hidden = false; setStatus(""); } }
+  function closeSheet() { if (sheet) sheet.hidden = true; }
+
+  async function shareNative() {
+    var res = await fetch(pdfUrl, { credentials: "same-origin" });
+    if (!res.ok) throw new Error("PDF yüklənmədi");
+    var blob = await res.blob();
+    var file = new File([blob], filename, { type: "application/pdf" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: title, text: title });
+      return true;
+    }
+    if (navigator.share) {
+      await navigator.share({ title: title, text: title, url: shareUrl });
+      return true;
+    }
+    return false;
+  }
+
+  if (openBtn) {
+    openBtn.addEventListener("click", async function () {
+      try {
+        var ok = await shareNative();
+        if (!ok) openSheet();
+      } catch (e) {
+        if (e && e.name === "AbortError") return;
+        openSheet();
+      }
+    });
+  }
+  if (closeBtn) closeBtn.addEventListener("click", closeSheet);
+  if (sheet) sheet.addEventListener("click", function (e) { if (e.target === sheet) closeSheet(); });
+  if (nativeBtn) {
+    nativeBtn.addEventListener("click", async function () {
+      setStatus("PDF hazırlanır...");
+      try {
+        var ok = await shareNative();
+        setStatus(ok ? "Paylaşıldı." : "WhatsApp və ya linkdən istifadə edin.");
+      } catch (e) {
+        if (e && e.name === "AbortError") { setStatus(""); return; }
+        setStatus("Paylaşım alınmadı.");
+      }
+    });
+  }
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async function () {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setStatus("Link kopyalandı.");
+      } catch (e) {
+        setStatus(shareUrl);
+      }
+    });
+  }
 });
 </script>
 {% endblock %}
