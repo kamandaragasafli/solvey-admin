@@ -160,13 +160,13 @@
             {% endif %}
             <td data-label="Bölgə">{% if v.bolge %}{{ v.bolge.region_name }}{% else %}—{% endif %}</td>
             <td data-label="Rayon">{% if v.rayon %}{{ v.rayon.get_city_name_display }}{% else %}—{% endif %}</td>
-            <td data-label="Həkim"><strong>{% if v.hekim %}{{ v.hekim.ad }}{% else %}—{% endif %}</strong></td>
+            <td data-label="Həkim"><strong>{{ v.hekim_ad_goster }}</strong></td>
             <td data-label="İxtisas">
-              {% if v.hekim %}
-                <span title="{{ v.hekim.get_ixtisas_display }}">{{ v.hekim.ixtisas }}</span>
+              {% if v.hekim_ixtisas_goster %}
+                <span>{{ v.hekim_ixtisas_goster }}</span>
               {% else %}—{% endif %}
             </td>
-            <td data-label="Kat.">{% if v.hekim %}{{ v.hekim.kategoriya }}{% else %}—{% endif %}</td>
+            <td data-label="Kat.">{% if v.hekim_kat_goster %}{{ v.hekim_kat_goster }}{% else %}—{% endif %}</td>
             <td data-label="Münasibət"><span class="badge badge-warning">{{ v.munasibat }}</span></td>
             <td data-label="Preparatlar" class="hes-preps-cell">
               {% for vp in v.preparatlar.all %}

@@ -125,7 +125,59 @@
   .hekim-dropdown-list {
     max-height: min(200px, 35vh);
   }
+  .yeni-hekim-grid {
+    grid-template-columns: 1fr;
+  }
 }
+
+.yeni-hekim-box {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed #d0d7de;
+}
+.yeni-hekim-toggle {
+  border: 0;
+  background: transparent;
+  color: #1a5276;
+  font-weight: 700;
+  font-size: .92rem;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.yeni-hekim-toggle:hover { text-decoration: underline; }
+.yeni-hekim-form {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+.yeni-hekim-hint {
+  margin: 0 0 10px;
+  color: #64748b;
+  font-size: .85rem;
+}
+.yeni-hekim-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 12px;
+}
+.yeni-hekim-actions {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.yeni-hekim-status {
+  font-size: .88rem;
+  color: #64748b;
+}
+.yeni-hekim-status.is-error { color: #c0392b; }
+.yeni-hekim-status.is-ok { color: #1e8449; }
 </style>
 {% endblock %}
 
@@ -183,6 +235,39 @@
             </div>
         </div>
         <div id="hekim-info" class="hekim-info-panel hidden"></div>
+
+        <div class="yeni-hekim-box">
+            <button type="button" class="yeni-hekim-toggle" id="yeni-hekim-toggle">
+                <i class="fas fa-user-plus"></i>Yeni həkim əlavə et
+            </button>
+            <div class="yeni-hekim-form" id="yeni-hekim-form" hidden>
+                <p class="yeni-hekim-hint">Yalnız bu vizitə yazılır — həkimlər siyahısına əlavə olunmur.</p>
+                <div class="yeni-hekim-grid">
+                    <div>
+                        <label for="yeni_hekim_ad">Həkim adı, soyadı</label>
+                        <input type="text" id="yeni_hekim_ad" class="form-control" placeholder="Məs: Əliyev Rəşad" maxlength="150">
+                    </div>
+                    <div>
+                        <label for="yeni_hekim_ixtisas">İxtisas</label>
+                        <select id="yeni_hekim_ixtisas" class="form-control">
+                            {% for kod, ad in ixtisas_choices %}
+                            <option value="{{ kod }}" {% if kod == 'TE' %}selected{% endif %}>{{ ad }}</option>
+                            {% empty %}
+                            <option value="TE">TE</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="yeni-hekim-actions">
+                    <button type="button" class="btn btn-primary" id="yeni-hekim-save">
+                        <i class="fas fa-check"></i> Seç və davam et
+                    </button>
+                    <span class="yeni-hekim-status" id="yeni-hekim-status"></span>
+                </div>
+            </div>
+        </div>
+        <input type="hidden" name="hekim_adi" id="hekim_adi" value="">
+        <input type="hidden" name="hekim_ixtisas" id="hekim_ixtisas" value="">
     </div>
 
     <div class="card">
@@ -222,7 +307,7 @@
     </div>
 </form>
 
-{% if user_rol == 'menecer' or user_rol == 'rehber' %}
+{% if user_rol == 'numayende' or user_rol == 'menecer' or user_rol == 'rehber' %}
 <div class="card">
     <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <span><i class="fas fa-calendar-alt"></i> Bu gün ({{ bugun_tarix }}) — {{ bugun_vizitler|length }} vizit</span>
@@ -250,9 +335,10 @@
             <div class="vizit-num">{{ forloop.counter }}</div>
             <div class="vizit-info">
                 <div class="hekim-name">
-                    {{ v.hekim.ad }}
-                    {% if v.hekim.ixtisas %}<span class="badge badge-ixtisas">{{ v.hekim.ixtisas }}</span>{% endif %}
-                    {% if v.hekim.kategoriya %}<span class="badge badge-kat">Kat: {{ v.hekim.kategoriya }}</span>{% endif %}
+                    {{ v.hekim_ad_goster }}
+                    {% if v.hekim_ixtisas_goster %}<span class="badge badge-ixtisas">{{ v.hekim_ixtisas_goster }}</span>{% endif %}
+                    {% if v.hekim_kat_goster %}<span class="badge badge-kat">Kat: {{ v.hekim_kat_goster }}</span>{% endif %}
+                    {% if not v.hekim_id and v.hekim_adi %}<span class="badge" style="background:#fef3c7;color:#92400e;">Yeni</span>{% endif %}
                 </div>
                 <div class="vizit-meta">
                     {% if v.rayon %}<span><i class="fas fa-map-marker-alt"></i> {{ v.rayon.get_city_name_display }}</span>{% endif %}
@@ -318,15 +404,35 @@ document.addEventListener('DOMContentLoaded', function () {
     const rayonWrap = document.getElementById('rayon-wrap');
     const locationGrid = document.getElementById('location-grid');
     const hekimIdInput = document.getElementById('hekim_id');
+    const hekimAdiInput = document.getElementById('hekim_adi');
+    const hekimIxtisasInput = document.getElementById('hekim_ixtisas');
     const hekimSearch = document.getElementById('hekim_search');
     const hekimClear = document.getElementById('hekim_search_clear');
     const hekimDropdown = document.getElementById('hekim_dropdown');
     const hekimSearchBox = hekimSearch.closest('.hekim-search-box');
     const hekimInfo = document.getElementById('hekim-info');
+    const yeniToggle = document.getElementById('yeni-hekim-toggle');
+    const yeniForm = document.getElementById('yeni-hekim-form');
+    const yeniAd = document.getElementById('yeni_hekim_ad');
+    const yeniIxtisas = document.getElementById('yeni_hekim_ixtisas');
+    const yeniSave = document.getElementById('yeni-hekim-save');
+    const yeniStatus = document.getElementById('yeni-hekim-status');
 
     let hekimlerCache = [];
     let activeIndex = -1;
     let blurHideTimer = null;
+
+    function setYeniStatus(msg, type) {
+        if (!yeniStatus) return;
+        yeniStatus.textContent = msg || '';
+        yeniStatus.classList.remove('is-error', 'is-ok');
+        if (type) yeniStatus.classList.add(type);
+    }
+
+    function clearFreeHekim() {
+        if (hekimAdiInput) hekimAdiInput.value = '';
+        if (hekimIxtisasInput) hekimIxtisasInput.value = '';
+    }
 
     function norm(s) {
         return String(s || '')
@@ -377,6 +483,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function resetHekimSearch(placeholder) {
         hekimlerCache = [];
         hekimIdInput.value = '';
+        clearFreeHekim();
         hekimSearch.value = '';
         hekimSearch.disabled = true;
         hekimSearch.placeholder = placeholder || 'Əvvəlcə bölgə seçin...';
@@ -387,9 +494,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function selectHekim(h) {
         hekimIdInput.value = String(h.id);
+        clearFreeHekim();
         hekimSearch.value = h.ad_soyad || '';
         hideDropdown();
         showHekimInfo(h);
+        updateClearBtn();
+        document.getElementById('step-1').classList.add('active');
+        setYeniStatus('', null);
+    }
+
+    function selectFreeHekim(ad, ixtisas) {
+        hekimIdInput.value = '';
+        if (hekimAdiInput) hekimAdiInput.value = ad;
+        if (hekimIxtisasInput) hekimIxtisasInput.value = ixtisas || '';
+        hekimSearch.disabled = false;
+        hekimSearch.placeholder = 'Həkim adını yazın...';
+        hekimSearch.value = ad;
+        hideDropdown();
+        if (hekimInfo) {
+            hekimInfo.innerHTML = `
+                <div style="padding: 10px; background: #fffbeb; border-radius: 5px; border-left: 4px solid #d97706; margin-top: 10px;">
+                    <div style="margin-bottom: 5px;"><i class="fas fa-user-md"></i> <strong>${ad}</strong> <span style="color:#92400e;">(sistemdə yoxdur)</span></div>
+                    <div><i class="fas fa-stethoscope"></i> İxtisas: <strong>${ixtisas || '—'}</strong></div>
+                </div>
+            `;
+            hekimInfo.classList.remove('hidden');
+        }
         updateClearBtn();
         document.getElementById('step-1').classList.add('active');
     }
@@ -440,6 +570,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function fillHekimSearch(hekimler) {
         hekimlerCache = hekimler || [];
         hekimIdInput.value = '';
+        clearFreeHekim();
         hekimSearch.value = '';
         hekimSearch.disabled = false;
         hekimSearch.placeholder = 'Həkim adını yazın...';
@@ -509,6 +640,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     hekimSearch.addEventListener('input', function () {
         hekimIdInput.value = '';
+        clearFreeHekim();
         clearHekimInfo();
         updateClearBtn();
         if (hekimSearch.disabled) return;
@@ -545,7 +677,8 @@ document.addEventListener('DOMContentLoaded', function () {
         blurHideTimer = setTimeout(function () {
             if (document.activeElement === hekimSearch || hekimSearchBox.contains(document.activeElement)) return;
             hideDropdown();
-            if (hekimSearch.value.trim() && !hekimIdInput.value) {
+            const hasFree = !!(hekimAdiInput && hekimAdiInput.value.trim());
+            if (hekimSearch.value.trim() && !hekimIdInput.value && !hasFree) {
                 hekimSearch.value = '';
                 updateClearBtn();
             }
@@ -554,16 +687,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
     hekimClear.addEventListener('click', function () {
         hekimIdInput.value = '';
+        clearFreeHekim();
         hekimSearch.value = '';
         clearHekimInfo();
         hideDropdown();
         updateClearBtn();
         hekimSearch.focus();
+        setYeniStatus('', null);
     });
 
     document.addEventListener('mousedown', function (e) {
         if (!hekimSearchBox.contains(e.target)) hideDropdown();
     });
+
+    if (yeniToggle && yeniForm) {
+        yeniToggle.addEventListener('click', function () {
+            yeniForm.hidden = !yeniForm.hidden;
+            if (!yeniForm.hidden && yeniAd) yeniAd.focus();
+        });
+    }
+
+    if (yeniSave) {
+        yeniSave.addEventListener('click', function () {
+            const ad = (yeniAd && yeniAd.value || '').trim();
+            const bolgeId = bolgeSelect.value;
+            const ixtisas = (yeniIxtisas && yeniIxtisas.value) || '';
+            if (!bolgeId) {
+                setYeniStatus('Əvvəlcə bölgə seçin.', 'is-error');
+                bolgeSelect.focus();
+                return;
+            }
+            if (!ad) {
+                setYeniStatus('Həkim adını yazın.', 'is-error');
+                if (yeniAd) yeniAd.focus();
+                return;
+            }
+            selectFreeHekim(ad, ixtisas);
+            if (yeniAd) yeniAd.value = '';
+            setYeniStatus('Seçildi (sistemə əlavə olunmur).', 'is-ok');
+            if (yeniForm) yeniForm.hidden = true;
+        });
+    }
 
     document.querySelectorAll('.munasibat-btn').forEach(btn => {
         btn.addEventListener('click', function () {
@@ -589,13 +753,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('vizit-form').addEventListener('submit', function (e) {
         rayonSelect.disabled = false;
-        if (!hekimIdInput.value) {
+        const hasSystem = !!hekimIdInput.value;
+        const hasFree = !!(hekimAdiInput && hekimAdiInput.value.trim());
+        if (!hasSystem && !hasFree) {
             e.preventDefault();
             hekimSearch.focus();
-            hekimSearch.reportValidity
-                ? hekimSearch.setCustomValidity('Həkim seçin')
-                : null;
-            hekimSearch.setCustomValidity('Həkim seçin');
+            hekimSearch.setCustomValidity('Həkim seçin və ya yeni həkim yazın');
             hekimSearch.reportValidity();
             hekimSearch.setCustomValidity('');
         }

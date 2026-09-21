@@ -60,8 +60,12 @@ def _day_rows_for_user(user_id, day, user_rol=None):
         .prefetch_related("preparatlar__preparat")
         .order_by("vaxt", "id")
     )
-    # Bu gün PDF: menecer və rəhbər yalnız öz qeydləri
-    if user_rol in (Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER):
+    # Bu gün PDF: nümayəndə / menecer / rəhbər yalnız öz qeydləri
+    if user_rol in (
+        Istifadeci.ROL_NUMAYENDE,
+        Istifadeci.ROL_MENECER,
+        Istifadeci.ROL_REHBER,
+    ):
         qs = qs.filter(istifadeci_id=user_id)
     else:
         qs = qs.none()
@@ -75,9 +79,9 @@ def _day_rows_for_user(user_id, day, user_rol=None):
         ]
         rows.append(
             {
-                "hekim": v.hekim.ad if v.hekim_id else "—",
-                "ixtisas": (v.hekim.ixtisas if v.hekim_id else "") or "—",
-                "kat": (v.hekim.kategoriya if v.hekim_id else "") or "—",
+                "hekim": v.hekim_ad_goster,
+                "ixtisas": v.hekim_ixtisas_goster or "—",
+                "kat": v.hekim_kat_goster or "—",
                 "rayon": (
                     v.rayon.get_city_name_display()
                     if v.rayon_id
@@ -290,7 +294,11 @@ def _pdf_for_request_user(request, day=None):
 
 @vizit_login_required
 def vizit_day_pdf(request):
-    if request.session.get("rol") not in (Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER):
+    if request.session.get("rol") not in (
+        Istifadeci.ROL_NUMAYENDE,
+        Istifadeci.ROL_MENECER,
+        Istifadeci.ROL_REHBER,
+    ):
         return redirect("vizit:index")
     pdf_bytes, filename = _pdf_for_request_user(request)
     response = HttpResponse(pdf_bytes, content_type="application/pdf")

@@ -178,9 +178,9 @@ def _excel_export_rows(vizitler_qs):
     rows = []
     for vizit in vizitler_qs.order_by('tarix', 'vaxt'):
         rows.append({
-            'hekim': vizit.hekim.ad if vizit.hekim_id else '',
-            'ixtisas_kod': vizit.hekim.ixtisas if vizit.hekim_id else '',
-            'kateqoriya': vizit.hekim.kategoriya if vizit.hekim_id else '',
+            'hekim': vizit.hekim_ad_goster if vizit.hekim_ad_goster != '—' else '',
+            'ixtisas_kod': vizit.hekim_ixtisas_goster,
+            'kateqoriya': vizit.hekim_kat_goster,
             'rayon': vizit.rayon.get_city_name_display() if vizit.rayon else '',
             'munasibat': vizit.munasibat,
             'qeyd': (vizit.qeyd or '').strip(),
@@ -427,7 +427,9 @@ def yeni_vizit_view(request):
 
     # POST sorğusu: Viziti qeyd et
     if request.method == 'POST' and 'vizit_bagla' in request.POST:
-        hekim_id = request.POST.get('hekim_id')
+        hekim_id = (request.POST.get('hekim_id') or '').strip()
+        hekim_adi = (request.POST.get('hekim_adi') or '').strip()
+        hekim_ixtisas = (request.POST.get('hekim_ixtisas') or '').strip()
         bolge_id = request.POST.get('bolge_id')
         rayon_id = (request.POST.get('rayon_id') or '').strip()
         munasibat = request.POST.get('munasibat', '')
@@ -438,7 +440,8 @@ def yeni_vizit_view(request):
         if bolge_id:
             request.session['son_bolge_id'] = bolge_id
 
-        if not hekim_id or not bolge_id or not preparatlar:
+        hekim_ok = (hekim_id.isdigit()) or bool(hekim_adi)
+        if not hekim_ok or not bolge_id or not preparatlar:
             messages.error(request, '❌ Bütün sahələri düzgün doldurun.')
             return redirect('vizit:index')
 
@@ -446,7 +449,9 @@ def yeni_vizit_view(request):
             with transaction.atomic():
                 vizit = Vizit.objects.create(
                     istifadeci_id=user_id,
-                    hekim_id=int(hekim_id),
+                    hekim_id=int(hekim_id) if hekim_id.isdigit() else None,
+                    hekim_adi=hekim_adi[:150] if (not hekim_id.isdigit() and hekim_adi) else '',
+                    hekim_ixtisas=hekim_ixtisas[:50] if (not hekim_id.isdigit() and hekim_ixtisas) else '',
                     bolge_id=int(bolge_id),
                     rayon_id=int(rayon_id) if rayon_id.isdigit() else None,
                     munasibat=munasibat,
@@ -465,9 +470,14 @@ def yeni_vizit_view(request):
         
         return redirect('vizit:index')
 
-    # GET: «Bu gün» — menecer və rəhbər yalnız öz qeydləri
+    # GET: «Bu gün» — nümayəndə / menecer / rəhbər yalnız öz qeydləri
     vizitler_query = Vizit.objects.none()
-    if user_rol in (Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER) and user_id:
+    _own_day_roles = (
+        Istifadeci.ROL_NUMAYENDE,
+        Istifadeci.ROL_MENECER,
+        Istifadeci.ROL_REHBER,
+    )
+    if user_rol in _own_day_roles and user_id:
         vizitler_query = (
             Vizit.objects.filter(tarix=bugun, istifadeci_id=user_id)
             .select_related('hekim', 'rayon', 'istifadeci')
@@ -480,7 +490,7 @@ def yeni_vizit_view(request):
     from .vizit_day_pdf import vizit_day_share_context
     share_ctx = (
         vizit_day_share_context(request)
-        if user_rol in (Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER)
+        if user_rol in _own_day_roles
         else {
             'share_url': '',
             'pdf_filename': '',
@@ -496,18 +506,23 @@ def yeni_vizit_view(request):
         'bugun_vizitler': vizitler_query.order_by('-id'),
         'user_rol': user_rol,
         'bugun_tarix': bugun,
+        'ixtisas_choices': Doctors.İXTİSAS_SECIMI,
         **share_ctx,
     })
 
 
 @vizit_login_required
 def del_vizit(request, pk):
-    """Bugünkü viziti sil — menecer və rəhbər yalnız özünü."""
+    """Bugünkü viziti sil — nümayəndə / menecer / rəhbər yalnız özünü."""
     user_id = request.session.get('istifadeci_id')
     user_rol = request.session.get('rol')
     vizit = get_object_or_404(Vizit, pk=pk)
 
-    if user_rol not in (Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER):
+    if user_rol not in (
+        Istifadeci.ROL_NUMAYENDE,
+        Istifadeci.ROL_MENECER,
+        Istifadeci.ROL_REHBER,
+    ):
         messages.error(request, '❌ Bu viziti silmək üçün icazəniz yoxdur.')
         return redirect('vizit:index')
 
@@ -515,7 +530,7 @@ def del_vizit(request, pk):
         messages.error(request, '❌ Yalnız öz vizitinizi silə bilərsiniz.')
         return redirect('vizit:index')
 
-    hekim_ad = vizit.hekim.ad if vizit.hekim_id else 'Vizit'
+    hekim_ad = vizit.hekim_ad_goster if vizit.hekim_ad_goster != '—' else 'Vizit'
     vizit.delete()
     messages.success(request, f'✅ Vizit silindi: {hekim_ad}')
     return redirect('vizit:index')

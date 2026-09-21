@@ -99,6 +99,9 @@ class Vizit(models.Model):
     hekim = models.ForeignKey(
         Doctors, on_delete=models.SET_NULL, db_column='hekim_id', related_name='vizitler', null=True, blank=True
     )
+    # Sistemdə olmayan həkim — Doctors cədvəlinə yazılmır
+    hekim_adi = models.CharField(max_length=150, blank=True, default='')
+    hekim_ixtisas = models.CharField(max_length=50, blank=True, default='')
     rayon = models.ForeignKey(
         City, on_delete=models.PROTECT, db_column='rayon_id', related_name='vizitler' , blank=True, null=True
     )
@@ -114,6 +117,24 @@ class Vizit(models.Model):
 
     class Meta:
         db_table = 'vizitler'
+
+    @property
+    def hekim_ad_goster(self):
+        if self.hekim_id and self.hekim:
+            return self.hekim.ad
+        return (self.hekim_adi or '').strip() or '—'
+
+    @property
+    def hekim_ixtisas_goster(self):
+        if self.hekim_id and self.hekim:
+            return self.hekim.ixtisas or ''
+        return (self.hekim_ixtisas or '').strip()
+
+    @property
+    def hekim_kat_goster(self):
+        if self.hekim_id and self.hekim:
+            return self.hekim.kategoriya or ''
+        return ''
 
     def __str__(self):
         return f'Vizit #{self.pk} — {self.istifadeci.ad}'
