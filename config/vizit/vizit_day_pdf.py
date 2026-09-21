@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 from django.core import signing
 from django.http import Http404, HttpResponse
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 from reportlab.lib.colors import HexColor, white
@@ -59,8 +60,11 @@ def _day_rows_for_user(user_id, day, user_rol=None):
         .prefetch_related("preparatlar__preparat")
         .order_by("vaxt", "id")
     )
-    if user_rol not in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
+    # Bu gün PDF: menecer və rəhbər yalnız öz qeydləri
+    if user_rol in (Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER):
         qs = qs.filter(istifadeci_id=user_id)
+    else:
+        qs = qs.none()
 
     rows = []
     for v in qs:
@@ -286,6 +290,8 @@ def _pdf_for_request_user(request, day=None):
 
 @vizit_login_required
 def vizit_day_pdf(request):
+    if request.session.get("rol") not in (Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER):
+        return redirect("vizit:index")
     pdf_bytes, filename = _pdf_for_request_user(request)
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     as_attachment = request.GET.get("download") == "1"

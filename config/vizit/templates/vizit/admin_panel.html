@@ -17,6 +17,52 @@
 </div>
 
 {% if tab == 'istifadeciler' %}
+{% if edit_user %}
+<div class="card">
+    <div class="card-title"><i class="fas fa-pen"></i> İstifadəçini redaktə et — {{ edit_user.ad }}</div>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="user_id" value="{{ edit_user.id }}">
+        <div class="grid-3" style="gap:12px;">
+            <div><label>Login</label><input type="text" name="login" required value="{{ edit_user.login }}"></div>
+            <div>
+                <label>Şifrə <span style="font-weight:normal;color:#888;">(boş = dəyişmə)</span></label>
+                <input type="text" name="sifre" placeholder="Yeni şifrə (ixtiyari)">
+            </div>
+            <div><label>Ad</label><input type="text" name="ad" required value="{{ edit_user.ad }}"></div>
+            <div>
+                <label>Rol</label>
+                <select name="rol">
+                    <option value="numayende" {% if edit_user.rol == 'numayende' %}selected{% endif %}>Tibbi Nümayəndə</option>
+                    <option value="menecer" {% if edit_user.rol == 'menecer' %}selected{% endif %}>Menecer</option>
+                    <option value="diviziya_rehb" {% if edit_user.rol == 'diviziya_rehb' %}selected{% endif %}>Diviziya Rəhbəri</option>
+                    <option value="rehber" {% if edit_user.rol == 'rehber' %}selected{% endif %}>Rəhbər</option>
+                </select>
+            </div>
+            <div>
+                <label>Status</label>
+                <select name="aktiv">
+                    <option value="1" {% if edit_user.aktiv %}selected{% endif %}>Aktiv</option>
+                    <option value="0" {% if not edit_user.aktiv %}selected{% endif %}>Deaktiv</option>
+                </select>
+            </div>
+            <div>
+                <label>Bölgə</label>
+                <select name="bolge_ids" multiple class="form-control" style="height: 100px;">
+                    {% for b in bolgeler %}
+                    <option value="{{ b.id }}" {% if b.id in edit_user_bolge_ids %}selected{% endif %}>{{ b.region_name }}</option>
+                    {% endfor %}
+                </select>
+                <small style="color:gray;">(Ctrl/Command düyməsini sıxaraq çoxlu seçim edə bilərsiniz)</small>
+            </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="submit" name="save_user" class="btn btn-primary"><i class="fas fa-save"></i> Yadda saxla</button>
+            <a href="{% url 'vizit:admin_panel' %}?tab=istifadeciler" class="btn btn-outline">Ləğv et</a>
+        </div>
+    </form>
+</div>
+{% else %}
 <div class="card">
     <div class="card-title"><i class="fas fa-plus"></i> Yeni İstifadəçi</div>
     <form method="post">
@@ -47,11 +93,12 @@
         <div style="margin-top:14px;"><button type="submit" name="add_user" class="btn btn-primary"><i class="fas fa-plus"></i> Əlavə et</button></div>
     </form>
 </div>
+{% endif %}
 <div class="card">
     <div class="card-title"><i class="fas fa-user"></i> Mövcud İstifadəçilər ({{ istifadeciler|length }})</div>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>#</th><th>Login</th><th>Ad</th><th>Rol</th><th>Bölgə</th><th>Aktiv</th><th>Sil</th></tr></thead>
+            <thead><tr><th>#</th><th>Login</th><th>Ad</th><th>Rol</th><th>Bölgə</th><th>Aktiv</th><th>Əməliyyat</th></tr></thead>
             <tbody>
             {% for u in istifadeciler %}
             <tr>
@@ -61,7 +108,10 @@
                 <td><span class="badge role-badge role-{{ u.rol }}">{{ u.get_rol_display }}</span></td>
                 <td>{% for b in u.bolgeler.all %}{{ b.region_name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
                 <td>{% if u.aktiv %}✅{% else %}❌{% endif %}</td>
-                <td><a href="{% url 'vizit:admin_panel' %}?tab=istifadeciler&amp;del_user={{ u.id }}" onclick="return confirm('İstifadəçi və ona aid vizit qeydləri silinsin?')" style="color:red;">🗑️</a></td>
+                <td style="white-space:nowrap;">
+                    <a href="{% url 'vizit:admin_panel' %}?tab=istifadeciler&amp;edit_user={{ u.id }}" title="Redaktə" style="margin-right:8px;"><i class="fas fa-pen"></i></a>
+                    <a href="{% url 'vizit:admin_panel' %}?tab=istifadeciler&amp;del_user={{ u.id }}" onclick="return confirm('İstifadəçi və ona aid vizit qeydləri silinsin?')" style="color:red;" title="Sil"><i class="fas fa-trash"></i></a>
+                </td>
             </tr>
             {% endfor %}
             </tbody>
@@ -127,30 +177,4 @@
     </div>
 </div>
 {% endif %}
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const rolSelect = document.querySelector('select[name="rol"]');
-        const bolgeSelect = document.querySelector('select[name="bolge_ids"]');
-    
-        if (rolSelect && bolgeSelect) {
-            bolgeSelect.addEventListener('change', function () {
-                const selectedRol = rolSelect.value;
-                const selectedOptions = Array.from(bolgeSelect.selectedOptions);
-    
-                if (selectedRol === 'menecer' && selectedOptions.length > 3) {
-                    alert('Menecer üçün yalnız 3 bölgə seçə bilərsiniz.');
-                    // Son seçiləndən başqa digərlərini ləğv etmək üçün:
-                    selectedOptions.forEach((opt, index) => {
-                        if (index > 0) opt.selected = false;
-                    });
-                } else if (selectedRol === 'diviziya_rehb' && selectedOptions.length > 5) {
-                    alert('Diviziya Rəhbəri üçün maksimum 3 bölgə seçilə bilər.');
-                    selectedOptions.forEach((opt, index) => {
-                        if (index >= 3) opt.selected = false;
-                    });
-                }
-            });
-        }
-    });
-    </script>
 {% endblock %}

@@ -39,6 +39,93 @@
 }
 .vd-share-copy { background: #334155; }
 .vd-share-status { margin: 10px 0 0; font-size: .85rem; color: #64748b; min-height: 1.2em; }
+
+#location-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+#location-grid.baki-mode {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#location-grid > div {
+  min-width: 0;
+}
+
+.hekim-search-box {
+  position: relative;
+  z-index: 50;
+  width: 100%;
+  max-width: 100%;
+}
+.hekim-search-box .hekim-search-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 36px 10px 12px;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  font-size: .95rem;
+  background: #fff;
+}
+.hekim-search-box .hekim-search-input:disabled { background: #f3f4f6; color: #9ca3af; }
+.hekim-search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px; border: 0; border-radius: 6px;
+  background: #e5e7eb; color: #374151; cursor: pointer;
+  display: none; align-items: center; justify-content: center; font-size: 1.1rem; line-height: 1;
+  z-index: 2;
+}
+.hekim-search-clear.is-visible { display: flex; }
+.hekim-dropdown-list {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  max-height: min(220px, 40vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(15,23,42,.18);
+  z-index: 100;
+}
+.hekim-dropdown-list.is-open { display: block; }
+.hekim-dropdown-list li {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  word-break: break-word;
+}
+.hekim-dropdown-list li:last-child { border-bottom: 0; }
+.hekim-dropdown-list li:hover, .hekim-dropdown-list li.is-active { background: #eff6ff; }
+.hekim-dropdown-list .hekim-dd-empty { cursor: default; color: #94a3b8; font-size: .88rem; }
+.hekim-dropdown-list .hekim-dd-empty:hover { background: transparent; }
+.hekim-dd-meta { font-size: .78rem; color: #64748b; margin-top: 2px; }
+.card:has(.hekim-search-box) {
+  position: relative;
+  z-index: 30;
+  overflow: visible;
+}
+
+@media (max-width: 900px) {
+  #location-grid,
+  #location-grid.baki-mode {
+    grid-template-columns: 1fr;
+  }
+  .hekim-dropdown-list {
+    max-height: min(200px, 35vh);
+  }
+}
 </style>
 {% endblock %}
 
@@ -61,7 +148,7 @@
 
     <div class="card">
         <div class="card-title"><i class="fas fa-map-marker-alt"></i> Bölgə, Rayon və Həkim</div>
-        <div class="grid-3" id="location-grid">
+        <div id="location-grid">
             <div>
                 <label>Bölgə</label>
                 <select name="bolge_id" id="bolge_id" class="form-control" required>
@@ -77,15 +164,22 @@
             </div>
             <div id="rayon-wrap">
                 <label>Rayon <span style="font-weight:normal;color:#888;">(ixtiyari)</span></label>
-                <select name="rayon_id" id="rayon_id" disabled>
+                <select name="rayon_id" id="rayon_id" class="form-control" disabled>
                     <option value="">Əvvəlcə bölgə...</option>
                 </select>
             </div>
-            <div>
-                <label>Həkim</label>
-                <select name="hekim_id" id="hekim_id" required disabled>
-                    <option value="">Həkim seçin...</option>
-                </select>
+            <div class="hekim-field">
+                <label for="hekim_search">Həkim</label>
+                <input type="hidden" name="hekim_id" id="hekim_id" value="">
+                <div class="hekim-search-box">
+                    <input type="text" id="hekim_search" class="hekim-search-input"
+                           autocomplete="off" autocorrect="off" spellcheck="false"
+                           placeholder="Əvvəlcə bölgə seçin..." disabled>
+                    <button type="button" id="hekim_search_clear" class="hekim-search-clear"
+                            aria-label="Təmizlə" title="Təmizlə">&times;</button>
+                    <ul id="hekim_dropdown" class="hekim-dropdown-list" role="listbox"
+                        aria-label="Həkim axtarış nəticələri"></ul>
+                </div>
             </div>
         </div>
         <div id="hekim-info" class="hekim-info-panel hidden"></div>
@@ -128,6 +222,7 @@
     </div>
 </form>
 
+{% if user_rol == 'menecer' or user_rol == 'rehber' %}
 <div class="card">
     <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <span><i class="fas fa-calendar-alt"></i> Bu gün ({{ bugun_tarix }}) — {{ bugun_vizitler|length }} vizit</span>
@@ -163,9 +258,6 @@
                     {% if v.rayon %}<span><i class="fas fa-map-marker-alt"></i> {{ v.rayon.get_city_name_display }}</span>{% endif %}
                     <span><i class="fas fa-handshake"></i> {{ v.munasibat }}</span>
                     <span><i class="fas fa-clock"></i> {{ v.vaxt|time:"H:i" }}</span>
-                    {% if user_rol != 'numayende' %}
-                    <span><i class="fas fa-user"></i> {{ v.istifadeci.ad }}</span>
-                    {% endif %}
                 </div>
                 <div class="vizit-preparatlar">Dərmanlar:
                     {% for vp in v.preparatlar.all %}
@@ -176,6 +268,12 @@
                 <div style="font-size:13px;margin-top:4px;"><i class="fas fa-sticky-note"></i> {{ v.qeyd }}</div>
                 {% endif %}
             </div>
+            <a href="{% url 'vizit:del_vizit' v.id %}"
+               class="btn btn-sm btn-danger no-print"
+               title="Sil"
+               onclick="return confirm('Bu viziti silmək istəyirsiniz?');">
+                <i class="fas fa-trash"></i>
+            </a>
         </li>
         {% endfor %}
     </ul>
@@ -206,6 +304,7 @@
     <p class="vd-share-status" id="vd-share-status"></p>
   </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -218,29 +317,135 @@ document.addEventListener('DOMContentLoaded', function () {
     const rayonSelect = document.getElementById('rayon_id');
     const rayonWrap = document.getElementById('rayon-wrap');
     const locationGrid = document.getElementById('location-grid');
-    const hekimSelect = document.getElementById('hekim_id');
+    const hekimIdInput = document.getElementById('hekim_id');
+    const hekimSearch = document.getElementById('hekim_search');
+    const hekimClear = document.getElementById('hekim_search_clear');
+    const hekimDropdown = document.getElementById('hekim_dropdown');
+    const hekimSearchBox = hekimSearch.closest('.hekim-search-box');
     const hekimInfo = document.getElementById('hekim-info');
+
+    let hekimlerCache = [];
+    let activeIndex = -1;
+    let blurHideTimer = null;
+
+    function norm(s) {
+        return String(s || '')
+            .toLowerCase()
+            .replace(/ı/g, 'i').replace(/ə/g, 'e').replace(/ö/g, 'o')
+            .replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ç/g, 'c').replace(/ğ/g, 'g');
+    }
 
     function isBakiBolge() {
         const opt = bolgeSelect.options[bolgeSelect.selectedIndex];
         return opt && opt.dataset.regionType === 'Bakı';
     }
 
-    function resetHekimSelect(placeholder) {
-        hekimSelect.innerHTML = `<option value="">${placeholder}</option>`;
-        hekimSelect.disabled = true;
-        if (hekimInfo) hekimInfo.classList.add('hidden');
+    function hideDropdown() {
+        clearTimeout(blurHideTimer);
+        blurHideTimer = null;
+        hekimDropdown.classList.remove('is-open');
+        hekimDropdown.innerHTML = '';
+        activeIndex = -1;
     }
 
-    function fillHekimSelect(hekimler) {
-        hekimler.forEach(h => {
-            const opt = new Option(h.ad_soyad, h.id);
-            opt.setAttribute('data-ixtisas', h.ixtisas_kod || h.ixtisas || '');
-            opt.setAttribute('data-kateqoriya', h.kateqoriya || h.kategoriya || '');
-            opt.setAttribute('data-derece', h.derece || '');
-            hekimSelect.add(opt);
+    function updateClearBtn() {
+        hekimClear.classList.toggle('is-visible', !hekimSearch.disabled && !!hekimSearch.value.trim());
+    }
+
+    function clearHekimInfo() {
+        if (hekimInfo) {
+            hekimInfo.classList.add('hidden');
+            hekimInfo.innerHTML = '';
+        }
+    }
+
+    function showHekimInfo(h) {
+        if (!hekimInfo || !h) return;
+        const ixtisas = (h.ixtisas_kod || h.ixtisas || '').trim() || '—';
+        const kat = (h.kateqoriya || h.kategoriya || '').trim() || '—';
+        const derece = (h.derece || '').trim() || '—';
+        hekimInfo.innerHTML = `
+            <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff; margin-top: 10px;">
+                <div style="margin-bottom: 5px;"><i class="fas fa-user-md"></i> İxtisas: <strong>${ixtisas}</strong></div>
+                <div style="margin-bottom: 5px;"><i class="fas fa-tag"></i> Kateqoriya: <strong>${kat}</strong></div>
+                <div><i class="fas fa-graduation-cap"></i> Dərəcə: <strong>${derece}</strong></div>
+            </div>
+        `;
+        hekimInfo.classList.remove('hidden');
+    }
+
+    function resetHekimSearch(placeholder) {
+        hekimlerCache = [];
+        hekimIdInput.value = '';
+        hekimSearch.value = '';
+        hekimSearch.disabled = true;
+        hekimSearch.placeholder = placeholder || 'Əvvəlcə bölgə seçin...';
+        hideDropdown();
+        clearHekimInfo();
+        updateClearBtn();
+    }
+
+    function selectHekim(h) {
+        hekimIdInput.value = String(h.id);
+        hekimSearch.value = h.ad_soyad || '';
+        hideDropdown();
+        showHekimInfo(h);
+        updateClearBtn();
+        document.getElementById('step-1').classList.add('active');
+    }
+
+    function filterHekimler(q) {
+        const nq = norm(q.trim());
+        if (!nq) return hekimlerCache.slice(0, 12);
+        return hekimlerCache.filter(h => norm(h.ad_soyad).includes(nq)).slice(0, 20);
+    }
+
+    function renderDropdown(items) {
+        hekimDropdown.innerHTML = '';
+        activeIndex = -1;
+        if (!items.length) {
+            const li = document.createElement('li');
+            li.className = 'hekim-dd-empty';
+            li.textContent = hekimlerCache.length ? 'Uyğun həkim tapılmadı' : 'Bu bölgədə həkim yoxdur';
+            hekimDropdown.appendChild(li);
+            hekimDropdown.classList.add('is-open');
+            return;
+        }
+        items.forEach((h, idx) => {
+            const li = document.createElement('li');
+            li.setAttribute('role', 'option');
+            li.dataset.index = String(idx);
+            const meta = [h.ixtisas_kod || h.ixtisas, h.kateqoriya || h.kategoriya].filter(Boolean).join(' · ');
+            li.innerHTML = meta
+                ? `<div><strong>${h.ad_soyad}</strong><div class="hekim-dd-meta">${meta}</div></div>`
+                : `<strong>${h.ad_soyad}</strong>`;
+            li.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                selectHekim(h);
+            });
+            hekimDropdown.appendChild(li);
         });
-        hekimSelect.disabled = false;
+        hekimDropdown.classList.add('is-open');
+    }
+
+    function setActiveItem(index) {
+        const items = hekimDropdown.querySelectorAll('li[role="option"]');
+        if (!items.length) return;
+        items.forEach(el => el.classList.remove('is-active'));
+        activeIndex = (index + items.length) % items.length;
+        items[activeIndex].classList.add('is-active');
+        items[activeIndex].scrollIntoView({ block: 'nearest' });
+    }
+
+    function fillHekimSearch(hekimler) {
+        hekimlerCache = hekimler || [];
+        hekimIdInput.value = '';
+        hekimSearch.value = '';
+        hekimSearch.disabled = false;
+        hekimSearch.placeholder = 'Həkim adını yazın...';
+        hideDropdown();
+        clearHekimInfo();
+        updateClearBtn();
         document.getElementById('step-1').classList.add('active');
     }
 
@@ -258,16 +463,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadHekimlerByBolge(bolgeId) {
-        resetHekimSelect('Həkim seçin...');
+        resetHekimSearch('Həkimlər yüklənir...');
         fetch(`${HEKIMLER_URL}?bolge_id=${bolgeId}`)
             .then(r => r.json())
-            .then(data => fillHekimSelect(data.hekimler));
+            .then(data => fillHekimSearch(data.hekimler || []));
     }
 
     bolgeSelect.addEventListener('change', function () {
         const bolgeId = this.value;
         rayonSelect.innerHTML = '<option value="">Rayon seçin (ixtiyari)...</option>';
-        resetHekimSelect('Həkim seçin...');
+        resetHekimSearch('Əvvəlcə bölgə seçin...');
         if (!bolgeId) {
             setBakiMode(false);
             rayonSelect.disabled = true;
@@ -296,26 +501,68 @@ document.addEventListener('DOMContentLoaded', function () {
             if (bolgeId) loadHekimlerByBolge(bolgeId);
             return;
         }
-        resetHekimSelect('Həkim seçin...');
+        resetHekimSearch('Həkimlər yüklənir...');
         fetch(`${HEKIMLER_URL}?rayon_id=${rayonId}`)
             .then(r => r.json())
-            .then(data => fillHekimSelect(data.hekimler));
+            .then(data => fillHekimSearch(data.hekimler || []));
     });
 
-    hekimSelect.addEventListener('change', function () {
-        if (!this.value || !hekimInfo) return;
-        const opt = this.options[this.selectedIndex];
-        const ixtisas = (opt.getAttribute('data-ixtisas') || '').trim() || '—';
-        const kat = (opt.getAttribute('data-kateqoriya') || '').trim() || '—';
-        const derece = (opt.getAttribute('data-derece') || '').trim() || '—';
-        hekimInfo.innerHTML = `
-            <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff; margin-top: 10px;">
-                <div style="margin-bottom: 5px;"><i class="fas fa-user-md"></i> İxtisas: <strong>${ixtisas}</strong></div>
-                <div style="margin-bottom: 5px;"><i class="fas fa-tag"></i> Kateqoriya: <strong>${kat}</strong></div>
-                <div><i class="fas fa-graduation-cap"></i> Dərəcə: <strong>${derece}</strong></div>
-            </div>
-        `;
-        hekimInfo.classList.remove('hidden');
+    hekimSearch.addEventListener('input', function () {
+        hekimIdInput.value = '';
+        clearHekimInfo();
+        updateClearBtn();
+        if (hekimSearch.disabled) return;
+        renderDropdown(filterHekimler(this.value));
+    });
+
+    hekimSearch.addEventListener('focus', function () {
+        if (hekimSearch.disabled) return;
+        renderDropdown(filterHekimler(this.value));
+    });
+
+    hekimSearch.addEventListener('keydown', function (e) {
+        const items = hekimDropdown.querySelectorAll('li[role="option"]');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!hekimDropdown.classList.contains('is-open')) renderDropdown(filterHekimler(hekimSearch.value));
+            setActiveItem(activeIndex + 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActiveItem(activeIndex - 1);
+        } else if (e.key === 'Enter') {
+            if (activeIndex >= 0 && items[activeIndex]) {
+                e.preventDefault();
+                const filtered = filterHekimler(hekimSearch.value);
+                if (filtered[activeIndex]) selectHekim(filtered[activeIndex]);
+            }
+        } else if (e.key === 'Escape') {
+            hideDropdown();
+        }
+    });
+
+    hekimSearch.addEventListener('blur', function () {
+        clearTimeout(blurHideTimer);
+        blurHideTimer = setTimeout(function () {
+            if (document.activeElement === hekimSearch || hekimSearchBox.contains(document.activeElement)) return;
+            hideDropdown();
+            if (hekimSearch.value.trim() && !hekimIdInput.value) {
+                hekimSearch.value = '';
+                updateClearBtn();
+            }
+        }, 200);
+    });
+
+    hekimClear.addEventListener('click', function () {
+        hekimIdInput.value = '';
+        hekimSearch.value = '';
+        clearHekimInfo();
+        hideDropdown();
+        updateClearBtn();
+        hekimSearch.focus();
+    });
+
+    document.addEventListener('mousedown', function (e) {
+        if (!hekimSearchBox.contains(e.target)) hideDropdown();
     });
 
     document.querySelectorAll('.munasibat-btn').forEach(btn => {
@@ -340,9 +587,18 @@ document.addEventListener('DOMContentLoaded', function () {
         bolgeSelect.dispatchEvent(new Event('change'));
     }
 
-    document.getElementById('vizit-form').addEventListener('submit', function () {
+    document.getElementById('vizit-form').addEventListener('submit', function (e) {
         rayonSelect.disabled = false;
-        hekimSelect.disabled = false;
+        if (!hekimIdInput.value) {
+            e.preventDefault();
+            hekimSearch.focus();
+            hekimSearch.reportValidity
+                ? hekimSearch.setCustomValidity('Həkim seçin')
+                : null;
+            hekimSearch.setCustomValidity('Həkim seçin');
+            hekimSearch.reportValidity();
+            hekimSearch.setCustomValidity('');
+        }
     });
 });
 </script>

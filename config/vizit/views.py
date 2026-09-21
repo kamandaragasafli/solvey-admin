@@ -245,14 +245,6 @@ def admin_panel_view(request):
             bolge_ids = request.POST.getlist('bolge_ids')
             valid_bolge_ids = [int(b_id) for b_id in bolge_ids if b_id]
 
-            # Rol əsaslı məhdudiyyətlər
-            if rol == Istifadeci.ROL_MENECER and len(valid_bolge_ids) > 3:
-                messages.error(request, '❌ Menecer rolu üçün maksimum 3 bölgə seçilə bilər.')
-                return _admin_redirect(tab)
-            elif rol == Istifadeci.ROL_DIVIZIYA_REHB and len(valid_bolge_ids) > 5:
-                messages.error(request, '❌ Diviziya Rəhbəri rolu üçün maksimum 3 bölgə seçilə bilər.')
-                return _admin_redirect(tab)
-
             if login and sifre and ad:
                 try:
                     istifadeci = Istifadeci(login=login, ad=ad, rol=rol, aktiv=True)
@@ -268,6 +260,44 @@ def admin_panel_view(request):
             else:
                 messages.error(request, '❌ Bütün sahələri doldurun.')
             return _admin_redirect(tab)
+
+        # 1b. İSTİFADƏÇİ REDAKTƏ
+        elif 'save_user' in request.POST:
+            try:
+                uid = int(request.POST.get('user_id') or 0)
+            except (TypeError, ValueError):
+                uid = 0
+            user = Istifadeci.objects.filter(pk=uid).first()
+            if not user:
+                messages.error(request, '❌ İstifadəçi tapılmadı.')
+                return _admin_redirect('istifadeciler')
+
+            login = request.POST.get('login', '').strip()
+            sifre = request.POST.get('sifre', '').strip()
+            ad = request.POST.get('ad', '').strip()
+            rol = request.POST.get('rol', user.rol)
+            aktiv = request.POST.get('aktiv') == '1'
+            bolge_ids = request.POST.getlist('bolge_ids')
+            valid_bolge_ids = [int(b_id) for b_id in bolge_ids if b_id]
+
+            if not login or not ad:
+                messages.error(request, '❌ Login və ad mütləqdir.')
+                return redirect(f"{reverse('vizit:admin_panel')}?tab=istifadeciler&edit_user={uid}")
+
+            if Istifadeci.objects.filter(login=login).exclude(pk=user.pk).exists():
+                messages.error(request, '❌ Bu login artıq mövcuddur.')
+                return redirect(f"{reverse('vizit:admin_panel')}?tab=istifadeciler&edit_user={uid}")
+
+            user.login = login
+            user.ad = ad
+            user.rol = rol
+            user.aktiv = aktiv
+            if sifre:
+                user.set_password(sifre)
+            user.save()
+            user.bolgeler.set(valid_bolge_ids)
+            messages.success(request, f'✅ İstifadəçi yeniləndi: {user.ad}')
+            return _admin_redirect('istifadeciler')
 
         # 2. HƏKİM ƏLAVƏ ETMƏ
         elif 'add_hekim' in request.POST:
@@ -345,13 +375,30 @@ def admin_panel_view(request):
                 pass
 
     # 4. SƏHİFƏNİ YÜKLƏMƏ
+    edit_user = None
+    edit_user_bolge_ids = set()
+    edit_user_id = request.GET.get('edit_user')
+    if tab == 'istifadeciler' and edit_user_id:
+        try:
+            edit_user = (
+                Istifadeci.objects.prefetch_related('bolgeler')
+                .filter(pk=int(edit_user_id))
+                .first()
+            )
+            if edit_user:
+                edit_user_bolge_ids = set(edit_user.bolgeler.values_list('id', flat=True))
+        except (TypeError, ValueError):
+            edit_user = None
+
     return render(
         request,
         'vizit/admin_panel.html',
         {
             'tab': tab,
+            'edit_user': edit_user,
+            'edit_user_bolge_ids': edit_user_bolge_ids,
             'istifadeciler': (
-                Istifadeci.objects.filter(aktiv=True)
+                Istifadeci.objects.exclude(login__contains='__silindi_')
                 .prefetch_related('bolgeler')
                 .order_by('rol', 'ad')
             ),
@@ -418,22 +465,29 @@ def yeni_vizit_view(request):
         
         return redirect('vizit:index')
 
-    # GET sorğusu və ya Səhifənin açılması
-    # Vizitləri filtrələmək: Rəhbərlər hamını, digərləri yalnız özünü görsün
-    vizitler_query = (
-        Vizit.objects.filter(tarix=bugun)
-        .select_related('hekim', 'rayon', 'istifadeci')
-        .prefetch_related('preparatlar__preparat')
-    )
-    
-    if user_rol not in [Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB]:
-        vizitler_query = vizitler_query.filter(istifadeci_id=user_id)
+    # GET: «Bu gün» — menecer və rəhbər yalnız öz qeydləri
+    vizitler_query = Vizit.objects.none()
+    if user_rol in (Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER) and user_id:
+        vizitler_query = (
+            Vizit.objects.filter(tarix=bugun, istifadeci_id=user_id)
+            .select_related('hekim', 'rayon', 'istifadeci')
+            .prefetch_related('preparatlar__preparat')
+        )
 
     # Son seçilən bölgəni sessiyadan oxuyuruq
     selected_bolge_id = request.session.get('son_bolge_id')
 
     from .vizit_day_pdf import vizit_day_share_context
-    share_ctx = vizit_day_share_context(request)
+    share_ctx = (
+        vizit_day_share_context(request)
+        if user_rol in (Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER)
+        else {
+            'share_url': '',
+            'pdf_filename': '',
+            'user_ad': request.session.get('ad') or '',
+            'today': bugun,
+        }
+    )
 
     return render(request, 'vizit/create-vizit.html', {
         'bolgeler': _bolgeler_for_user(user_rol, user_bolge_ids),
@@ -444,6 +498,27 @@ def yeni_vizit_view(request):
         'bugun_tarix': bugun,
         **share_ctx,
     })
+
+
+@vizit_login_required
+def del_vizit(request, pk):
+    """Bugünkü viziti sil — menecer və rəhbər yalnız özünü."""
+    user_id = request.session.get('istifadeci_id')
+    user_rol = request.session.get('rol')
+    vizit = get_object_or_404(Vizit, pk=pk)
+
+    if user_rol not in (Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER):
+        messages.error(request, '❌ Bu viziti silmək üçün icazəniz yoxdur.')
+        return redirect('vizit:index')
+
+    if vizit.istifadeci_id != user_id:
+        messages.error(request, '❌ Yalnız öz vizitinizi silə bilərsiniz.')
+        return redirect('vizit:index')
+
+    hekim_ad = vizit.hekim.ad if vizit.hekim_id else 'Vizit'
+    vizit.delete()
+    messages.success(request, f'✅ Vizit silindi: {hekim_ad}')
+    return redirect('vizit:index')
 
 
 def _rayonlar_list(request, bolge_id):

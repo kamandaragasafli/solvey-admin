@@ -427,8 +427,29 @@ html, body {
 }
 
 .sidebar-header {
-    padding: 24px;
+    padding: 18px 16px;
     border-bottom: 1px solid var(--sidebar-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    text-decoration: none;
+}
+
+.sidebar-logo img {
+    display: block;
+    width: auto;
+    max-width: 168px;
+    height: 44px;
+    object-fit: contain;
+    object-position: center;
+    background: transparent;
 }
 
 .sidebar a {
@@ -565,9 +586,9 @@ html, body {
   width: auto;
   max-width: 110px;
   object-fit: contain;
-  background: #fff;
-  padding: 3px 8px;
-  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
 }
 
 .quick-actions-toggle {

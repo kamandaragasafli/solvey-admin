@@ -34,14 +34,20 @@
                     {% endfor %}
                 </select>
             </div>
-            <div style="position: relative; z-index: 9999;">
-                <label>Həkim</label>
+            <div>
+                <label for="doctor-search">Həkim</label>
                 <input type="hidden" name="doctor" id="doctor-id" value="{{ selected_doctor|default:'' }}" />
-                <input type="text" id="doctor-search" class="form-control" autocomplete="off"
-                    placeholder="{% if selected_region %}Həkim adını yazın...{% else %}Əvvəlcə bölgə seçin...{% endif %}"
-                    value="{{ selected_doctor_name|default:'' }}"
-                    {% if not selected_region %}disabled{% endif %} />
-                <ul id="doctor-dropdown" class="doctor-dropdown"></ul>
+                <div class="hekim-search-box">
+                    <input type="text" id="doctor-search" class="hekim-search-input"
+                           autocomplete="off" autocorrect="off" spellcheck="false"
+                           placeholder="{% if selected_region %}Həkim adını yazın...{% else %}Əvvəlcə bölgə seçin...{% endif %}"
+                           value="{{ selected_doctor_name|default:'' }}"
+                           {% if not selected_region %}disabled{% endif %} />
+                    <button type="button" id="doctor-search-clear" class="hekim-search-clear"
+                            aria-label="Təmizlə" title="Təmizlə">&times;</button>
+                    <ul id="doctor-dropdown" class="hekim-dropdown-list" role="listbox"
+                        aria-label="Həkim axtarış nəticələri"></ul>
+                </div>
             </div>
         </div>
     </div>
@@ -193,51 +199,49 @@
 }
 .dr-share-copy { background: #334155; }
 .dr-share-status { margin: 10px 0 0; font-size: .85rem; color: #64748b; min-height: 1.2em; }
-.doctor-dropdown {
-    display: none;
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 100%;
-    z-index: 99999;
-    max-height: 200px;
-    overflow-y: auto;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    margin-top: 4px;
-    padding: 0;
-    list-style: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+
+.hekim-search-box { position: relative; z-index: 50; }
+.hekim-search-box .hekim-search-input {
+  width: 100%; padding: 10px 36px 10px 12px;
+  border: 1px solid #d0d7de; border-radius: 8px; font-size: .95rem;
+  background: #fff; box-sizing: border-box;
 }
-.doctor-dropdown.show {
-    display: block;
+.hekim-search-box .hekim-search-input:disabled { background: #f3f4f6; color: #9ca3af; }
+.hekim-search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px; border: 0; border-radius: 6px;
+  background: #e5e7eb; color: #374151; cursor: pointer;
+  display: none; align-items: center; justify-content: center; font-size: 1.1rem; line-height: 1;
+  z-index: 2;
 }
-.doctor-dropdown li {
-    padding: 10px 12px;
-    cursor: pointer;
-    border-bottom: 1px solid #eee;
+.hekim-search-clear.is-visible { display: flex; }
+.hekim-dropdown-list {
+  display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+  max-height: 240px; overflow-y: auto; margin: 0; padding: 6px 0;
+  list-style: none; background: #fff; border: 1px solid #d0d7de;
+  border-radius: 10px; box-shadow: 0 10px 28px rgba(15,23,42,.18); z-index: 100;
 }
-.doctor-dropdown li:last-child {
-    border-bottom: none;
+.hekim-dropdown-list.is-open { display: block; }
+.hekim-dropdown-list li {
+  padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9;
 }
-.doctor-dropdown li:hover {
-    background: #f5f5f5;
-}
-.doctor-dropdown .empty {
-    cursor: default;
-    color: #999;
-    padding: 10px;
-}
+.hekim-dropdown-list li:last-child { border-bottom: 0; }
+.hekim-dropdown-list li:hover,
+.hekim-dropdown-list li.is-active { background: #eff6ff; }
+.hekim-dropdown-list .hekim-dd-empty { cursor: default; color: #94a3b8; font-size: .88rem; }
+.hekim-dropdown-list .hekim-dd-empty:hover { background: transparent; }
+.hekim-dd-meta { font-size: .78rem; color: #64748b; margin-top: 2px; }
 
 /* --- Responsive əsas hissə --- */
 
 .card {
     padding: 16px;
     box-sizing: border-box;
-    overflow-x: visible;
+    overflow: visible;
     position: relative;
-    z-index: 1;
+}
+.card:has(.hekim-search-box) {
+    z-index: 30;
 }
 
 .steps {
@@ -390,59 +394,78 @@
         const regionSelect = document.getElementById("region-select");
         const doctorIdInput = document.getElementById("doctor-id");
         const doctorSearch = document.getElementById("doctor-search");
+        const doctorClear = document.getElementById("doctor-search-clear");
         const doctorDropdown = document.getElementById("doctor-dropdown");
+        const doctorSearchBox = doctorSearch.closest(".hekim-search-box");
         const form = regionSelect.closest("form");
 
         let doctorsCache = [];
+        let activeIndex = -1;
+        let blurHideTimer = null;
 
         function hideDropdown() {
-            doctorDropdown.classList.remove("show");
+            clearTimeout(blurHideTimer);
+            blurHideTimer = null;
+            doctorDropdown.classList.remove("is-open");
             doctorDropdown.innerHTML = "";
+            activeIndex = -1;
         }
 
-        function showDropdown() {
-            const rect = doctorSearch.getBoundingClientRect();
-            document.body.appendChild(doctorDropdown);
-            doctorDropdown.style.position = 'fixed';
-            doctorDropdown.style.left = rect.left + 'px';
-            doctorDropdown.style.top = (rect.bottom + window.scrollY) + 'px';
-            doctorDropdown.style.width = rect.width + 'px';
-            doctorDropdown.style.zIndex = '99999';
-            doctorDropdown.classList.add("show");
+        function updateClearBtn() {
+            doctorClear.classList.toggle(
+                "is-visible",
+                !doctorSearch.disabled && !!doctorSearch.value.trim()
+            );
         }
 
-        function renderList(items) {
-            doctorDropdown.innerHTML = "";
-            if (!items.length) {
-                const li = document.createElement("li");
-                li.className = "empty";
-                li.textContent = doctorsCache.length ? "Uyğun həkim tapılmadı" : "Bu bölgədə həkim yoxdur";
-                doctorDropdown.appendChild(li);
-                showDropdown();
-                return;
-            }
-            items.forEach((doc) => {
-                const li = document.createElement("li");
-                li.textContent = doc.ad;
-                li.addEventListener("mousedown", function (e) {
-                    e.preventDefault();
-                    selectDoctor(doc.id, doc.ad);
-                });
-                doctorDropdown.appendChild(li);
-            });
-            showDropdown();
+        function selectDoctor(id, ad, ixtisas) {
+            doctorIdInput.value = String(id);
+            doctorSearch.value = ad;
+            hideDropdown();
+            updateClearBtn();
         }
 
         function filterDoctors(q) {
             const nq = norm(q.trim());
-            if (!nq) return doctorsCache.slice();
-            return doctorsCache.filter((d) => norm(d.ad).includes(nq));
+            if (!nq) return doctorsCache.slice(0, 40);
+            return doctorsCache.filter((d) => norm(d.ad).includes(nq)).slice(0, 40);
         }
 
-        function selectDoctor(id, ad) {
-            doctorIdInput.value = String(id);
-            doctorSearch.value = ad;
-            hideDropdown();
+        function renderList(items) {
+            doctorDropdown.innerHTML = "";
+            activeIndex = -1;
+            if (!items.length) {
+                const li = document.createElement("li");
+                li.className = "hekim-dd-empty";
+                li.textContent = doctorsCache.length ? "Uyğun həkim tapılmadı" : "Bu bölgədə həkim yoxdur";
+                doctorDropdown.appendChild(li);
+                doctorDropdown.classList.add("is-open");
+                return;
+            }
+            items.forEach((doc, idx) => {
+                const li = document.createElement("li");
+                li.setAttribute("role", "option");
+                li.dataset.index = String(idx);
+                const ixtisas = (doc.ixtisas || "").trim();
+                li.innerHTML = ixtisas
+                    ? `<div><strong>${doc.ad}</strong><div class="hekim-dd-meta">${ixtisas}</div></div>`
+                    : `<strong>${doc.ad}</strong>`;
+                li.addEventListener("mousedown", function (e) {
+                    e.preventDefault();
+                    selectDoctor(doc.id, doc.ad, ixtisas);
+                });
+                doctorDropdown.appendChild(li);
+            });
+            doctorDropdown.classList.add("is-open");
+        }
+
+        function setActiveItem(index) {
+            const items = doctorDropdown.querySelectorAll('li[role="option"]');
+            if (!items.length) return;
+            items.forEach((el) => el.classList.remove("is-active"));
+            activeIndex = (index + items.length) % items.length;
+            items[activeIndex].classList.add("is-active");
+            items[activeIndex].scrollIntoView({ block: "nearest" });
         }
 
         function loadDoctors(regionId) {
@@ -451,11 +474,18 @@
                 doctorIdInput.value = "";
                 doctorSearch.value = "";
                 doctorSearch.disabled = true;
+                doctorSearch.placeholder = "Əvvəlcə bölgə seçin...";
                 hideDropdown();
+                updateClearBtn();
                 return;
             }
 
             doctorSearch.disabled = false;
+            doctorSearch.placeholder = "Həkimlər yüklənir...";
+            doctorIdInput.value = "";
+            doctorSearch.value = "";
+            hideDropdown();
+            updateClearBtn();
 
             fetch(ajaxUrl + "?region_id=" + encodeURIComponent(regionId))
                 .then((r) => {
@@ -463,15 +493,14 @@
                     return r.json();
                 })
                 .then((data) => {
-                    console.log("Həkimlər gəldi:", data);
                     doctorsCache = data.doctors && data.doctors.length ? data.doctors : [];
-                    console.log("doctorsCache:", doctorsCache);
-                    hideDropdown();
+                    doctorSearch.placeholder = "Həkim adını yazın...";
+                    updateClearBtn();
                 })
-                .catch((err) => {
-                    console.error("Həkimlər alınarkən xəta:", err);
+                .catch(function () {
                     doctorsCache = [];
-                    hideDropdown();
+                    doctorSearch.placeholder = "Həkim adını yazın...";
+                    updateClearBtn();
                 });
         }
 
@@ -481,26 +510,64 @@
 
         doctorSearch.addEventListener("input", function () {
             doctorIdInput.value = "";
+            updateClearBtn();
+            if (doctorSearch.disabled) return;
             renderList(filterDoctors(this.value));
         });
 
         doctorSearch.addEventListener("focus", function () {
-            if (!regionSelect.value) return;
+            if (doctorSearch.disabled || !regionSelect.value) return;
             renderList(filterDoctors(this.value));
         });
 
-        doctorSearch.addEventListener("blur", function () {
-            setTimeout(hideDropdown, 200);
-        });
-
-        document.addEventListener("mousedown", function (e) {
-            if (!e.target.closest("#doctor-search") && !e.target.closest(".doctor-dropdown")) {
+        doctorSearch.addEventListener("keydown", function (e) {
+            const items = doctorDropdown.querySelectorAll('li[role="option"]');
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                if (!doctorDropdown.classList.contains("is-open")) renderList(filterDoctors(doctorSearch.value));
+                setActiveItem(activeIndex + 1);
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActiveItem(activeIndex - 1);
+            } else if (e.key === "Enter") {
+                if (activeIndex >= 0 && items[activeIndex]) {
+                    e.preventDefault();
+                    const filtered = filterDoctors(doctorSearch.value);
+                    if (filtered[activeIndex]) selectDoctor(filtered[activeIndex].id, filtered[activeIndex].ad);
+                }
+            } else if (e.key === "Escape") {
                 hideDropdown();
             }
         });
 
+        doctorSearch.addEventListener("blur", function () {
+            clearTimeout(blurHideTimer);
+            blurHideTimer = setTimeout(function () {
+                if (document.activeElement === doctorSearch || doctorSearchBox.contains(document.activeElement)) return;
+                hideDropdown();
+                if (doctorSearch.value.trim() && !doctorIdInput.value) {
+                    doctorSearch.value = "";
+                    updateClearBtn();
+                }
+            }, 200);
+        });
+
+        doctorClear.addEventListener("click", function () {
+            doctorIdInput.value = "";
+            doctorSearch.value = "";
+            hideDropdown();
+            updateClearBtn();
+            doctorSearch.focus();
+        });
+
+        document.addEventListener("mousedown", function (e) {
+            if (!doctorSearchBox.contains(e.target)) hideDropdown();
+        });
+
         if (regionSelect.value) {
             loadDoctors(regionSelect.value);
+        } else {
+            updateClearBtn();
         }
 
         form.addEventListener("submit", function (e) {
@@ -511,22 +578,23 @@
             }
             if (!doctorIdInput.value) {
                 e.preventDefault();
-                alert("Zəhmət olmasa həkim adını yazıb siyahıdan seçin.");
+                doctorSearch.focus();
+                doctorSearch.setCustomValidity("Həkim seçin");
+                doctorSearch.reportValidity();
+                doctorSearch.setCustomValidity("");
             }
         });
 
-        // Select all drugs
-        document.getElementById('select-all-drugs').addEventListener('click', function() {
-            document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+        document.getElementById("select-all-drugs").addEventListener("click", function () {
+            document.querySelectorAll('input[name^="quantity_"]').forEach(function (input) {
                 input.value = 1;
             });
             updateTotal();
         });
 
-        // Clear all drugs
-        document.getElementById('clear-all-drugs').addEventListener('click', function() {
-            document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
-                input.value = '';
+        document.getElementById("clear-all-drugs").addEventListener("click", function () {
+            document.querySelectorAll('input[name^="quantity_"]').forEach(function (input) {
+                input.value = "";
             });
             updateTotal();
         });
@@ -535,12 +603,14 @@
         const totalField = document.getElementById("total-count");
         function updateTotal() {
             let total = 0;
-            inputs.forEach((input) => {
+            inputs.forEach(function (input) {
                 total += parseFloat(input.value) || 0;
             });
             totalField.value = total;
         }
-        inputs.forEach((input) => input.addEventListener("input", updateTotal));
+        inputs.forEach(function (input) {
+            input.addEventListener("input", updateTotal);
+        });
     });
 })();
 </script>

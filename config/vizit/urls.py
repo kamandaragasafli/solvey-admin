@@ -10,6 +10,7 @@ from .views import (
     login_view,
     logout_view,
     yeni_vizit_view,
+    del_vizit,
     bolge_stat_view,
     statistika,
     yeni_aptek_vizit,
@@ -55,6 +56,7 @@ app_name = 'vizit'
 
 urlpatterns = [
     path('', yeni_vizit_view, name='index'),
+    path('del-vizit/<int:pk>/', del_vizit, name='del_vizit'),
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     path('admin/', admin_panel_view, name='admin_panel'),

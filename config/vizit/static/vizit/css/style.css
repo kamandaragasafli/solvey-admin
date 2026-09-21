@@ -207,9 +207,12 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color
 
 /* GRID */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.grid-3.baki-mode { grid-template-columns: repeat(2, 1fr); }
-@media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } .header-inner { flex-wrap: wrap; height: auto; padding: 10px; } }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.grid-3.baki-mode { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 900px) {
+  .grid-2, .grid-3, .grid-3.baki-mode { grid-template-columns: 1fr; }
+  .header-inner { flex-wrap: wrap; height: auto; padding: 10px; }
+}
 
 /* FORM */
 label { display: block; font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
