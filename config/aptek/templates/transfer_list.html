@@ -1,0 +1,89 @@
+{% extends "anbar_base.html" %}
+
+{% block title %}Transfer siyahısı — Solvey Pharma{% endblock %}
+
+{% block extra_css %}
+  .topbar-actions{display:flex;gap:10px;align-items:center;}
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1>Transfer siyahısı</h1>
+    <div class="sub">Anbarlar arası transferlərin tarixçəsi</div>
+  </div>
+  <div class="topbar-actions">
+    <a href="{% url 'aptek:transfer_form' %}" class="btn btn-primary">Yeni transfer</a>
+  </div>
+</div>
+
+<div class="filters">
+  <div class="field">
+    <label for="from">Başlanğıc tarix</label>
+    <input type="date" id="from" name="from" value="{{ date_from }}">
+  </div>
+  <div class="field">
+    <label for="to">Bitiş tarix</label>
+    <input type="date" id="to" name="to" value="{{ date_to }}">
+  </div>
+  <div class="field">
+    <label for="period">Dövr</label>
+    <strong>{{ period_label }}</strong>
+  </div>
+  <button type="button" class="btn btn-primary" onclick="applyFilters()">Tətbiq et</button>
+</div>
+
+<div class="ledger">
+  <div class="ledger-head">
+    <h2>Transferlər</h2>
+    <span class="count">{{ record_count }}</span>
+  </div>
+  <div class="ledger-scroll">
+    <table class="ledger-table">
+      <thead>
+        <tr>
+          <th class="col-idx">#</th>
+          <th class="drug-name">Dərman</th>
+          <th class="col-evvel">Göndərən depo</th>
+          <th class="col-gelen">Qəbul edən depo</th>
+          <th class="col-cixan num">Miqdar</th>
+          <th class="col-qalan-h">Tarix</th>
+          <th class="col-veziyyet">Referens</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="col-idx">{{ forloop.counter }}</td>
+          <td class="drug-name">{{ row.drug.med_name }}</td>
+          <td class="col-evvel">{{ row.from_depo.name }}</td>
+          <td class="col-gelen">{{ row.to_depo.name }}</td>
+          <td class="col-cixan num">{{ row.quantity }}</td>
+          <td class="col-qalan">{{ row.date|date:"d.m.Y" }}</td>
+          <td class="col-veziyyet"><code>{{ row.ref }}</code></td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" style="text-align:center;padding:32px;color:var(--ink-soft);">
+            Bu dövr üçün transfer tapılmadı
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function applyFilters() {
+    const from = document.getElementById('from').value;
+    const to = document.getElementById('to').value;
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    window.location = '?' + params.toString();
+  }
+</script>
+{% endblock %}

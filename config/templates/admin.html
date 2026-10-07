@@ -533,6 +533,60 @@
                         <i class="bi bi-x-circle"></i> Bölgə Borcunu Sil
                     </button>
                 </form>
+
+                <h4 class="section-title my-3">
+                    <i class="bi bi-arrow-counterclockwise"></i> Bağlanmış Hesabları Geri Qaytar
+                </h4>
+                <div class="form-row mb-3">
+                    <div class="form-group">
+                        <label for="restoreAySec" class="form-label">Ay seçin:</label>
+                        <select id="restoreAySec" class="form-select" name="restore_ay">
+                            <option value="">Bütün aylar</option>
+                            {% for item in aylar %}
+                                <option value="{{ item.1 }}">{{ item.0 }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="restoreIlSec" class="form-label">İl seçin:</label>
+                        <select class="form-select" id="restoreIlSec" name="restore_il">
+                            <option value="">Bütün illər</option>
+                            {% for y in years_list %}
+                                <option value="{{ y }}">{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="restoreBolgeSec" class="form-label">Bölgə seçin:</label>
+                        <select class="form-select" id="restoreBolgeSec" name="restore_region_id">
+                            <option value="">Bütün bölgələr</option>
+                            {% for bolge in bolgeler %}
+                                <option value="{{ bolge.id }}">{{ bolge.region_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="button" id="loadClosedAccountsBtn" class="btn info">
+                    <i class="bi bi-search"></i> Bağlanmış Hesabları Göstər
+                </button>
+
+                <div id="closedAccountsList" class="mt-3" style="display:none;">
+                    <div class="audit-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Həkim adı</th>
+                                    <th>Bölgə</th>
+                                    <th>Ay</th>
+                                    <th>Yekun Borc</th>
+                                    <th>Əməliyyat</th>
+                                </tr>
+                            </thead>
+                            <tbody id="closedAccountsTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </section>
                    
 
@@ -901,6 +955,79 @@ document.getElementById("hesabatForm").addEventListener("submit", function(e) {
     })
     .catch(err => showToast('Xəta baş verdi.', 'error'));
 });
+
+document.getElementById("loadClosedAccountsBtn").addEventListener("click", function() {
+    const month = document.getElementById("restoreAySec").value;
+    const year = document.getElementById("restoreIlSec").value;
+    const regionId = document.getElementById("restoreBolgeSec").value;
+
+    const params = new URLSearchParams();
+    if (month) params.set("month", month);
+    if (year) params.set("year", year);
+    if (regionId) params.set("region_id", regionId);
+
+    fetch("{% url 'get_closed_accounts' %}?" + params.toString(), {
+        method: "GET",
+        headers: {
+            "X-CSRFToken": getCSRFToken()
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const tbody = document.getElementById("closedAccountsTableBody");
+            tbody.innerHTML = "";
+
+            if (data.accounts.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Bağlanmış hesab tapılmadı.</td></tr>";
+            } else {
+                data.accounts.forEach(account => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${account.doctor_name}</td>
+                        <td>${account.region_name}</td>
+                        <td>${account.report_month}</td>
+                        <td>${account.yekun_borc.toFixed(2)}</td>
+                        <td>
+                            <button class="btn-icon restore" onclick="restoreAccount(${account.id})" title="Geri qaytar">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            document.getElementById("closedAccountsList").style.display = "block";
+        } else {
+            showToast(data.message, 'error');
+        }
+    })
+    .catch(err => showToast('Xəta baş verdi.', 'error'));
+});
+
+function restoreAccount(reportId) {
+    if (!confirm("Bu hesabı geri qaytarmaq istədiyinizə əminsiniz?")) {
+        return;
+    }
+
+    fetch("{% url 'restore_closed_account' 0 %}".replace('0', reportId), {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCSRFToken()
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            document.getElementById("loadClosedAccountsBtn").click();
+        } else {
+            showToast(data.message, 'error');
+        }
+    })
+    .catch(err => showToast('Xəta baş verdi.', 'error'));
+}
 
 // ── FILTER ──────────────────────────────────────────
 const doctorsTbodyUrl = "{% url 'admin_doctors_tbody' %}";

@@ -97,22 +97,42 @@ def index(request):
         reverse=True
     )[:10]
 
-    # Aktiv həkim sayı
-    active_count = (
-        Doctors.objects
-        .annotate(derman_sayi=Count('recipe__drugs'))
-        .filter(derman_sayi__gt=1)
-        .count()
-    )
-
-
-
     today = timezone.localdate()
     first_day_of_month = today.replace(day=1)
 
     # Digər bölgələr
     diger_region = Region.objects.filter(region_type="Digər")
     baki_region = Region.objects.filter(region_type="Bakı")
+
+    # Aktiv həkim sayı (bu ay qeydiyyatı > 2 olanlar)
+    active_count = (
+        Doctors.objects
+        .filter(recipe__date__year=today.year, recipe__date__month=today.month)
+        .annotate(derman_sayi=Count('recipe__drugs'))
+        .filter(derman_sayi__gt=2)
+        .count()
+    )
+
+    # Bakı aktiv həkimlər (bu ay)
+    active_baku_count = (
+        Doctors.objects
+        .filter(bolge__in=baki_region, recipe__date__year=today.year, recipe__date__month=today.month)
+        .annotate(derman_sayi=Count('recipe__drugs'))
+        .filter(derman_sayi__gt=2)
+        .count()
+    )
+
+    # Digər aktiv həkimlər (bu ay)
+    active_other_count = (
+        Doctors.objects
+        .filter(bolge__in=diger_region, recipe__date__year=today.year, recipe__date__month=today.month)
+        .annotate(derman_sayi=Count('recipe__drugs'))
+        .filter(derman_sayi__gt=2)
+        .count()
+    )
+
+    # Ümumi qeydiyyat sayı (bu ay)
+    total_qeydiyyat_count = Recipe.objects.filter(date__year=today.year, date__month=today.month).count()
 
     # Bakı üçün data
     baki_region_drug_counts_daily = {}
@@ -306,7 +326,10 @@ def index(request):
     # Context dövrün içində deyil, dövr bitdikdən sonra
     context = {
         'doctors': doctors,
-        'aktiv_sayi': active_count,
+        'aktiv_qeydiyyat_count': active_count,
+        'aktiv_baku_count': active_baku_count,
+        'aktiv_other_count': active_other_count,
+        'total_qeydiyyat_count': total_qeydiyyat_count,
         'combined_events': combined_events,
         'total_doctors': total_doctors,
         'total_hospitals': total_hospitals,

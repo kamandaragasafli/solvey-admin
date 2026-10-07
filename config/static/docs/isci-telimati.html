@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Solvey — İşçi Təlimatı</title>
+<style>
+:root{--bg:#f4f7f9;--card:#fff;--ink:#1a2b3c;--muted:#5a6b7c;--line:#d9e2ec;--brand:#1a5276;--soft:#e8f1f7;--ok:#0e7c66;--okbg:#eaf8f3;--warn:#8a5a00;--warnbg:#fff8e6;--h1:#143a56;--h2:#1e6b8a;--bad:#b03a2e;--badbg:#fdeceb;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a24;--card:#17232f;--ink:#e6eef5;--muted:#9fb1c1;--line:#2a3b4a;--brand:#7cc0e8;--soft:#1d3042;--ok:#4cd3b4;--okbg:#12302a;--warn:#f0c85a;--warnbg:#332a10;--h1:#0c2538;--h2:#17546e;--bad:#f1948a;--badbg:#3a1d1a}}
+:root[data-theme="dark"]{--bg:#0f1a24;--card:#17232f;--ink:#e6eef5;--muted:#9fb1c1;--line:#2a3b4a;--brand:#7cc0e8;--soft:#1d3042;--ok:#4cd3b4;--okbg:#12302a;--warn:#f0c85a;--warnbg:#332a10;--h1:#0c2538;--h2:#17546e;--bad:#f1948a;--badbg:#3a1d1a}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;line-height:1.55}
+.wrap{max-width:960px;margin:0 auto;padding:16px 16px 60px}
+.hero{background:linear-gradient(135deg,var(--h1),var(--h2));color:#fff;border-radius:20px;padding:30px 24px;margin-bottom:14px}
+.hero h1{margin:8px 0 8px;font-size:clamp(1.5rem,4vw,2.1rem);letter-spacing:-.02em}
+.hero p{margin:0;opacity:.92;max-width:40rem}
+.pill{display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);padding:4px 12px;border-radius:99px;font-size:.8rem;font-weight:600}
+.theme{float:right;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:99px;padding:5px 12px;cursor:pointer;font:inherit;font-size:.8rem}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:8px 0;display:flex;gap:8px;overflow-x:auto;margin-bottom:10px}
+nav a{white-space:nowrap;text-decoration:none;color:var(--brand);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:7px 14px;font-weight:600;font-size:.9rem}
+section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 20px;margin-bottom:16px}
+h2{margin:0 0 4px;color:var(--brand);font-size:1.3rem}
+.lead{color:var(--muted);margin:0 0 16px}
+h3{margin:18px 0 8px;font-size:1.02rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.box{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:14px}
+.box b{color:var(--brand)}
+.big{font-size:1.9rem;line-height:1}
+.note,.ok,.bad{border-radius:10px;padding:11px 14px;margin:14px 0;font-size:.95rem}
+.note{background:var(--warnbg);border-left:4px solid #e2b100;color:var(--warn)}
+.ok{background:var(--okbg);border-left:4px solid var(--ok);color:var(--ok)}
+.bad{background:var(--badbg);border-left:4px solid var(--bad);color:var(--bad)}
+.btn{display:inline-block;background:var(--brand);color:var(--card);border-radius:8px;padding:2px 10px;font-weight:600;font-size:.88rem}
+/* login flow */
+.login{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;font-size:.9rem}
+.login span.s{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.arr{color:var(--muted);font-weight:700}
+/* screen map */
+.screen{display:grid;grid-template-columns:110px 1fr;gap:8px;border:2px solid var(--line);border-radius:14px;padding:8px;background:var(--bg)}
+.screen .side{background:var(--brand);color:var(--card);border-radius:10px;padding:10px;font-size:.82rem;min-height:170px;position:relative}
+.screen .side i{display:block;font-style:normal;opacity:.9;margin-top:4px}
+.screen .right{display:grid;gap:8px}
+.screen .top,.screen .work{background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:10px;position:relative;font-size:.85rem}
+.screen .work{min-height:100px}
+.n{position:absolute;top:-9px;right:-6px;width:24px;height:24px;border-radius:50%;background:#e2572b;color:#fff;font-weight:700;font-size:.8rem;display:grid;place-items:center}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:12px}
+.legend div{display:flex;gap:10px;align-items:flex-start;font-size:.92rem}
+.legend .n{position:static;flex:none}
+/* tabs */
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.tabs button{font:inherit;font-weight:600;font-size:.9rem;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:8px 14px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--brand);color:var(--card);border-color:var(--brand)}
+.panel{display:none}.panel.on{display:block}
+ol.steps{list-style:none;margin:0;padding:0;counter-reset:s}
+ol.steps li{counter-increment:s;display:flex;gap:12px;align-items:flex-start;padding:10px 0 14px;position:relative}
+ol.steps li:before{content:counter(s);flex:none;width:32px;height:32px;border-radius:50%;background:var(--brand);color:var(--card);font-weight:700;display:grid;place-items:center;position:relative;z-index:1}
+ol.steps li:not(:last-child):after{content:"";position:absolute;left:15px;top:42px;bottom:-6px;width:2px;background:var(--line)}
+ol.steps li small{display:block;color:var(--muted)}
+/* menu */
+.search{width:100%;font:inherit;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);margin-bottom:6px}
+.mg h3{display:flex;align-items:center;gap:8px}
+.mi{display:flex;gap:12px;align-items:flex-start;border-bottom:1px solid var(--line);padding:9px 2px}
+.mi:last-child{border-bottom:0}
+.mi .ic{font-size:1.3rem;width:34px;flex:none;text-align:center}
+.mi b{display:block}.mi span{color:var(--muted);font-size:.92rem}
+/* roles */
+.role{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:.92rem}
+.role .lab{width:150px;flex:none;font-weight:600}
+.role .bar{flex:1;border-radius:8px;padding:7px 12px;background:var(--soft);border:1px solid var(--line)}
+.role .bar.full{background:var(--okbg);border-color:var(--ok)}
+/* compare */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.vs .box h4{margin:0 0 6px;font-size:1.05rem}
+.vs ul{margin:6px 0 0;padding-left:1.1rem;color:var(--muted);font-size:.92rem}
+details{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;background:var(--bg)}
+summary{cursor:pointer;font-weight:600}
+details p{margin:8px 0 0;color:var(--muted)}
+footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:20px}
+@media (max-width:620px){.vs{grid-template-columns:1fr}.screen{grid-template-columns:84px 1fr}.role{flex-direction:column;align-items:stretch;gap:4px}.role .lab{width:auto}}
+@media print{nav,.theme{display:none}section{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <button class="theme" id="th" type="button">🌓 Tema</button>
+  <span class="pill">Solvey Pharma · İşçi təlimatı</span>
+  <h1>Sistemdən necə istifadə etməli?</h1>
+  <p>Kod bilməyənlər üçün. Əvvəl <b>nə etmək istədiyinizi</b> seçin, addımları görün. Yalnız düymələr və menyular izah olunur.</p>
+  <p style="margin-top:10px;font-size:.9rem;opacity:.85">Developer: Kamandar Ağasəfli</p>
+</header>
+
+<nav>
+  <a href="#giris">🔑 Giriş</a><a href="#ekran">🖥️ Ekran</a><a href="#is">✅ Gündəlik iş</a><a href="#menyu">📋 Menyular</a><a href="#vizit">🚗 Vizit</a><a href="#anbar">📦 Anbar</a><a href="#sual">❓ Qarışıqlıqlar</a>
+</nav>
+
+<section id="giris">
+  <h2>🔑 1. Hansı girişi açım?</h2>
+  <p class="lead">İki ayrı giriş var. Hər birinin öz istifadəçisi və şifrəsi var.</p>
+  <div class="grid">
+    <div class="box">
+      <div class="big">🏢</div>
+      <b>Ofis panel</b>
+      <p style="margin:6px 0">Ofis işçisi, mühasibat, hesabat, həkim və satış işləri.</p>
+      <div class="login"><span class="s">Saytın əsas girişi</span><span class="arr">→</span><span class="s">Dashboard</span></div>
+    </div>
+    <div class="box">
+      <div class="big">🚗</div>
+      <b>Vizit (sahə)</b>
+      <p style="margin:6px 0">Tibbi nümayəndə, menecer və rəhbər.</p>
+      <div class="login"><span class="s">solveypharma.com.az/vizit/</span><span class="arr">→</span><span class="s">Yeni vizit</span></div>
+    </div>
+  </div>
+  <div class="bad"><b>❌ Qarışdırmayın:</b> ofis şifrəsi ilə vizitə, vizit şifrəsi ilə ofisə girmək olmaz.</div>
+</section>
+
+<section id="ekran">
+  <h2>🖥️ 2. Ofis ekranı necə görünür?</h2>
+  <p class="lead">Şəkildəki nömrələrə baxın.</p>
+  <div class="screen">
+    <div class="side"><span class="n">1</span><b>Sol menyu</b><i>Dashboard</i><i>Həkimlər</i><i>Ödəniş</i><i>Anbar</i><i>…</i><i style="margin-top:14px">Çıxış</i></div>
+    <div class="right">
+      <div class="top"><span class="n">2</span><b>Yuxarı panel</b> &nbsp; <span class="btn">Əməliyyatlar</span> 🌓 🤖</div>
+      <div class="work"><span class="n">3</span><b>İş sahəsi</b><br>Seçdiyiniz səhifə burada açılır.</div>
+    </div>
+  </div>
+  <div class="legend">
+    <div><span class="n">1</span><span><b>Sol menyu</b> — bütün bölmələrə keçid. Telefonda ☰ düyməsi ilə açılır.</span></div>
+    <div><span class="n">2</span><span><b>Yuxarı panel</b> — «Əməliyyatlar» (3 tez iş), tema düyməsi, AI köməkçi.</span></div>
+    <div><span class="n">3</span><span><b>İş sahəsi</b> — cədvəllər, formlar, hesabatlar burada görünür.</span></div>
+  </div>
+</section>
+
+<section id="is">
+  <h2>✅ 3. Nə etmək istəyirsiniz?</h2>
+  <p class="lead">Birini seçin, addımları görün.</p>
+  <div class="tabs" role="tablist" id="tabs">
+    <button role="tab" aria-selected="true" data-p="p1">📝 Qeydiyyat</button>
+    <button role="tab" aria-selected="false" data-p="p2">💊 Dərman satışı</button>
+    <button role="tab" aria-selected="false" data-p="p3">💰 Həkimə ödəniş</button>
+    <button role="tab" aria-selected="false" data-p="p4">📦 Real satış</button>
+    <button role="tab" aria-selected="false" data-p="p5">👨‍⚕️ Yeni həkim</button>
+    <button role="tab" aria-selected="false" data-p="p6">📅 Ay sonu</button>
+  </div>
+
+  <div class="panel on" id="p1">
+    <h3>Həkimə qeydiyyat yazmaq</h3>
+    <ol class="steps">
+      <li><div>Yuxarıdan <span class="btn">Əməliyyatlar</span> → <span class="btn">Qeydiyyat Əlavə et</span></div></li>
+      <li><div>Bölgəni və həkimi seçin</div></li>
+      <li><div>Dərmanı və sayını yazın</div></li>
+      <li><div><span class="btn">Yadda saxla</span></div></li>
+    </ol>
+  </div>
+  <div class="panel" id="p2">
+    <h3>Bölgəyə dərman satışı yazmaq</h3>
+    <ol class="steps">
+      <li><div><span class="btn">Dərman Satışı Əlavə et</span></div></li>
+      <li><div>Bölgəni və tarixi seçin</div></li>
+      <li><div>Hər dərman üçün miqdarı yazın</div></li>
+      <li><div><span class="btn">Yadda saxla</span><small>Komissiya hesabı adətən avtomatik yenilənir.</small></div></li>
+    </ol>
+  </div>
+  <div class="panel" id="p3">
+    <h3>Həkimə ödəniş yazmaq</h3>
+    <ol class="steps">
+      <li><div><span class="btn">Ödəniş Əlavə et</span></div></li>
+      <li><div>Əvvəl bölgəni, sonra həkimi seçin</div></li>
+      <li><div>Növü seçin: <b>Avans</b>, <b>İnvest</b> və ya <b>Geri qaytarma</b></div></li>
+      <li><div>Məbləği və tarixi yazıb saxlayın</div></li>
+    </ol>
+  </div>
+  <div class="panel" id="p4">
+    <h3>Real satış (əlavə qutu) yazmaq</h3>
+    <ol class="steps">
+      <li><div>Sol menyudan <span class="btn">Real Satış Əlavə</span></div></li>
+      <li><div>Həkimi seçin və real qutu sayını yazın</div></li>
+      <li><div>Saxlayın. Yazılanlara <span class="btn">Real Satışlar</span> siyahısından baxın</div></li>
+    </ol>
+    <div class="note">⚠️ Sistem bu miqdarı bölgə satışından da nəzərə alır ki, hesab <b>ikiqat</b> olmasın. Diqqətlə yazın.</div>
+  </div>
+  <div class="panel" id="p5">
+    <h3>Ofisdə yeni həkim əlavə etmək</h3>
+    <ol class="steps">
+      <li><div>Sol menyudan <span class="btn">Həkim əlavə et</span></div></li>
+      <li><div><b>Ad, bölgə və klinika</b> yazın (üçü də mütləqdir)</div></li>
+      <li><div>Saxlayın. Həkim <span class="btn">Həkimlər</span> siyahısında görünəcək</div></li>
+    </ol>
+    <div class="ok">✔ Ofis həkimlər siyahısına həkim yalnız «Həkim əlavə et» ilə düşür.</div>
+  </div>
+  <div class="panel" id="p6">
+    <h3>Ayın sonunda</h3>
+    <ol class="steps">
+      <li><div><span class="btn">Aylıq Hesabat</span> səhifəsini yoxlayın</div></li>
+      <li><div>Hər şey düzgündürsə hesabatı bağlayın</div></li>
+      <li><div>Köhnə aylara <span class="btn">Köhnə Hesabat</span> bölməsindən baxın</div></li>
+    </ol>
+  </div>
+</section>
+
+<section id="menyu">
+  <h2>📋 4. Sol menyu: hər düymə nə edir?</h2>
+  <p class="lead">Axtarın və ya qruplara baxın.</p>
+  <input class="search" id="q" type="search" placeholder="🔍 Menyu axtar: məs. anbar, ödəniş, hesabat…">
+  <div id="menus"></div>
+</section>
+
+<section id="vizit">
+  <h2>🚗 5. Vizit sistemi (sahə)</h2>
+  <p class="lead">Nümayəndə telefon və ya kompüterdən daxil olur.</p>
+  <h3>Yeni vizit necə yazılır?</h3>
+  <ol class="steps">
+    <li><div>Bölgəni seçin <small>Bakıda rayon gizlənə bilər.</small></div></li>
+    <li><div>Həkimi axtarıb siyahıdan seçin</div></li>
+    <li><div>Münasibət növünü seçin <small>Məsələn: Xatırlatma, Annotasiya.</small></div></li>
+    <li><div>Dərmanları işarələyin, istəsəniz qeyd yazın</div></li>
+    <li><div>Saxlayın. Aşağıda <b>«Bu gün»</b> siyahısında görünəcək</div></li>
+  </ol>
+  <div class="note"><b>Həkim sistemdə yoxdur?</b> «Sistemdə yoxdur? Yeni həkim yaz» düyməsini açın, adı yazın, vizitə davam edin. Bu ad <u>yalnız həmin vizitdə</u> qalır, ofis siyahısına düşmür.</div>
+  <h3>Vizit menyusu</h3>
+  <div id="vmenu"></div>
+  <h3>Kim nəyi görür?</h3>
+  <div class="role"><div class="lab">Nümayəndə</div><div class="bar">Yalnız öz vizitləri</div></div>
+  <div class="role"><div class="lab">Menecer</div><div class="bar">Yalnız öz vizitləri</div></div>
+  <div class="role"><div class="lab">Rəhbər</div><div class="bar full">Hamısı + admin panel, statistika, istifadəçi idarəsi</div></div>
+  <p style="color:var(--muted);font-size:.92rem">💡 Günün vizitlərini PDF kimi yükləmək və WhatsApp/Telegram ilə paylaşmaq olar.</p>
+</section>
+
+<section id="anbar">
+  <h2>📦 6. Anbar və Depo: fərq nədir?</h2>
+  <p class="lead">Adları oxşardır, işləri fərqlidir.</p>
+  <div class="vs">
+    <div class="box"><h4>📦 Anbar</h4><b>Mal uçotu</b>
+      <ul><li>Ofis menyusundan «Anbar»</li><li>Qalıq, anbara əlavə</li><li>Qaimə, geri qaytarma</li><li>Aptek siyahısı</li></ul></div>
+    <div class="box"><h4>📊 Depo Satışları</h4><b>Excel yükləmə</b>
+      <ul><li>Ayrı menyu</li><li>Depodan gələn Excel hesabatını sistemə yükləmək üçün</li><li>«Aylıq Satışlar»ın əvəzi deyil</li></ul></div>
+  </div>
+  <div class="note">Vizitdəki <b>«Aptek viziti»</b> sahə işçisinin aptek ziyarətidir. Ofisdəki <b>«Anbar»</b> isə malların uçotudur.</div>
+</section>
+
+<section id="sual">
+  <h2>❓ 7. Tez-tez qarışdırılanlar</h2>
+  <p class="lead">Problem kimi görünür, amma normaldır. Açıb baxın.</p>
+  <details><summary>Vizitdə yeni həkim yazdım, ofis siyahısında yoxdur</summary><p>Normaldır. Ofisə həkim yalnız «Həkim əlavə et» ilə düşür.</p></details>
+  <details><summary>Ofis şifrəsi ilə vizit açılmır</summary><p>Vizit öz giriş səhifəsindən, öz istifadəçisi ilə açılır.</p></details>
+  <details><summary>Passiv dərman hesabatda görünmür</summary><p>Hesabatlarda adətən yalnız aktiv dərmanlar göstərilir.</p></details>
+  <details><summary>«Bu gün»də başqasının viziti görünmür</summary><p>Bir çox rol yalnız öz vizitlərini görür.</p></details>
+  <details><summary>Anbar ilə depo satışını qarışdırıram</summary><p>Anbar = qalıq və qaimə. Depo Satışları = Excel yükləmə.</p></details>
+  <div class="ok">Sual yarananda əvvəl bu səhifədəki bölməyə baxın. Texniki dəyişiklik lazımdırsa IT / developerə müraciət edin.</div>
+</section>
+
+<footer>Solvey Pharma · İşçi təlimatı · Developer: Kamandar Ağasəfli</footer>
+</div>
+
+<script>
+var M=[
+["Gündəlik iş",[["🏠","Dashboard","Ümumi mənzərə: saylar, kartlar, son hərəkətlər"],["👨‍⚕️","Həkimlər","Həkimlərin siyahısı və kartı"],["💰","Ödəniş Əlavə et","Həkimə avans, investisiya və ya geri qaytarma yazmaq"],["➕","Həkim əlavə et","Yeni həkimi sistemə daxil etmək"],["🧾","Datasiya","Həkim üzrə datasiya məbləği"],["📈","Maliyyələr","Ümumi maliyyə baxışı və Excel"],["🤖","AI Assistant","Köməkçi səhifə"],["📦","Anbar","Anbar qalığı, qaimə, aptek hərəkətləri"],["🗓️","Vizit Planları","Vizit sisteminin rəhbər paneli (istifadəçi idarəsi)"]]],
+["Dərman və qeydiyyat",[["💊","Dərmanlar","Dərman siyahısı: əlavə et, redaktə et, aktiv/passiv"],["📝","Aylıq Qeydiyyat","Aylıq resept/qeydiyyat cədvəlinə baxış"]]],
+["Satış və hesabat",[["🛒","Aylıq Satışlar","Bölgə üzrə satışlara baxmaq və yeniləmək"],["📊","Depo Satışları","Depo hesabatını (Excel) yükləmək"],["📑","Aylıq Hesabat","Cari ayın hesabatı"],["🗂️","Köhnə Hesabat","Bağlanmış köhnə ayların hesabatı"],["🗃️","Arxiv Həkimlər","Artıq aktiv olmayan həkimlər"],["📦","Real Satış Əlavə","Həkimə real qutu satışı yazmaq"],["📋","Real Satışlar","Yazılmış real satışların siyahısı"]]],
+["Ünvanlar",[["🌍","Bölgələr","İş bölgələrinin siyahısı"],["🏙️","Şəhərlər","Şəhər / rayon siyahısı"],["🏥","Klinikalar","Xəstəxana / klinika siyahısı"],["⚙️","Ayarlar","Yalnız rəhbər (super) istifadəçi görür"]]]];
+var V=[["🆕","Yeni vizit","Həkimə vizit yazmaq (əsas iş)"],["💊","Aptek viziti","Aptekə vizit yazmaq"],["📅","Günlük qeydiyyat","Gündəlik dərman qeydi"],["🗓️","Həftəlik plan","Həftənin planı, PDF/Excel, paylaşım"],["✅","Görülən həkimlər","Görülənləri işarələmək"],["📈","Hesabat","Vizitlərə filtr və baxış"],["🔐","Admin","Rəhbər: istifadəçi və bölgə idarəsi"]];
+function row(r){return '<div class="mi"><div class="ic">'+r[0]+'</div><div><b>'+r[1]+'</b><span>'+r[2]+'</span></div></div>'}
+document.getElementById('menus').innerHTML=M.map(function(g){return '<div class="mg"><h3>'+g[0]+'</h3>'+g[1].map(row).join('')+'</div>'}).join('');
+document.getElementById('vmenu').innerHTML=V.map(row).join('');
+document.getElementById('q').addEventListener('input',function(e){
+  var v=e.target.value.toLowerCase().trim();
+  document.querySelectorAll('#menus .mg').forEach(function(g){
+    var any=false;
+    g.querySelectorAll('.mi').forEach(function(m){var s=m.textContent.toLowerCase().indexOf(v)>-1;m.style.display=s?'':'none';if(s)any=true});
+    g.style.display=any?'':'none';
+  });
+});
+var tabs=document.getElementById('tabs');
+tabs.addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;
+  tabs.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-selected',x===b?'true':'false')});
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.toggle('on',p.id===b.dataset.p)});
+});
+document.getElementById('th').addEventListener('click',function(){
+  var r=document.documentElement,dark=r.getAttribute('data-theme')==='dark'||(!r.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);
+  r.setAttribute('data-theme',dark?'light':'dark');
+});
+</script>
+</body>
+</html>

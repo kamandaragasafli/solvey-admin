@@ -4,6 +4,13 @@
 {% block title %}Apteklər — Solvey Pharma{% endblock %}
 
 {% block extra_css %}
+  .card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:24px;
+    box-shadow:var(--shadow);
+  }
   .aptek-stats{
     display:flex;
     gap:14px;
@@ -111,7 +118,23 @@
     <h1>Apteklər</h1>
     <div class="sub">{{ period_label }} — apteklər üzrə sənəd və hərəkət statistikası</div>
   </div>
+  <div class="topbar-actions">
+    <button type="button" class="btn btn-primary" onclick="toggleAddForm()">+ Aptek əlavə et</button>
+  </div>
 </div>
+
+<form class="card" method="post" id="addAptekForm" style="display:none; margin-bottom:18px;">
+  {% csrf_token %}
+  <input type="hidden" name="add_aptek" value="1">
+  <div class="toolbar" style="border-bottom:none; margin-bottom:0; padding-bottom:0;">
+    <div class="field">
+      <label for="aptek_name">Aptek adı</label>
+      <input type="text" id="aptek_name" name="name" placeholder="Aptek adını daxil edin..." required>
+    </div>
+    <button type="submit" class="btn btn-primary">Əlavə et</button>
+    <button type="button" class="btn btn-ghost" onclick="toggleAddForm()">Ləğv et</button>
+  </div>
+</form>
 
 <div class="aptek-stats">
   <div class="stat-card">
@@ -190,7 +213,7 @@
           <th class="col-qty">Qaytarma miqdarı</th>
           <th class="col-date">Son hərəkət</th>
           <th class="col-status">Status</th>
-          <th class="col-actions">Baxış</th>
+          <th class="col-actions">Əməliyyatlar</th>
         </tr>
       </thead>
       <tbody>
@@ -221,6 +244,12 @@
             <a href="{% url 'aptek:aptek_detail' row.id %}?from={{ date_from }}&to={{ date_to }}">Hərəkətlər</a>
             <a href="{% url 'aptek:qaimeler' %}?aptek={{ row.id }}&from={{ date_from }}&to={{ date_to }}">Qaimələr</a>
             <a href="{% url 'aptek:geri_qaytarma' %}?aptek={{ row.id }}&from={{ date_from }}&to={{ date_to }}">Qaytarmalar</a>
+            <form method="post" style="display:inline;" onsubmit="return confirm('Bu aptek silinsin?');">
+              {% csrf_token %}
+              <input type="hidden" name="delete_aptek" value="1">
+              <input type="hidden" name="aptek_id" value="{{ row.id }}">
+              <button type="submit" style="border:none;background:none;color:#FB7185;cursor:pointer;font-size:12px;font-weight:600;text-decoration:none;margin-left:8px;">Sil</button>
+            </form>
           </td>
         </tr>
         {% empty %}
@@ -234,4 +263,11 @@
     </table>
   </div>
 </div>
+
+<script>
+  function toggleAddForm() {
+    const form = document.getElementById('addAptekForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+</script>
 {% endblock %}

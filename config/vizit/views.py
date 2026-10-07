@@ -229,6 +229,50 @@ def logout_view(request):
     return redirect('vizit:login')
 
 
+def register_view(request):
+    if request.session.get('istifadeci_id'):
+        return redirect('vizit:index')
+
+    xeta = ''
+    login_deyeri = ''
+    ad_deyeri = ''
+
+    if request.method == 'POST':
+        login = request.POST.get('login', '').strip()
+        sifre = request.POST.get('sifre', '').strip()
+        sifre_tekrar = request.POST.get('sifre_tekrar', '').strip()
+        ad = request.POST.get('ad', '').strip()
+        login_deyeri = login
+        ad_deyeri = ad
+
+        if not login or not sifre or not sifre_tekrar or not ad:
+            xeta = 'Bütün sahələri doldurun!'
+        elif sifre != sifre_tekrar:
+            xeta = 'Şifrələr uyğun gəlmir!'
+        elif len(sifre) < 4:
+            xeta = 'Şifrə ən az 4 simvol olmalıdır!'
+        else:
+            try:
+                istifadeci = Istifadeci(
+                    login=login,
+                    ad=ad,
+                    rol=Istifadeci.ROL_NUMAYENDE,
+                    aktiv=True
+                )
+                istifadeci.set_password(sifre)
+                istifadeci.save()
+                messages.success(request, 'Qeydiyyat uğurla tamamlandı! Zəhmət olmasa daxil olun.')
+                return redirect('vizit:login')
+            except IntegrityError:
+                xeta = 'Bu login artıq istifadə olunur! Başqa login seçin.'
+
+    return render(
+        request,
+        'vizit/login.html',
+        {'xeta': xeta, 'login_deyeri': login_deyeri, 'ad_deyeri': ad_deyeri, 'register': True},
+    )
+
+
 @rehber_required
 def admin_panel_view(request):
     tab = request.GET.get('tab', 'istifadeciler')

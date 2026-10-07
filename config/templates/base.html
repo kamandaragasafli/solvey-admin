@@ -179,6 +179,31 @@
     box-shadow: 0 6px 20px rgba(16, 163, 127, 0.4);
 }
 
+/* Documentation Button */
+.doc-btn {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-left: 12px;
+    text-decoration: none;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.doc-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
 .ai-chat-icon-wrapper {
     position: relative;
     color: white;
@@ -554,10 +579,10 @@
         <span>Maliyyələr</span>
     </a>
 
-    <a href="{% url 'ai-assistant' %}" class="nav-item {% if request.resolver_match.url_name == 'ai-assistant' %}active{% endif %}">
+    <!-- <a href="{% url 'ai-assistant' %}" class="nav-item {% if request.resolver_match.url_name == 'ai-assistant' %}active{% endif %}">
         <i class="bi bi-robot"></i>
         <span>AI Assistant</span>
-    </a>
+    </a> -->
 
     <a href="{% url 'aptek:anbar_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'anbar_dashboard' %}active{% endif %}">
         <i class="bi bi-house"></i>
@@ -594,10 +619,10 @@
         <span>Aylıq Satışlar</span>
     </a>
     
-    <a href="{% url 'depo_sales:upload' %}" class="nav-item {% if request.resolver_match.namespace == 'depo_sales' %}active{% endif %}">
+    <!-- <a href="{% url 'depo_sales:upload' %}" class="nav-item {% if request.resolver_match.namespace == 'depo_sales' %}active{% endif %}">
     <i class='bx bx-store  icon'></i> 
          <span>Depo Satışları</span> 
-    </a>
+    </a> -->
     <a href="{% url 'report' %}" class="nav-item {% if request.resolver_match.url_name == 'report' %}active{% endif %}">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
@@ -690,6 +715,10 @@
           <i class="bi bi-moon-stars-fill icon-moon"></i>
         </button>
 
+        <a href="{% static 'docs/isci-telimati.html' %}" target="_blank" class="doc-btn" aria-label="Dokumentasiya" title="İşçi Təlimatı">
+          <i class="bi bi-book"></i>
+        </a>
+
 
     </div>
 
@@ -709,6 +738,7 @@
         <i class="bx bx-dollar-circle"></i> Həkimə Ödəniş Əlavə et
       </a>
     </div>
+    
   </div>
 
 

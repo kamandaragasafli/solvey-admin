@@ -97,6 +97,18 @@ class AnbarHereket(models.Model):
         Qaime, on_delete=models.CASCADE, null=True, blank=True, related_name='hereketler'
     )
     note = models.CharField(max_length=255, blank=True, default='')
+    # Anbarlar arası transfer üçün sahələr
+    transfer_depo = models.ForeignKey(
+        Depo, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='transfer_hereketleri',
+        verbose_name='Transfer depo',
+        help_text='Bu hərəkətin başqa depo ilə əlaqəsini göstərir'
+    )
+    transfer_ref = models.CharField(
+        max_length=50, blank=True, default='',
+        verbose_name='Transfer referens',
+        help_text='Anbarlar arası transfer üçün unikal identifikator'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

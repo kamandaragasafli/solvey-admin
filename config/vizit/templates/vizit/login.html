@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giriş — Solvey Pharma</title>
+    <title>{% if register %}Qeydiyyat{% else %}Giriş{% endif %} — Solvey Pharma</title>
     <style>
         * {
             box-sizing: border-box;
@@ -167,6 +167,26 @@
             align-items: center;
             gap: 8px;
         }
+
+        .toggle-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .toggle-link a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .toggle-link a:hover {
+            text-decoration: underline;
+        }
+
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -186,7 +206,8 @@
     </div>
     {% endif %}
 
-    <form method="POST">
+    <!-- Login Form -->
+    <form method="POST" id="loginForm" {% if register %}class="hidden"{% endif %}>
         {% csrf_token %}
 
         <div class="form-group">
@@ -214,20 +235,89 @@
         </div>
 
         <button type="submit" class="login-btn">Daxil ol →</button>
+
+        <div class="toggle-link">
+            Hesabınız yoxdur? <a href="{% url 'vizit:register' %}">Qeydiyyatdan keçin</a>
+        </div>
+    </form>
+
+    <!-- Register Form -->
+    <form method="POST" id="registerForm" action="{% url 'vizit:register' %}" {% if not register %}class="hidden"{% endif %}>
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="reg_login">Login</label>
+            <input type="text" id="reg_login" name="login" placeholder="İstifadəçi adı" value="{{ login_deyeri }}" required autofocus>
+        </div>
+
+        <div class="form-group">
+            <label for="reg_ad">Ad</label>
+            <input type="text" id="reg_ad" name="ad" placeholder="Adınız" value="{{ ad_deyeri }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="reg_sifre">Şifrə</label>
+            <div class="password-wrap">
+                <input type="password" id="reg_sifre" name="sifre" placeholder="••••••••" required>
+                <button type="button" class="toggle-password" id="toggleRegPassword" aria-label="Şifrəni göstər" title="Şifrəni göstər/gizlət">
+                    <svg class="icon-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <svg class="icon-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+                        <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="reg_sifre_tekrar">Şifrə (təkrar)</label>
+            <div class="password-wrap">
+                <input type="password" id="reg_sifre_tekrar" name="sifre_tekrar" placeholder="••••••••" required>
+                <button type="button" class="toggle-password" id="toggleRegPasswordConfirm" aria-label="Şifrəni göstər" title="Şifrəni göstər/gizlət">
+                    <svg class="icon-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <svg class="icon-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+                        <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <button type="submit" class="login-btn">Qeydiyyatdan keç →</button>
+
+        <div class="toggle-link">
+            Artıq hesabınız var? <a href="{% url 'vizit:login' %}">Daxil olun</a>
+        </div>
     </form>
 </div>
 
 <script>
 (function () {
-    var btn = document.getElementById('togglePassword');
-    var input = document.getElementById('sifre');
-    if (!btn || !input) return;
-    btn.addEventListener('click', function () {
-        var show = input.type === 'password';
-        input.type = show ? 'text' : 'password';
-        btn.classList.toggle('is-visible', show);
-        btn.setAttribute('aria-label', show ? 'Şifrəni gizlət' : 'Şifrəni göstər');
-    });
+    function setupToggle(btnId, inputId) {
+        var btn = document.getElementById(btnId);
+        var input = document.getElementById(inputId);
+        if (!btn || !input) return;
+        btn.addEventListener('click', function () {
+            var show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            btn.classList.toggle('is-visible', show);
+            btn.setAttribute('aria-label', show ? 'Şifrəni gizlət' : 'Şifrəni göstər');
+        });
+    }
+
+    setupToggle('togglePassword', 'sifre');
+    setupToggle('toggleRegPassword', 'reg_sifre');
+    setupToggle('toggleRegPasswordConfirm', 'reg_sifre_tekrar');
 })();
 </script>
 

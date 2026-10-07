@@ -790,6 +790,12 @@
         </svg>
         Anbarlar
       </a>
+      <a href="{% url 'aptek:transfer_form' %}" class="{% if request.resolver_match.url_name == 'transfer_form' or request.resolver_match.url_name == 'transfer_list' %}active{% endif %}">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+        </svg>
+        Transferlər
+      </a>
     </nav>
 
     <div class="sidebar-foot">

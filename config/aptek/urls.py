@@ -19,4 +19,6 @@ urlpatterns = [
     path('depolar/', views.depolar, name='depolar'),
     path('dermanlar/', views.dermanlar, name='dermanlar'),
     path('dermanlar/<int:pk>/', views.derman_detail, name='derman_detail'),
+    path('transfer/', views.transfer_form, name='transfer_form'),
+    path('transfer/siyahi/', views.transfer_list, name='transfer_list'),
 ]

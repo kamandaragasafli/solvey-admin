@@ -22,7 +22,7 @@
     padding-bottom:20px;
     border-bottom:1px solid var(--line);
   }
-  .field input[type="month"]{min-width:180px;}
+  .field select{min-width:200px;}
   .field.search{flex:1;min-width:200px;}
   .total-box{margin-left:auto;text-align:right;}
   .total-box .k{font-size:10.5px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:0.06em;}
@@ -89,7 +89,11 @@
   <div class="toolbar">
     <div class="field">
       <label for="month">Ay</label>
-      <input type="month" id="month" name="month" value="{{ selected_month }}" required>
+      <select id="month" name="month" required onchange="loadMonth()">
+        {% for opt in month_options %}
+        <option value="{{ opt.value }}" {% if opt.value == selected_month %}selected{% endif %}>{{ opt.label }}</option>
+        {% endfor %}
+      </select>
     </div>
     <div class="field search">
       <label for="search">Axtar</label>
@@ -126,7 +130,6 @@
   <div class="actions">
     <button type="submit" class="btn btn-primary">Yadda saxla</button>
     <button type="button" class="btn btn-ghost" id="resetOriginal">Sıfırla</button>
-    <button type="button" class="btn btn-ghost" id="loadMonth">Ayı yüklə</button>
   </div>
 </form>
 
@@ -213,12 +216,8 @@
     updateTotal();
   });
 
-  document.getElementById('loadMonth').addEventListener('click', function(){
+  function loadMonth(){
     window.location = '?month=' + encodeURIComponent(monthEl.value);
-  });
-
-  monthEl.addEventListener('change', function(){
-    window.location = '?month=' + encodeURIComponent(this.value);
-  });
+  }
 </script>
 {% endblock %}

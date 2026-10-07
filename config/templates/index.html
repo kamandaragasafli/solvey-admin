@@ -6,7 +6,7 @@
 {% block content %}
 <style>
 .custom-modal {
-    max-width: 95%; /* Ekranın 95%-i qədər genişlik */
+    max-width: 95%;
     width: 95%;
 }
 .report-modal .modal-content{
@@ -85,7 +85,6 @@
     background: rgba(2,6,23,0.18) !important;
 }
 
-/* Freeze first 2 columns for wide tables */
 .report-table th:nth-child(1),
 .report-table td:nth-child(1){
     position: sticky;
@@ -109,7 +108,6 @@
     text-overflow: ellipsis;
 }
 
-/* Ensure stripes/hover keep dark palette */
 .report-table.table-striped > tbody > tr:nth-of-type(odd) > *{
     background-color: rgba(148,163,184,0.06) !important;
 }
@@ -152,382 +150,268 @@
 .info-center-section .table { background: transparent; }
 .info-center-section .table th, .info-center-section .table td { border-color: rgba(255,255,255,0.08); color: #e2e8f0; }
 .info-center-section .text-muted { color: #94a3b8 !important; }
+
+.dx{--c-bg:#0f172a;--c-card:#111c2e;--c-card2:#16233a;--c-line:rgba(148,163,184,.14);--c-text:#e5e7eb;--c-mut:#94a3b8;--c-blue:#3b82f6;--c-green:#22c55e;--c-amber:#f59e0b;--c-red:#ef4444;--c-vio:#8b5cf6;color:var(--c-text)}
+.dx *{box-sizing:border-box}
+.dx-head{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;margin-bottom:22px}
+.dx-head h2{margin:0;font-weight:800;font-size:1.6rem;display:flex;align-items:center;gap:12px;color:#f8fafc}
+.dx-head h2 i{color:var(--c-blue)}
+.dx-head p{margin:2px 0 0;color:var(--c-mut)}
+.dx-filter{display:flex;align-items:center;gap:10px;color:var(--c-mut);font-size:.88rem}
+.dx-seg{display:inline-flex;background:var(--c-card);border:1px solid var(--c-line);border-radius:12px;padding:4px}
+.dx-seg button{border:0;background:transparent;color:var(--c-mut);font-weight:600;font-size:.88rem;padding:7px 16px;border-radius:9px;cursor:pointer}
+.dx-seg button.active{background:var(--c-blue);color:#fff}
+.dx-sec{margin:28px 0 12px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--c-mut);font-weight:700;display:flex;align-items:center;gap:8px}
+.dx-sec:after{content:"";flex:1;height:1px;background:var(--c-line)}
+.dx-grid-4{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.dx-grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+.dx-card{background:var(--c-card);border:1px solid var(--c-line);border-radius:16px;padding:18px;min-width:0}
+.dx-card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.dx-card-h h5{margin:0;font-size:.98rem;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:9px}
+.dx-card-h h5 i{color:var(--c-mut)}
+.dx-stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.dx-kpi{display:flex;gap:14px;align-items:center}
+.dx-kpi .ic{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:1.3rem;flex:none}
+.dx-kpi.blue .ic{background:rgba(59,130,246,.15);color:#60a5fa}
+.dx-kpi.green .ic{background:rgba(34,197,94,.15);color:#4ade80}
+.dx-kpi.amber .ic{background:rgba(245,158,11,.15);color:#fbbf24}
+.dx-kpi.red .ic{background:rgba(239,68,68,.15);color:#f87171}
+.dx-kpi .num{font-size:1.85rem;font-weight:800;line-height:1.1;color:#f8fafc;margin:0}
+.dx-kpi .lab{margin:2px 0 0;color:var(--c-mut);font-size:.88rem}
+.dx-kpi .trend{margin-top:4px;font-size:.76rem;color:var(--c-mut)}
+.dx-qa{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.dx-qa button, .dx-qa a.button-link{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--c-card);color:var(--c-text);border:1px solid var(--c-line);border-radius:14px;padding:14px 16px;font-weight:600;cursor:pointer;transition:transform .15s,border-color .15s;text-decoration:none}
+.dx-qa button:hover, .dx-qa a.button-link:hover{transform:translateY(-2px);border-color:rgba(148,163,184,.4)}
+.dx-qa button i, .dx-qa a.button-link i{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex:none}
+.dx-qa .a i{background:rgba(245,158,11,.15);color:#fbbf24}
+.dx-qa .b i{background:rgba(239,68,68,.15);color:#f87171}
+.dx-qa .c i{background:rgba(56,189,248,.15);color:#38bdf8}
+.dx-qa .d i{background:rgba(148,163,184,.18);color:#cbd5e1}
+.dx-rx-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--c-line)}
+.dx-rx-row .ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex:none}
+.dx-rx-row.o .ic{background:rgba(34,197,94,.15);color:#4ade80}
+.dx-rx-row.b .ic{background:rgba(56,189,248,.15);color:#38bdf8}
+.dx-rx-row p{margin:0}.dx-rx-row .t{font-weight:600}.dx-rx-row .s{font-size:.78rem;color:var(--c-mut)}
+.dx-rx-row .v{margin-left:auto;font-size:1.3rem;font-weight:800;color:#f8fafc}
+.dx-total{display:flex;align-items:baseline;justify-content:space-between;padding:16px 0 10px}
+.dx-total .big{font-size:2rem;font-weight:800;color:#f8fafc}
+.dx-total small{color:var(--c-mut)}
+.dx-prog-h{display:flex;justify-content:space-between;font-size:.82rem;color:var(--c-mut);margin-bottom:6px}
+.progress-bar-custom{height:10px;border-radius:99px;background:rgba(148,163,184,.18);overflow:hidden}
+.progress-fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#38bdf8,#3b82f6);transition:width .8s ease}
+.dx-chart{position:relative;height:300px}
+.dx-dl{background:transparent;border:1px solid var(--c-line);color:var(--c-mut);border-radius:8px;padding:4px 9px;cursor:pointer}
+.dx-clock{font-weight:600;font-size:.85rem;color:#a5b4fc}
+.calendar-wrapper-inner{color:var(--c-text)}
+.cal-header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-nav{display:flex;align-items:center;gap:8px}
+.cal-title{font-weight:700;min-width:110px;text-align:center}
+.cal-btn{background:var(--c-card2);color:var(--c-text);border:1px solid var(--c-line);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+.cal-btn:hover{border-color:var(--c-blue)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-weekday{text-align:center;font-size:.74rem;color:var(--c-mut);font-weight:700;padding:4px 0}
+.cal-day{text-align:center;padding:8px 0;border-radius:9px;font-size:.88rem;cursor:pointer}
+.cal-day:hover{background:rgba(59,130,246,.15)}
+.cal-day--muted{color:rgba(148,163,184,.4)}
+.cal-day--today{outline:2px solid var(--c-blue);outline-offset:-2px;font-weight:700}
+.cal-day--selected{background:var(--c-blue);color:#fff}
+.cal-footer{margin-top:10px;text-align:center}.cal-footer small{color:var(--c-mut)!important}
+.dx-act-row{display:flex;gap:14px;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--c-line)}
+.dx-act-ic{font-size:1.25rem;flex:none;margin-top:2px}
+.dx-act-main{font-size:.92rem}
+.dx-act-meta{display:flex;gap:10px;align-items:center;margin-top:5px;font-size:.78rem;color:var(--c-mut)}
+.dx-act-foot{padding-top:14px;text-align:center}
+.dx-empty{color:var(--c-mut);padding:14px 0}
+@media (max-width:420px){.dx-grid-2{grid-template-columns:1fr}.dx-chart{height:260px}}
 </style>
-  <div class="container-fluid py-4">
-        <!-- Header Section -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 class="fw-bold mb-1 d-flex text-light">
-                            <i class="fas fa-chart-line me-3 text-primary"></i>
-                            Admin Paneli
-                        </h2>
-                        <p class="text-muted  mb-0 text-primary">Solvey İdarəetmə Sistemi</p>
-                    </div>
-                    
-                </div>
-            </div>
-        </div>
 
-        <!-- Statistics Cards -->
-        <div class="row g-4 mb-5">
-            <div class="col-xl-3 col-md-6">
-                <div class="stats-card stats-card-primary">
-                    <div class="stats-card-body">
-                        <div class="stats-icon">
-                            <i class="fas fa-user-doctor"></i>
-                        </div>
-                        <div class="stats-content">
-                            <h3 class="stats-number">{{doctor_count}}</h3>
-                            <p class="stats-label">Həkim sayı</p>
-                            <div class="stats-trend">
-                                <i class="fas fa-arrow-up"></i>
-                                <span>+12% bu ay</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<div class="dx container-fluid py-4">
 
-            <div class="col-xl-3 col-md-6">
-                <div class="stats-card stats-card-success">
-                    <div class="stats-card-body">
-                        <div class="stats-icon">
-                            <i class="fas fa-hospital"></i>
-                        </div>
-                        <div class="stats-content">
-                            <h3 class="stats-number">{{hospital_count}}</h3>
-                            <p class="stats-label">Xəstəxana sayı</p>
-                            <div class="stats-trend">
-                                <i class="fas fa-arrow-up"></i>
-                                <span>+3% bu ay</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6">
-                <div class="stats-card stats-card-warning">
-                    <div class="stats-card-body">
-                        <div class="stats-icon">
-                            <i class="fas fa-location-dot"></i>
-                        </div>
-                        <div class="stats-content">
-                            <h3 class="stats-number">{{city_count}}</h3>
-                            <p class="stats-label">Şəhər sayı</p>
-                            <div class="stats-trend">
-                                <i class="fas fa-minus"></i>
-                                <span>Dəyişiklik yoxdur</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6">
-                <div class="stats-card stats-card-danger">
-                    <div class="stats-card-body">
-                        <div class="stats-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="stats-content">
-                            <h3 class="stats-number">{{ aktiv_sayi }}</h3>
-                            <p class="stats-label">Aktiv Həkimlər</p>
-                            <div class="stats-trend">
-                                <i class="fas fa-arrow-up"></i>
-                                <span>+8% bu ay</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Charts and Statistics Section -->
-        <div class="row g-4 mb-3">
-            <div class="col-12 d-flex align-items-center gap-2 flex-wrap">
-                <span class="text-muted me-2">Vaxt filteri:</span>
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-sm btn-outline-primary active" id="chartFilterBuAy" data-month="" data-year="">Bu ay</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="chartFilterKecenAy" data-month="" data-year="">Keçən ay</button>
-                </div>
-            </div>
-        </div>
-        <div class="row g-4 mb-5">
-            <!-- Regional Drug Charts -->
-            <div class="col-lg-4">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <h5 class="chart-title">
-                            <i class="fas fa-chart-column me-2"></i>
-                            Digər bölgələr üzrə dərman qeydiyyatı
-                        </h5>
-                        <div class="chart-actions">
-                            <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-download"></i></button>
-                        </div>
-                    </div>
-                    <div class="chart-card-body">
-                        <canvas id="regionDrugChartOther" height="280"></canvas>
-                    </div>
-                </div>
-                <div class="chart-card mt-4">
-                    <div class="chart-card-header">
-                        <h5 class="chart-title">
-                            <i class="fas fa-cart-shopping me-2"></i>
-                            Digər bölgələr üzrə satış
-                        </h5>
-                    </div>
-                    <div class="chart-card-body">
-                        <canvas id="regionSalesChartOther" height="280"></canvas>
-                    </div>
-                </div>
-                <div class="chart-card mt-4">
-                    <div class="chart-card-body">
-                        <div id="calendarContainer" class="calendar-wrapper"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-lg-4">
-                <div class="chart-card">
-                    <div class="chart-card-header">
-                        <h5 class="chart-title">
-                            <i class="fas fa-chart-column me-2"></i>
-                            Bakı bölgələri üzrə dərman
-                        </h5>
-                        <div class="chart-actions">
-                            <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-download"></i></button>
-                        </div>
-                    </div>
-                    <div class="chart-card-body">
-                        <canvas id="regionDrugChartBaku" height="280"></canvas>
-                    </div>
-                </div>
-                <div class="chart-card mt-4">
-                    <div class="chart-card-header d-flex justify-content-between align-items-center">
-                        <h5 class="chart-title">
-                            <i class="fas fa-cart-shopping me-2"></i>
-                            Bakı bölgələri üzrə satışı
-                        </h5>
-                        <div id="bakuClock" style="font-weight:600; font-size:14px; color:#4850b9;">--</div>
-                    </div>
-                    <div class="chart-card-body">
-                        <canvas id="regionSalesChartBaku" height="280"></canvas>
-                    </div>
-                </div>
-            </div>
-
-<!-- Prescription Statistics Card -->
-<div class="col-lg-4 ">
-    <div class="prescription-stats-card">
-        <div class="prescription-header">
-            <div class="prescription-icon">
-                <i class="fas fa-pills"></i>
-            </div>
-            <div class="prescription-title">
-                <h5>Dərman Yazılış Statistikası</h5>
-                <p>Məlumat mərkəzi</p>
-            </div>
-        </div>
-
-        <div class="prescription-stats">
-            <div class="stat-item other-regions">
-                <div class="stat-icon">
-                    <i class="fas fa-map-location-dot"></i>
-                </div>
-                <div class="stat-content">
-                    <p class="stat-label">Digər bölgələr üzrə</p>
-                    <p class="stat-sublabel">Regional data</p>
-                </div>
-                <div class="stat-value">
-                    <span class="stat-number">{{ total_other|default:0 }}</span>
-                </div>
-            </div>
-
-            <div class="stat-item baku-regions">
-                <div class="stat-icon">
-                    <i class="fas fa-city"></i>
-                </div>
-                <div class="stat-content">
-                    <p class="stat-label">Bakı bölgələri üzrə</p>
-                    <p class="stat-sublabel">Capital regions</p>
-                </div>
-                <div class="stat-value">
-                    <span class="stat-number">{{ total_baku|default:0 }}</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="prescription-divider"></div>
-
-        <div class="prescription-total">
-            <div class="total-content">
-                <div class="total-icon">
-                    <i class="fas fa-chart-line"></i>
-                </div>
-                <div class="total-text">
-                    <p class="total-label">Ümumi yazılış sayı</p>
-                    <p class="total-sublabel">Total prescriptions</p>
-                </div>
-            </div>
-            <div class="total-value">
-                <span class="total-number">{{ total_baku|add:total_other }}</span>
-                <span class="total-unit">prescriptions</span>
-            </div>
-        </div>
-
-        <div class="prescription-progress">
-            <div class="progress-header">
-                <span class="progress-label">Bölgə paylaşımı</span>
-                {% with total=total_baku|add:total_other %}
-                    {% if total > 0 %}
-                        {% with percentage=total_baku|percentage:total|floatformat:0 %}
-                            <span class="progress-percentage">{{ percentage }}% Bakı</span>
-                        {% endwith %}
-                    {% else %}
-                        <span class="progress-percentage">0% Bakı</span>
-                    {% endif %}
-                {% endwith %}
-            </div>
-            <div class="progress-bar-custom">
-                {% with total=total_baku|add:total_other %}
-                    {% if total > 0 %}
-                        <div class="progress-fill" data-width="{{ total_baku|percentage:total|floatformat:0 }}%"></div>
-                    {% else %}
-                        <div class="progress-fill" data-width="0%"></div>
-                    {% endif %}
-                {% endwith %}
-            </div>
-        </div>
-
-       
+  <!-- Başlıq + vaxt filteri -->
+  <div class="dx-head">
+    <div>
+      <h2><i class="fas fa-chart-line"></i> Admin Paneli</h2>
+      <p>Solvey İdarəetmə Sistemi</p>
     </div>
-</div>
-
-
-<!-- Recent Activities Section -->
-<div class="row mt-5">
-    <div class="col-lg-6 ">
-        <div class="activity-card" style="width: 900px">
-            <div class="activity-header">
-                <h5 class="activity-title">
-                    <i class="fas fa-clock-rotate-left me-2"></i>
-                    Son Əməliyyatlar (Reseptlər)
-                </h5>
-                <div class="activity-actions">
-                    <button class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-filter me-1"></i>
-                        Filter
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-refresh"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="activity-body">
-                <div class="activity-list">
-                    {% for item in combined_events %}
-                        <div class="activity-item"
-                            {% if forloop.counter <= 4 %}
-                                visible-item
-                            {% else %}
-                                hidden-item" style="display:none"
-                            {% endif %}">
-                        
-                            {% if item.event_type == "added" %}
-                                <!-- Added Recipe -->
-                                <div class="activity-icon">
-                                  <i class="bi bi-check-circle-fill" style="color: green;"></i>
-
-                                </div>
-                                <div class="activity-content">
-                                    <div class="activity-main">
-                                        <strong>{{user.username}}</strong> Tərəfindən <i class="fw-bold">{{ item.dr.ad }}</i> adına yeni resept əlavə edildi!
-                                    </div>
-                                    <div class="activity-meta">
-                                        <span class="activity-date">{{ item.event_date|date:"Y-m-d H:i" }}</span>
-                                        <span class="activity-badge badge bg-success">Əlavə edildi</span>
-                                    </div>
-                                </div>
-                            {% elif item.event_type == "deleted" %}
-                                <!-- Deleted Recipe -->
-                                <div class="activity-icon">
-                                    <i class="bi bi-x-circle-fill"style="color: red;"></i>
-                                </div>
-                                <div class="activity-content">
-                                    <div class="activity-main">
-                                        <strong>
-                                        {{user.username}}</strong> Tərəfindən 
-                                            <strong>{% if item.recipe and item.recipe.dr %}
-                                                {{ item.recipe.dr.ad }}dan
-                                            {% else %}
-                                                Naməlum həkim
-                                            {% endif %}</strong>
-                                         <strong style="color:red">{{ item.drug_name }}</strong> dərmanı qeydiyyatdan silindi!
-                                    </div>
-                                    <div class="activity-meta">
-                                        <span class="activity-date">{{ item.event_date|date:"Y-m-d H:i" }}</span>
-                                        <span class="activity-badge badge bg-danger">Silindi</span>
-                                    </div>
-                                </div>
-                            {% endif %}
-                        </div>
-                    {% empty %}
-                        <div class="text-muted p-3">Əməliyyat tapılmadı.</div>
-                    {% endfor %}
-                </div>
-
-                <div class="activity-footer">
-                    <button id="toggle-activity" class="btn btn-outline-primary btn-sm">
-                        <i class="fas fa-eye me-1"></i>
-                        Hamısını gör
-                    </button>
-                </div>
-            </div>
-        </div>
+    <div class="dx-filter">
+      <span>Vaxt filteri:</span>
+      <div class="dx-seg" role="group">
+        <button type="button" class="active" id="chartFilterBuAy" data-month="" data-year="">Bu ay</button>
+        <button type="button" id="chartFilterKecenAy" data-month="" data-year="">Keçən ay</button>
+      </div>
     </div>
-      <div class="col-lg-4 ms-auto">
-                <div class="quick-actions-card">
-                    <div class="quick-actions-header">
-                        <h5 class="quick-actions-title">
-                            <i class="fas fa-bolt me-2"></i>
-                            Tez Əməliyyatlar
-                        </h5>
-                    </div>
-                    <div class="quick-actions-body">
+  </div>
 
+  <!-- Əsas göstəricilər -->
+  <div class="dx-grid-4">
+    <div class="dx-card dx-kpi blue">
+      <div class="ic"><i class="fas fa-user-doctor"></i></div>
+      <div>
+        <h3 class="num">{{doctor_count}}</h3>
+        <p class="lab">Həkim sayı</p>
+      </div>
+    </div>
+    <div class="dx-card dx-kpi green">
+      <div class="ic"><i class="fas fa-hospital"></i></div>
+      <div>
+        <h3 class="num">{{hospital_count}}</h3>
+        <p class="lab">Xəstəxana sayı</p>
+      </div>
+    </div>
+    <div class="dx-card dx-kpi red">
+      <div class="ic"><i class="fas fa-user-check"></i></div>
+      <div>
+        <h3 class="num">{{ aktiv_baku_count }}</h3>
+        <p class="lab">Bakı Aktiv Həkimlər</p>
+      </div>
+    </div>
+    <div class="dx-card dx-kpi amber">
+      <div class="ic"><i class="fas fa-map-marker-alt"></i></div>
+      <div>
+        <h3 class="num">{{ aktiv_other_count }}</h3>
+        <p class="lab">Region Aktiv Həkimlər</p>
+      </div>
+    </div>
+  </div>
 
-                        <div class="quick-action-item">
-                            <button class="btn btn-outline-warning w-100 mb-3">
-                                <i class="fas fa-pills me-2"></i>
-                                Dərman Kataloqu
-                            </button>
-                        </div>
-                        <div class="quick-actions-item">
-                            <button type="button" class="btn btn-outline-danger w-100 mb-3" data-bs-toggle="modal" data-bs-target="#cityModal">
-                                <i class="fas fa-map-marker-alt me-2"></i>
-                                Sumqayıt-Naxçıvan Qeydiyyat
-                            </button>
-                        </div>
-                        <div class="quick-actions-item">
-                            <button type="button" class="btn btn-outline-info w-100 mb-3" data-bs-toggle="modal" data-bs-target="#regionModal">
-                                <i class="fas fa-map-marker-alt me-2"></i>
-                                Region Qeydiyyat
-                            </button>
-                        </div>
-                        <div class="quick-actions-item">
-                            <button class="btn btn-outline-secondary w-100"data-bs-toggle="modal" data-bs-target="#bakuModal">
-                                <i class="fas fa-city me-2"></i>
-                                Bakı Qeydiyyat
-                            </button>
-                            </div>
+  <!-- Tez əməliyyatlar -->
+  <div class="dx-sec"><i class="fas fa-bolt"></i> Tez Əməliyyatlar</div>
+  <div class="dx-qa">
+    <div class="a"><a href="{% url 'data_list' %}" class="button-link"><i class="fas fa-clipboard-list"></i> Aylıq Qeydiyyat</a></div>
+    <div class="b"><button type="button" data-bs-toggle="modal" data-bs-target="#cityModal"><i class="fas fa-map-marker-alt"></i> Sumqayıt-Naxçıvan Qeydiyyat</button></div>
+    <div class="c"><button type="button" data-bs-toggle="modal" data-bs-target="#regionModal"><i class="fas fa-map-marker-alt"></i> Region Qeydiyyat</button></div>
+    <div class="d"><button type="button" data-bs-toggle="modal" data-bs-target="#bakuModal"><i class="fas fa-city"></i> Bakı Qeydiyyat</button></div>
+  </div>
 
-                    </div>
+  <!-- Ümumi baxış: resept statistikası + təqvim -->
+  <div class="dx-sec"><i class="fas fa-gauge"></i> Ümumi baxış</div>
+  <div class="dx-grid-2">
+    <div class="dx-card">
+      <div class="dx-card-h">
+        <h5><i class="fas fa-pills"></i> Dərman Yazılış Statistikası</h5>
+        <div class="dx-filter">
+          <span>Bölgə:</span>
+          <div class="dx-seg" role="group">
+            <button type="button" class="active" id="regionFilterAll" data-filter="all">Hamısı</button>
+            <button type="button" id="regionFilterBaku" data-filter="baku">Bakı</button>
+            <button type="button" id="regionFilterOther" data-filter="other">Digər</button>
+          </div>
+        </div>
+      </div>
+      <div class="dx-rx-row o" id="rowOther">
+        <div class="ic"><i class="fas fa-map-location-dot"></i></div>
+        <div><p class="t">Digər bölgələr üzrə</p><p class="s">Regional data</p></div>
+        <div class="v" id="statOther">{{ total_other|default:0 }}</div>
+      </div>
+      <div class="dx-rx-row b" id="rowBaku">
+        <div class="ic"><i class="fas fa-city"></i></div>
+        <div><p class="t">Bakı bölgələri üzrə</p><p class="s">Capital regions</p></div>
+        <div class="v" id="statBaku">{{ total_baku|default:0 }}</div>
+      </div>
+      <div class="dx-total">
+        <div><div style="font-weight:600">Ümumi yazılış sayı</div><small>Total prescriptions</small></div>
+        <div><span class="big">{{ total_baku|add:total_other }}</span> <small>prescriptions</small></div>
+      </div>
+      <div class="dx-prog-h">
+        <span>Bölgə paylaşımı</span>
+        {% with total=total_baku|add:total_other %}
+            {% if total > 0 %}
+                {% with percentage=total_baku|percentage:total|floatformat:0 %}
+                    <span>{{ percentage }}% Bakı</span>
+                {% endwith %}
+            {% else %}
+                <span>0% Bakı</span>
+            {% endif %}
+        {% endwith %}
+      </div>
+      <div class="progress-bar-custom">
+        {% with total=total_baku|add:total_other %}
+            {% if total > 0 %}
+                <div class="progress-fill" data-width="{{ total_baku|percentage:total|floatformat:0 }}%"></div>
+            {% else %}
+                <div class="progress-fill" data-width="0%"></div>
+            {% endif %}
+        {% endwith %}
+      </div>
+    </div>
+
+    <div class="dx-card">
+      <div class="dx-card-h"><h5><i class="fas fa-calendar-days"></i> Təqvim</h5></div>
+      <div id="calendarContainer" class="calendar-wrapper"></div>
+    </div>
+  </div>
+
+  <!-- Qrafiklər -->
+  <div class="dx-sec"><i class="fas fa-chart-column"></i> Qrafiklər</div>
+  <div class="dx-grid-2">
+    <div class="dx-stack">
+      <div class="dx-card">
+        <div class="dx-card-h">
+          <h5><i class="fas fa-chart-column"></i> Digər bölgələr üzrə dərman qeydiyyatı</h5>
+          <button type="button" class="dx-dl"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="dx-chart"><canvas id="regionDrugChartOther" height="280"></canvas></div>
+      </div>
+      <div class="dx-card">
+        <div class="dx-card-h"><h5><i class="fas fa-cart-shopping"></i> Digər bölgələr üzrə satış</h5></div>
+        <div class="dx-chart"><canvas id="regionSalesChartOther" height="280"></canvas></div>
+      </div>
+    </div>
+
+    <div class="dx-stack">
+      <div class="dx-card">
+        <div class="dx-card-h">
+          <h5><i class="fas fa-chart-column"></i> Bakı bölgələri üzrə dərman</h5>
+          <button type="button" class="dx-dl"><i class="fas fa-download"></i></button>
+        </div>
+        <div class="dx-chart"><canvas id="regionDrugChartBaku" height="280"></canvas></div>
+      </div>
+      <div class="dx-card">
+        <div class="dx-card-h">
+          <h5><i class="fas fa-cart-shopping"></i> Bakı bölgələri üzrə satışı</h5>
+          <div id="bakuClock" class="dx-clock">--</div>
+        </div>
+        <div class="dx-chart"><canvas id="regionSalesChartBaku" height="280"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Son əməliyyatlar -->
+  <div class="dx-sec"><i class="fas fa-clock-rotate-left"></i> Son Əməliyyatlar</div>
+  <div class="dx-card">
+    <div class="dx-card-h"><h5><i class="fas fa-clock-rotate-left"></i> Son Əməliyyatlar (Reseptlər)</h5></div>
+    <div class="activity-list">
+      {% for item in combined_events %}
+        <div class="activity-item {% if forloop.counter <= 4 %}visible-item{% else %}hidden-item{% endif %}"{% if forloop.counter > 4 %} style="display:none"{% endif %}>
+          <div class="dx-act-row">
+            {% if item.event_type == "added" %}
+              <div class="dx-act-ic"><i class="bi bi-check-circle-fill" style="color:#22c55e"></i></div>
+              <div>
+                <div class="dx-act-main"><strong>{{user.username}}</strong> Tərəfindən <i class="fw-bold">{{ item.dr.ad }}</i> adına yeni resept əlavə edildi!</div>
+                <div class="dx-act-meta"><span>{{ item.event_date|date:"Y-m-d H:i" }}</span><span class="badge bg-success">Əlavə edildi</span></div>
+              </div>
+            {% elif item.event_type == "deleted" %}
+              <div class="dx-act-ic"><i class="bi bi-x-circle-fill" style="color:#ef4444"></i></div>
+              <div>
+                <div class="dx-act-main">
+                  <strong>{{user.username}}</strong> Tərəfindən
+                  <strong>{% if item.recipe and item.recipe.dr %}{{ item.recipe.dr.ad }}dan{% else %}Naməlum həkim{% endif %}</strong>
+                  <strong style="color:#f87171">{{ item.drug_name }}</strong> dərmanı qeydiyyatdan silindi!
                 </div>
-            </div>
+                <div class="dx-act-meta"><span>{{ item.event_date|date:"Y-m-d H:i" }}</span><span class="badge bg-danger">Silindi</span></div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% empty %}
+        <div class="dx-empty">Əməliyyat tapılmadı.</div>
+      {% endfor %}
+    </div>
+    <div class="dx-act-foot">
+      <button id="toggle-activity" type="button" class="btn btn-outline-primary btn-sm"><i class="fas fa-eye me-1"></i> Hamısını gör</button>
+    </div>
+  </div>
+
 </div>
 
 <!-- Modal -->
@@ -1187,6 +1071,42 @@
 </script>
 
 <script>
+(function(){
+  // Region filter for statistics
+  const totalBaku = parseInt("{{ total_baku|default:0 }}") || 0;
+  const totalOther = parseInt("{{ total_other|default:0 }}") || 0;
+
+  function applyRegionFilter(filter) {
+    const rowBaku = document.getElementById('rowBaku');
+    const rowOther = document.getElementById('rowOther');
+    const btnAll = document.getElementById('regionFilterAll');
+    const btnBaku = document.getElementById('regionFilterBaku');
+    const btnOther = document.getElementById('regionFilterOther');
+
+    // Update buttons
+    [btnAll, btnBaku, btnOther].forEach(btn => btn.classList.remove('active'));
+    if (filter === 'all') btnAll.classList.add('active');
+    else if (filter === 'baku') btnBaku.classList.add('active');
+    else if (filter === 'other') btnOther.classList.add('active');
+
+    // Update display
+    if (filter === 'all') {
+      rowBaku.style.display = '';
+      rowOther.style.display = '';
+    } else if (filter === 'baku') {
+      rowBaku.style.display = '';
+      rowOther.style.display = 'none';
+    } else if (filter === 'other') {
+      rowBaku.style.display = 'none';
+      rowOther.style.display = '';
+    }
+  }
+
+  document.getElementById('regionFilterAll').addEventListener('click', () => applyRegionFilter('all'));
+  document.getElementById('regionFilterBaku').addEventListener('click', () => applyRegionFilter('baku'));
+  document.getElementById('regionFilterOther').addEventListener('click', () => applyRegionFilter('other'));
+})();
+
 (function(){
   function applyBakuMode(mode){
     const table = document.getElementById("baku-result-table");

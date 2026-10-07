@@ -1201,7 +1201,102 @@ def hesabat_bagla(request):
     return JsonResponse({"success": False, "message": "Yalnız POST icazəlidir."})
 
 
-    
+@csrf_exempt
+def get_closed_accounts(request):
+    """Bağlanmış hesabları siyahılayır (ay/il əsasinda)."""
+    if request.method == "GET":
+        month = request.GET.get("month")
+        year = request.GET.get("year")
+        region_id = request.GET.get("region_id")
+
+        reports = MonthlyDoctorReport.objects.all().select_related('doctor', 'region')
+
+        if month:
+            try:
+                month = int(month)
+                reports = reports.filter(report_month__month=month)
+            except ValueError:
+                pass
+
+        if year:
+            try:
+                year = int(year)
+                reports = reports.filter(report_month__year=year)
+            except ValueError:
+                pass
+
+        if region_id:
+            try:
+                region_id = int(region_id)
+                reports = reports.filter(region_id=region_id)
+            except ValueError:
+                pass
+
+        reports = reports.order_by('-report_month', 'region__region_name', 'doctor__ad')
+
+        accounts_data = []
+        for report in reports:
+            accounts_data.append({
+                'id': report.id,
+                'doctor_name': report.doctor.ad,
+                'region_name': report.region.region_name if report.region else '-',
+                'report_month': report.report_month.strftime('%Y-%m'),
+                'yekun_borc': report.yekun_borc,
+                'borc': report.borc,
+                'avans': report.avans,
+                'investisiya': report.investisiya,
+            })
+
+        return JsonResponse({"success": True, "accounts": accounts_data})
+
+    return JsonResponse({"success": False, "message": "Yalnız GET icazəlidir."})
+
+
+@csrf_exempt
+def restore_closed_account(request, report_id):
+    """Bağlanmış hesabı geri qaytarır."""
+    if request.method == "POST":
+        try:
+            report = MonthlyDoctorReport.objects.select_related('doctor', 'region').get(id=report_id)
+
+            with transaction.atomic():
+                doctor = report.doctor
+
+                # Əvvəlki borcu hesabatdakı yekun borcdan əvvəlki borcu çıxaraq hesabla
+                # Bu hesabat bağlanmadan əvvəlki borcu bərpa etmək üçün
+                # Hesabatdakı məlumatları həkimə geri yüklə
+                doctor.borc = report.borc
+                doctor.hekimden_silinen = report.hekimden_silinen
+                doctor.datasiya = report.hesablanan_miqdar
+                doctor.hesablanan_miqdar = report.hesablanan_miqdar
+
+                # Əvvəlki borcu - yekun borc + yekun borc = əvvəlki borc qalır
+                # Lakin hesabat bağlandığında previous_debt = yekun_borc olmuşdu
+                # Bərpa etmək üçün hesabat bağlanmazdan əvvəlki previous_debt-i bərpa etməliyik
+                # Bu məlumatı MonthlyDoctorReport-da saxlamırıq, ona görə:
+                # Sadəcə hesabatdakı məlumatları geri yüklə və report-u sil
+                doctor.save()
+
+                # Payment_doctor qeydlərini aç (is_closed = False)
+                Payment_doctor.objects.filter(
+                    doctor=doctor,
+                    date__year=report.report_month.year,
+                    date__month=report.report_month.month
+                ).update(is_closed=False)
+
+                # Hesabat qeydini sil
+                report.delete()
+
+            return JsonResponse({"success": True, "message": f"{doctor.ad} üçün hesabat uğurla geri qaytarıldı."})
+
+        except MonthlyDoctorReport.DoesNotExist:
+            return JsonResponse({"success": False, "message": "Hesabat tapılmadı."}, status=404)
+        except Exception as e:
+            return JsonResponse({"success": False, "message": f"Xəta baş verdi: {str(e)}"}, status=500)
+
+    return JsonResponse({"success": False, "message": "Yalnız POST icazəlidir."}, status=405)
+
+
 def export_region_report_excel(request):
     region_id = request.GET.get("region_id")
     month = request.GET.get("month")

@@ -1,0 +1,162 @@
+{% extends "anbar_base.html" %}
+
+{% block title %}Anbarlar arası transfer — Solvey Pharma{% endblock %}
+{% block main_class %} evvele-main{% endblock %}
+
+{% block extra_css %}
+  .main.evvele-main{max-width:900px;}
+  .card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:24px;
+    box-shadow:var(--shadow);
+  }
+  .form-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:20px;
+  }
+  .form-grid.full{grid-template-columns:1fr;}
+  .drug-select{
+    max-height:300px;
+    overflow-y:auto;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:var(--paper);
+    padding:8px;
+  }
+  .drug-option{
+    padding:10px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:background .12s;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .drug-option:hover{background:rgba(34,211,238,0.08);}
+  .drug-option.selected{
+    background:rgba(34,211,238,0.15);
+    border:1px solid rgba(34,211,238,0.3);
+  }
+  .drug-option .name{font-size:13px;font-weight:500;color:var(--ink);}
+  .drug-option .full{font-size:11px;color:var(--ink-soft);}
+  .actions{display:flex;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line);}
+  .info-box{
+    background:rgba(251,191,36,0.08);
+    border:1px solid rgba(251,191,36,0.25);
+    border-radius:10px;
+    padding:12px 16px;
+    margin-bottom:20px;
+    font-size:12px;
+    color:#FBBF24;
+  }
+  @media(max-width:680px){.form-grid{grid-template-columns:1fr;}}
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1>Anbarlar arası transfer</h1>
+    <div class="sub">Dərmanları bir anbardan başqa anbara köçürün</div>
+  </div>
+  <div class="topbar-actions">
+    <a href="{% url 'aptek:transfer_list' %}" class="btn btn-ghost">Transfer siyahısı</a>
+  </div>
+</div>
+
+<form class="card" method="post" id="transferForm">
+  {% csrf_token %}
+  <div class="info-box">
+    <strong>Diqqət:</strong> Transfer etməzdən əvvəl göndərən depodan kifayət qarda qətiyyən yoxlayın.
+  </div>
+
+  <div class="form-grid">
+    <div class="field">
+      <label for="from_depo">Göndərən depo</label>
+      <select id="from_depo" name="from_depo" required>
+        {% for depo in depolar %}
+        <option value="{{ depo.id }}" {% if from_depo.id == depo.id %}selected{% endif %}>{{ depo.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="to_depo">Qəbul edən depo</label>
+      <select id="to_depo" name="to_depo" required>
+        {% for depo in depolar %}
+        <option value="{{ depo.id }}">{{ depo.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="field">
+      <label for="date">Tarix</label>
+      <input type="date" id="date" name="date" value="{{ selected_date }}" required>
+    </div>
+    <div class="field">
+      <label for="quantity">Miqdar</label>
+      <input type="number" id="quantity" name="quantity" min="0.01" step="0.01" placeholder="0.00" required>
+    </div>
+  </div>
+
+  <div class="form-grid full">
+    <div class="field">
+      <label for="drug_id">Dərman</label>
+      <select id="drug_id" name="drug_id" required>
+        <option value="">Dərman seçin...</option>
+        {% for drug in drugs %}
+        <option value="{{ drug.id }}">{{ drug.med_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-grid full">
+    <div class="field">
+      <label for="note">Qeyd (ixtiyari)</label>
+      <input type="text" id="note" name="note" maxlength="255" placeholder="Transfer səbəbi və ya qeydi...">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="submit" class="btn btn-primary">Transfer et</button>
+    <button type="reset" class="btn btn-ghost">Sıfırla</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const fromDepo = document.getElementById('from_depo');
+  const toDepo = document.getElementById('to_depo');
+
+  // Eyni deponu seçməyin qarşısını al
+  fromDepo.addEventListener('change', function() {
+    if (this.value === toDepo.value) {
+      const options = toDepo.querySelectorAll('option');
+      for (let opt of options) {
+        if (opt.value !== this.value) {
+          toDepo.value = opt.value;
+          break;
+        }
+      }
+    }
+  });
+
+  toDepo.addEventListener('change', function() {
+    if (this.value === fromDepo.value) {
+      const options = fromDepo.querySelectorAll('option');
+      for (let opt of options) {
+        if (opt.value !== this.value) {
+          fromDepo.value = opt.value;
+          break;
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

@@ -68,15 +68,6 @@
     background:#0B0E14;color:var(--ink-soft);
     padding:10px 12px;font-size:13.5px;
   }
-  .btn-cyan{
-    display:inline-flex;align-items:center;gap:6px;
-    border:none;border-radius:10px;
-    background:#22D3EE;color:#0B0E14;
-    padding:10px 16px;font-size:13.5px;font-weight:650;
-    cursor:pointer;box-shadow:0 0 18px rgba(34,211,238,0.35);
-  }
-  .btn-cyan:hover{background:#67E8F9;}
-
   .badge-ok,.badge-warn,.badge-danger{
     display:inline-block;font-size:11px;font-weight:600;
     padding:3px 9px;border-radius:999px;white-space:nowrap;
@@ -116,20 +107,6 @@
   .link-bax:hover{color:#22D3EE;}
   .empty-row{padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:13px;}
   .text-right{text-align:right;}
-
-  .modal-backdrop{
-    display:none;position:fixed;inset:0;z-index:100;
-    background:rgba(0,0,0,0.55);align-items:center;justify-content:center;padding:20px;
-  }
-  .modal-backdrop.open{display:flex;}
-  .modal-box{
-    width:100%;max-width:460px;background:#12161F;
-    border:1px solid var(--line);border-radius:16px;padding:22px;
-  }
-  .modal-box h3{font-size:16px;font-weight:650;color:#fff;margin-bottom:4px;}
-  .modal-box .hint{font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;}
-  .modal-box .field{margin-bottom:12px;}
-  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px;}
 
   @media(max-width:1100px){.anbar-stats{grid-template-columns:repeat(2,minmax(0,1fr));}}
   @media(max-width:640px){.anbar-stats{grid-template-columns:1fr;}}
@@ -218,12 +195,6 @@
       <option value="expired">Bitib</option>
     </select>
   </div>
-  <button type="button" class="btn-cyan" id="open-drug-modal">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-    </svg>
-    Qiymət təyin et
-  </button>
 </section>
 
 <section class="glass-card" style="overflow:hidden;">
@@ -232,10 +203,8 @@
       <thead>
         <tr>
           <th>Dərman</th>
-         
           <th>Qiymət</th>
           <th>Miqdar</th>
-        
           <th>Anbar</th>
           <th>Status</th>
           <th class="text-right">Əməliyyat</th>
@@ -257,7 +226,6 @@
           </td>
           <td class="price-cell">{{ m.price }}</td>
           <td>{{ m.quantity }}</td>
-          <td class="muted" style="white-space:nowrap;">{{ m.expiry }}</td>
           <td class="muted">{{ m.warehouse }}</td>
           <td>
             {% if m.status == 'ok' %}
@@ -283,35 +251,6 @@
     </table>
   </div>
 </section>
-
-<div class="modal-backdrop" id="drug-modal" role="dialog" aria-modal="true">
-  <form class="modal-box" method="post">
-    {% csrf_token %}
-    <h3>Qiymət təyin et</h3>
-    <p class="hint">Dərman Medical siyahısından gəlir; qiymət DrugPrice-da saxlanılır ({{ active_depo.name }}).</p>
-    <div class="field">
-      <label for="drug_id">Dərman</label>
-      <select id="drug_id" name="drug_id" required>
-        <option value="">Seçin…</option>
-        {% for d in available_drugs %}
-        <option value="{{ d.id }}" data-price="{{ d.med_price }}">{{ d.med_name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="field">
-      <label for="price">Qiymət (₼)</label>
-      <input id="price" type="number" name="price" step="0.01" min="0" required>
-    </div>
-    <div class="field">
-      <label for="expiry_date">SKT</label>
-      <input id="expiry_date" type="date" name="expiry_date">
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-ghost" id="close-drug-modal">Ləğv et</button>
-      <button type="submit" class="btn btn-primary">Əlavə et</button>
-    </div>
-  </form>
-</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -333,25 +272,6 @@
   }
   if (search) search.addEventListener('input', apply);
   if (filter) filter.addEventListener('change', apply);
-
-  var modal = document.getElementById('drug-modal');
-  var openBtn = document.getElementById('open-drug-modal');
-  var closeBtn = document.getElementById('close-drug-modal');
-  if (openBtn && modal) openBtn.addEventListener('click', function () { modal.classList.add('open'); });
-  if (closeBtn && modal) closeBtn.addEventListener('click', function () { modal.classList.remove('open'); });
-  if (modal) modal.addEventListener('click', function (e) {
-    if (e.target === modal) modal.classList.remove('open');
-  });
-
-  var drugSelect = document.getElementById('drug_id');
-  var priceInput = document.getElementById('price');
-  if (drugSelect && priceInput) {
-    drugSelect.addEventListener('change', function () {
-      var opt = drugSelect.options[drugSelect.selectedIndex];
-      var p = opt && opt.getAttribute('data-price');
-      if (p && !priceInput.value) priceInput.value = p;
-    });
-  }
 })();
 </script>
 {% endblock %}

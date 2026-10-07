@@ -21,6 +21,8 @@ urlpatterns = [
     path("depo-sales/",views.depo_sales, name ="depo-sales"),
     path("update-sell/",views.update_sale, name ="update-sell"),
     path('hesabat-bagla/', views.hesabat_bagla, name='hesabat_bagla'),
+    path('get-closed-accounts/', views.get_closed_accounts, name='get_closed_accounts'),
+    path('restore-closed-account/<int:report_id>/', views.restore_closed_account, name='restore_closed_account'),
 
 
     path('closed-accounts/', views.kohne_hesabat, name='closed_accounts'),
