@@ -532,7 +532,6 @@ def yeni_vizit_view(request):
     selected_bolge_id = request.session.get('son_bolge_id')
 
     from .vizit_day_pdf import vizit_day_share_context
-    from .vizit_day_jpg import vizit_day_share_jpg_context
     share_ctx = (
         vizit_day_share_context(request)
         if user_rol in _own_day_roles
@@ -541,14 +540,6 @@ def yeni_vizit_view(request):
             'pdf_filename': '',
             'user_ad': request.session.get('ad') or '',
             'today': bugun,
-        }
-    )
-    share_jpg_ctx = (
-        vizit_day_share_jpg_context(request)
-        if user_rol in _own_day_roles
-        else {
-            'share_jpg_url': '',
-            'jpg_filename': '',
         }
     )
 
@@ -561,7 +552,6 @@ def yeni_vizit_view(request):
         'bugun_tarix': bugun,
         'ixtisas_choices': Doctors.İXTİSAS_SECIMI,
         **share_ctx,
-        **share_jpg_ctx,
     })
 
 

@@ -319,9 +319,6 @@
             <a href="{% url 'vizit:vizit_day_pdf' %}" class="vd-pdf-btn" target="_blank">
                 <i class="fa-solid fa-file-pdf"></i> PDF
             </a>
-            <a href="{{ share_jpg_url }}" class="vd-pdf-btn" target="_blank" style="background: #3498db;">
-                <i class="fa-solid fa-image"></i> Şəkil
-            </a>
         </span>
         {% endif %}
     </div>
@@ -783,18 +780,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
 {{ share_url|json_script:"vd-share-url" }}
 {{ pdf_filename|json_script:"vd-pdf-filename" }}
-{{ jpg_download_url|json_script:"vd-share-jpg-url" }}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   var shareUrlEl = document.getElementById("vd-share-url");
   var pdfNameEl = document.getElementById("vd-pdf-filename");
-  var jpgUrlEl = document.getElementById("vd-share-jpg-url");
   if (!shareUrlEl) return;
   var shareUrl = JSON.parse(shareUrlEl.textContent);
   var filename = pdfNameEl ? JSON.parse(pdfNameEl.textContent) : "Vizit.pdf";
-  var jpgFilename = "{{ jpg_filename|escapejs }}";
   var pdfUrl = "{% url 'vizit:vizit_day_pdf' %}?download=1";
-  var jpgUrl = jpgUrlEl ? JSON.parse(jpgUrlEl.textContent) : "";
   var title = "{{ user_ad|escapejs }} Vizit — {{ today|date:'d.m.Y' }}";
   var text = title + "\n" + shareUrl;
 
@@ -815,22 +808,16 @@ document.addEventListener("DOMContentLoaded", function () {
   function closeSheet() { if (sheet) sheet.hidden = true; }
 
   async function shareNative() {
-    // Yalnız JPG paylaş (iOS/WhatsApp üçün optimal)
-    if (!jpgUrl) {
-      throw new Error("JPG URL mövcud deyil");
-    }
-
-    var res = await fetch(jpgUrl, { credentials: "same-origin" });
-    if (!res.ok) throw new Error("JPG yüklənmədi");
+    var res = await fetch(pdfUrl, { credentials: "same-origin" });
+    if (!res.ok) throw new Error("PDF yüklənmədi");
     var blob = await res.blob();
-    var file = new File([blob], jpgFilename, { type: "image/jpeg" });
-
+    var file = new File([blob], filename, { type: "application/pdf" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({ files: [file], title: title, text: title });
       return true;
     }
     if (navigator.share) {
-      await navigator.share({ title: title, text: title, url: jpgUrl });
+      await navigator.share({ title: title, text: title, url: shareUrl });
       return true;
     }
     return false;
