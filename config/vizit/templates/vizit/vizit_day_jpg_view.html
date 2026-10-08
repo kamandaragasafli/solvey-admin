@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ user_ad }} Vizit</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .vizit-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .vizit-header {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #1A5276;
+            padding-bottom: 15px;
+        }
+        .vizit-header h1 {
+            color: #1A5276;
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .vizit-header p {
+            color: #64748B;
+            font-size: 14px;
+        }
+        .vizit-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .vizit-table thead {
+            background: #1A5276;
+        }
+        .vizit-table th {
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 11px;
+            border: 1px solid #1A5276;
+        }
+        .vizit-table td {
+            padding: 8px;
+            border: 1px solid #DCE6F0;
+            font-size: 11px;
+            vertical-align: top;
+        }
+        .vizit-table tr:nth-child(even) {
+            background: #F0F7FF;
+        }
+        .vizit-table col:nth-child(1) { width: 30px; }
+        .vizit-table col:nth-child(2) { width: 150px; }
+        .vizit-table col:nth-child(3) { width: 70px; }
+        .vizit-table col:nth-child(4) { width: 100px; }
+        .vizit-table col:nth-child(5) { width: 300px; }
+        .vizit-table col:nth-child(6) { width: 200px; }
+        .vizit-table col:nth-child(7) { width: 60px; }
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #94A3B8;
+            font-size: 16px;
+        }
+        .download-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 12px 24px;
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+        }
+        .download-btn:hover {
+            background: #1DA851;
+        }
+    </style>
+</head>
+<body>
+    <div class="vizit-container" id="vizit-content">
+        <div class="vizit-header">
+            <h1>{{ user_ad }} Vizit</h1>
+            <p>Tarix: {{ day|date:"d.m.Y" }} · Cəmi: {{ rows|length }}</p>
+        </div>
+
+        {% if rows %}
+        <table class="vizit-table">
+            <colgroup>
+                <col>
+                <col>
+                <col>
+                <col>
+                <col>
+                <col>
+                <col>
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Həkim</th>
+                    <th>İxtisas</th>
+                    <th>Münasibət</th>
+                    <th>Dərmanlar</th>
+                    <th>Qeyd</th>
+                    <th>Vaxt</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ row.hekim }}</td>
+                    <td>{{ row.ixtisas }}</td>
+                    <td>{{ row.munasibat }}</td>
+                    <td>{{ row.dermanlar }}</td>
+                    <td>{{ row.qeyd }}</td>
+                    <td>{{ row.vaxt }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">
+            Bu gün vizit yoxdur.
+        </div>
+        {% endif %}
+    </div>
+
+    <button class="download-btn" onclick="downloadJPG()">
+        <i class="fa-solid fa-download"></i> JPG kimi yüklə
+    </button>
+
+    <script>
+        function downloadJPG() {
+            const element = document.getElementById('vizit-content');
+            html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                width: 1200,
+                height: element.scrollHeight
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = '{{ user_ad|safe }} Vizit.jpg';
+                link.href = canvas.toDataURL('image/jpeg', 0.9);
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>

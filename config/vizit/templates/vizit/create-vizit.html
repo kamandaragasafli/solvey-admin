@@ -319,6 +319,9 @@
             <a href="{% url 'vizit:vizit_day_pdf' %}" class="vd-pdf-btn" target="_blank">
                 <i class="fa-solid fa-file-pdf"></i> PDF
             </a>
+            <a href="{{ share_jpg_url }}" class="vd-pdf-btn" target="_blank" style="background: #3498db;">
+                <i class="fa-solid fa-image"></i> Şəkil
+            </a>
         </span>
         {% endif %}
     </div>
@@ -329,7 +332,7 @@
         <p>Bu gün hələ vizit yoxdur.</p>
     </div>
     {% else %}
-    <ul class="vizit-list">
+    <ul class="vizit-list" id="vizit-list-content">
         {% for v in bugun_vizitler %}
         <li>
             <div class="vizit-num">{{ forloop.counter }}</div>
@@ -468,13 +471,25 @@ document.addEventListener('DOMContentLoaded', function () {
     function showHekimInfo(h) {
         if (!hekimInfo || !h) return;
         const ixtisas = (h.ixtisas_kod || h.ixtisas || '').trim() || '—';
-        const kat = (h.kateqoriya || h.kategoriya || '').trim() || '—';
         const derece = (h.derece || '').trim() || '—';
+        const borcStr = (h.previous_debt || '').trim();
+        const borc = parseFloat(borcStr);
+        let borcColor;
+        if (borcStr === '' || borcStr === '—' || isNaN(borc)) {
+            borcColor = '#28a745'; // Yaşıl (boş və ya "-" üçün)
+        } else if (borc === 0) {
+            borcColor = '#fd7e14'; // Narıncı
+        } else if (borc > 0) {
+            borcColor = '#dc3545'; // Qırmızı (müsbət borc üçün)
+        } else {
+            borcColor = '#28a745'; // Yaşıl (mənfi borc üçün)
+        }
+        const borcDisplay = (borcStr === '' || borcStr === '—' || isNaN(borc)) ? '—' : borc;
         hekimInfo.innerHTML = `
             <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff; margin-top: 10px;">
                 <div style="margin-bottom: 5px;"><i class="fas fa-user-md"></i> İxtisas: <strong>${ixtisas}</strong></div>
-                <div style="margin-bottom: 5px;"><i class="fas fa-tag"></i> Kateqoriya: <strong>${kat}</strong></div>
-                <div><i class="fas fa-graduation-cap"></i> Dərəcə: <strong>${derece}</strong></div>
+                <div style="margin-bottom: 5px;"><i class="fas fa-graduation-cap"></i> Dərəcə: <strong>${derece}</strong></div>
+                <div><i class="fas fa-money-bill"></i> Borc: <strong style="color: ${borcColor};">${borcDisplay} ₼</strong></div>
             </div>
         `;
         hekimInfo.classList.remove('hidden');
@@ -768,14 +783,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
 {{ share_url|json_script:"vd-share-url" }}
 {{ pdf_filename|json_script:"vd-pdf-filename" }}
+{{ jpg_download_url|json_script:"vd-share-jpg-url" }}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   var shareUrlEl = document.getElementById("vd-share-url");
   var pdfNameEl = document.getElementById("vd-pdf-filename");
+  var jpgUrlEl = document.getElementById("vd-share-jpg-url");
   if (!shareUrlEl) return;
   var shareUrl = JSON.parse(shareUrlEl.textContent);
   var filename = pdfNameEl ? JSON.parse(pdfNameEl.textContent) : "Vizit.pdf";
+  var jpgFilename = "{{ jpg_filename|escapejs }}";
   var pdfUrl = "{% url 'vizit:vizit_day_pdf' %}?download=1";
+  var jpgUrl = jpgUrlEl ? JSON.parse(jpgUrlEl.textContent) : "";
   var title = "{{ user_ad|escapejs }} Vizit — {{ today|date:'d.m.Y' }}";
   var text = title + "\n" + shareUrl;
 
@@ -796,16 +815,22 @@ document.addEventListener("DOMContentLoaded", function () {
   function closeSheet() { if (sheet) sheet.hidden = true; }
 
   async function shareNative() {
-    var res = await fetch(pdfUrl, { credentials: "same-origin" });
-    if (!res.ok) throw new Error("PDF yüklənmədi");
+    // Yalnız JPG paylaş (iOS/WhatsApp üçün optimal)
+    if (!jpgUrl) {
+      throw new Error("JPG URL mövcud deyil");
+    }
+
+    var res = await fetch(jpgUrl, { credentials: "same-origin" });
+    if (!res.ok) throw new Error("JPG yüklənmədi");
     var blob = await res.blob();
-    var file = new File([blob], filename, { type: "application/pdf" });
+    var file = new File([blob], jpgFilename, { type: "image/jpeg" });
+
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({ files: [file], title: title, text: title });
       return true;
     }
     if (navigator.share) {
-      await navigator.share({ title: title, text: title, url: shareUrl });
+      await navigator.share({ title: title, text: title, url: jpgUrl });
       return true;
     }
     return false;

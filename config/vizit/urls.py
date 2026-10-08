@@ -48,6 +48,11 @@ from .vizit_day_pdf import (
     vizit_day_pdf,
     vizit_day_shared_pdf,
 )
+from .vizit_day_jpg import (
+    vizit_day_jpg,
+    vizit_day_jpg_data,
+    vizit_day_shared_jpg,
+)
 from .day_recipe_pdf import (
     day_recipe_pdf,
     day_recipe_shared_pdf,
@@ -94,6 +99,9 @@ urlpatterns = [
     path('aptek-vizit/paylas/<path:token>/', aptek_vizit_shared_pdf, name='aptek_vizit_shared_pdf'),
     path('pdf/', vizit_day_pdf, name='vizit_day_pdf'),
     path('paylas/<path:token>/', vizit_day_shared_pdf, name='vizit_day_shared_pdf'),
+    path('jpg/', vizit_day_jpg, name='vizit_day_jpg'),
+    path('jpg-data/', vizit_day_jpg_data, name='vizit_day_jpg_data'),
+    path('jpg-paylas/<path:token>/', vizit_day_shared_jpg, name='vizit_day_shared_jpg'),
     path('gunluk-qeydiyyat/pdf/', day_recipe_pdf, name='day_recipe_pdf'),
     path('gunluk-qeydiyyat/paylas/<path:token>/', day_recipe_shared_pdf, name='day_recipe_shared_pdf'),
 ]
