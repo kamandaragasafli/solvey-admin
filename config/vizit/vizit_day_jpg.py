@@ -104,9 +104,9 @@ def vizit_day_jpg(request):
     extra_css = """
     <style>
     body, .vizit-container {
-        width: 1200px !important;
-        max-width: 1200px !important;
-        min-width: 1200px !important;
+        width: 1400px !important;
+        max-width: 1400px !important;
+        min-width: 1400px !important;
     }
     </style>
     """
@@ -116,7 +116,7 @@ def vizit_day_jpg(request):
     try:
         from html2image import Html2Image
 
-        hti = Html2Image(size=(1200, 1200), browser='chrome')
+        hti = Html2Image(size=(1400, 1400), browser='chrome')
         output_path = "vizit_temp.jpg"
         hti.screenshot(html_str=html_content, save_as=output_path)
 
