@@ -1,0 +1,30 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+            git config --global --add safe.directory /var/www/solvey-admin
+            cd /var/www/solvey-admin
+            git pull --ff-only origin main
+            cd config
+            source venv/bin/activate
+            pip install -r ../requirements.txt
+            python manage.py migrate --noinput
+            python manage.py collectstatic --noinput
+            systemctl restart gunicorn
+            sleep 3
+            systemctl is-active gunicorn
