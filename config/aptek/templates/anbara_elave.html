@@ -81,12 +81,36 @@
     <label for="f-to">Tarixə</label>
     <input type="date" id="f-to" name="to" value="{{ date_to }}">
   </div>
+  <div class="field">
+    <label>Aylar</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-sm" onclick="setMonth(0)">Bu ay</button>
+      <button type="button" class="btn btn-sm" onclick="setMonth(-1)">Keçən ay</button>
+      <button type="button" class="btn btn-sm" onclick="setMonth(-2)">2 ay əvvəl</button>
+      <button type="button" class="btn btn-sm" onclick="setMonth(-3)">3 ay əvvəl</button>
+    </div>
+  </div>
   <div class="field search">
     <label for="f-search">Axtar</label>
     <input type="text" id="f-search" name="q" value="{{ search }}" placeholder="Dərman və ya mənbə...">
   </div>
   <button type="submit" class="btn btn-primary">Filtrlə</button>
 </form>
+
+<script>
+function setMonth(offset) {
+  const today = new Date();
+  const targetDate = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+  const year = targetDate.getFullYear();
+  const month = targetDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+
+  document.getElementById('f-from').value = firstDay.toISOString().split('T')[0];
+  document.getElementById('f-to').value = lastDay.toISOString().split('T')[0];
+  document.querySelector('.filters').submit();
+}
+</script>
 
 <div class="ledger">
   <div class="ledger-head">
