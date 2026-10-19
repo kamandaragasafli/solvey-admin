@@ -639,14 +639,6 @@ def anbara_elave_form(request):
 
     if request.method == 'POST':
         with transaction.atomic():
-            AnbarHereket.objects.filter(
-                depo=depo,
-                movement_type=AnbarHereket.MOVEMENT_IN,
-                date=selected_date,
-                note=note,
-                qaime__isnull=True,
-            ).delete()
-
             saved = 0
             for drug in Medical.objects.filter(status=True):
                 raw = request.POST.get(f'qty_{drug.id}', '').strip().replace(',', '.')
