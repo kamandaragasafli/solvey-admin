@@ -1599,8 +1599,12 @@ def aptek_list(request):
                 return redirect(f"{reverse('aptek:anbar_dashboard')}?{params}")
             except QaimeParseError as exc:
                 messages.error(request, str(exc))
-            except Exception:
-                messages.error(request, 'PDF emal edilərkən xəta baş verdi.')
+            except Exception as exc:
+                import traceback
+                error_detail = str(exc)
+                traceback_detail = traceback.format_exc()
+                messages.error(request, f'PDF emal xətası: {error_detail}')
+                print(f"PDF parse error: {error_detail}\n{traceback_detail}")
         return redirect('aptek:anbar_dashboard')
 
         if request.POST.get('manual_qaime') == '1':
