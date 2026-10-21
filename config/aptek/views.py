@@ -1603,7 +1603,7 @@ def aptek_list(request):
                 import traceback
                 error_detail = str(exc)
                 traceback_detail = traceback.format_exc()
-                messages.error(request, f'PDF emal xətası: {error_detail}')
+                messages.error(request, f'PDF emal xətası: {error_detail}\n\n{traceback_detail}')
                 print(f"PDF parse error: {error_detail}\n{traceback_detail}")
         return redirect('aptek:anbar_dashboard')
 
