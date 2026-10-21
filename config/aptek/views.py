@@ -1605,7 +1605,7 @@ def aptek_list(request):
                 traceback_detail = traceback.format_exc()
                 messages.error(request, f'PDF emal xətası: {error_detail}\n\n{traceback_detail}')
                 print(f"PDF parse error: {error_detail}\n{traceback_detail}")
-        return redirect('aptek:anbar_dashboard')
+            return redirect('aptek:anbar_dashboard')
 
         if request.POST.get('manual_qaime') == '1':
             aptek_id = request.POST.get('manual_aptek') or ''
