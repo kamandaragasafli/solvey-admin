@@ -82,8 +82,12 @@ def _parse_az_decimal(value) -> Decimal:
         return Decimal('0')
     text = text.replace(',', '.')
     try:
-        return Decimal(text)
-    except InvalidOperation:
+        dec_value = Decimal(text)
+        # Çox böyük rəqəmləri məhdudlaşdır
+        if dec_value > Decimal('1000000000'):
+            return Decimal('0')
+        return dec_value
+    except (InvalidOperation, OverflowError):
         return Decimal('0')
 
 
@@ -185,10 +189,13 @@ def _parse_doc_date(text: str) -> date | None:
         match = re.search(r'(\d{2})\.(\d{2})\.(\d{4})', text)
     if not match:
         return None
-    day, month, year = map(int, match.groups())
     try:
+        day, month, year = map(int, match.groups())
+        # Tarix diapazonunu yoxla
+        if year < 2000 or year > 2100 or month < 1 or month > 12 or day < 1 or day > 31:
+            return None
         return date(year, month, day)
-    except ValueError:
+    except (ValueError, OverflowError):
         return None
 
 
@@ -522,17 +529,27 @@ def _parse_official_date(text: str) -> date | None:
     )
     if not match:
         return _parse_doc_date(text)
-    day, month, year = map(int, match.groups())
     try:
+        day, month, year = map(int, match.groups())
+        # Tarix diapazonunu yoxla
+        if year < 2000 or year > 2100 or month < 1 or month > 12 or day < 1 or day > 31:
+            return _parse_doc_date(text)
         return date(year, month, day)
-    except ValueError:
-        return None
+    except (ValueError, OverflowError):
+        return _parse_doc_date(text)
 
 
 def _parse_official_number(text: str) -> int:
     match = re.search(r'N[öo]mr[əe]\s*:?\s*(\d+)', text, re.IGNORECASE)
     if match:
-        return int(match.group(1))
+        try:
+            num_str = match.group(1)
+            # Rəqəm çox böyükdürsə, yalnız son 10 rəqəmini al
+            if len(num_str) > 10:
+                num_str = num_str[-10:]
+            return int(num_str)
+        except (ValueError, OverflowError):
+            return 0
     return 0
 
 
