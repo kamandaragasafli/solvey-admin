@@ -103,7 +103,7 @@ def add_pay_dr(request, region_id=None):
                 date=pay_date
             )
             messages.success(request, "Ödəniş uğurla əlavə edildi.")
-            return redirect("doctor_detail", doctor_id=doctor_id)
+            return redirect("add-pay-dr-region", region_id=region_id)
         except Exception as e:
             messages.error(request, f"Xəta baş verdi: {e}")
             return redirect("add-pay-dr-region", region_id=region_id)
