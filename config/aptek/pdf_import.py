@@ -544,10 +544,15 @@ def _parse_official_number(text: str) -> int:
     if match:
         try:
             num_str = match.group(1)
-            # Rəqəm çox böyükdürsə, yalnız son 10 rəqəmini al
-            if len(num_str) > 10:
-                num_str = num_str[-10:]
-            return int(num_str)
+            # PostgreSQL integer max: 2,147,483,647
+            # Rəqəm çox böyükdürsə, yalnız son 9 rəqəmini al (max 999,999,999)
+            if len(num_str) > 9:
+                num_str = num_str[-9:]
+            num = int(num_str)
+            # Əlavə məhdudiyyət: max 2,147,483,647
+            if num > 2147483647:
+                num = num % 2147483647
+            return num
         except (ValueError, OverflowError):
             return 0
     return 0

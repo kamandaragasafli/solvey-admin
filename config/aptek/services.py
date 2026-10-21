@@ -40,7 +40,11 @@ def _next_qaime_number(aptek: Aptek, document_type: str, depo: Depo) -> int:
         .values_list('number', flat=True)
         .first()
     )
-    return (last or 0) + 1
+    next_num = (last or 0) + 1
+    # PostgreSQL integer max: 2,147,483,647
+    if next_num > 2147483647:
+        next_num = 1  # Reset to 1 if limit reached
+    return next_num
 
 
 def _should_keep_pdf() -> bool:
@@ -107,6 +111,9 @@ def import_qaime_pdf(uploaded_file, depo: Depo, is_official: bool = False):
             parsed.number if (is_official and parsed.number)
             else _next_qaime_number(aptek, parsed.document_type, depo)
         )
+        # PostgreSQL integer max: 2,147,483,647
+        if qaime_number > 2147483647:
+            qaime_number = qaime_number % 2147483647
         if is_official and parsed.number:
             if Qaime.objects.filter(
                 depo=depo,
