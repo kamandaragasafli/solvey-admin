@@ -1,0 +1,64 @@
+{% extends "anbar_base.html" %}
+
+{% block title %}Hərəkəti düzəlt — Solvey Pharma{% endblock %}
+
+{% block extra_css %}
+  .edit-card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:24px;
+    box-shadow:var(--shadow);
+    max-width:500px;
+    margin:0 auto;
+  }
+  .edit-grid{
+    display:grid;
+    gap:16px;
+    margin-bottom:20px;
+  }
+  .edit-actions{
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+    padding-top:20px;
+    border-top:1px solid var(--line);
+  }
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1>Hərəkəti düzəlt</h1>
+    <div class="sub">Miqdarı yenilə</div>
+  </div>
+</div>
+
+<div class="edit-card">
+  <form method="post">
+    {% csrf_token %}
+    <div class="edit-grid">
+      <div class="field">
+        <label>Dərman</label>
+        <input type="text" value="{{ hereket.drug.med_name }}" disabled style="background:#0B0E14;color:var(--ink-soft);">
+      </div>
+      <div class="field">
+        <label>Tarix</label>
+        <input type="text" value="{{ hereket.date|date:'d.m.Y' }}" disabled style="background:#0B0E14;color:var(--ink-soft);">
+      </div>
+      <div class="field">
+        <label for="quantity">Miqdar *</label>
+        <input type="number" id="quantity" name="quantity" step="0.01" min="0.01" value="{{ hereket.quantity }}" required>
+      </div>
+      <div class="field">
+        <label>Əvvəlki miqdar</label>
+        <input type="text" value="{{ hereket.quantity }}" disabled style="background:#0B0E14;color:var(--ink-soft);">
+      </div>
+    </div>
+    <div class="edit-actions">
+      <a href="{% url 'aptek:aptek_detail' aptek_id %}" class="btn btn-ghost">Ləğv et</a>
+      <button type="submit" class="btn btn-primary">Yadda saxla</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

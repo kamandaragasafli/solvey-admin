@@ -1263,6 +1263,7 @@ def aptek_detail(request, pk):
             doc_label = movement.note or '—'
 
         rows.append({
+            'id': movement.id,
             'date': movement.date,
             'type': movement.movement_type,
             'type_label': 'Çıxış' if is_out else 'Giriş',
@@ -1291,6 +1292,63 @@ def aptek_detail(request, pk):
         **_user_context(request),
     }
     return render(request, 'aptek_detail.html', context)
+
+
+@login_required
+def hereket_edit(request, pk):
+    depo = _get_active_depo(request)
+    hereket = AnbarHereket.objects.filter(pk=pk, depo=depo).first()
+    if not hereket:
+        messages.error(request, 'Hərəkət tapılmadı.')
+        return redirect('aptek:aptekler')
+
+    if request.method == 'POST':
+        new_qty = request.POST.get('quantity', '').strip().replace(',', '.')
+        if not new_qty:
+            messages.error(request, 'Miqdar düzgün deyil.')
+            return redirect('aptek:aptek_detail', pk=hereket.aptek_id)
+
+        try:
+            qty = Decimal(new_qty)
+        except Exception:
+            messages.error(request, 'Miqdar rəqəm olmalıdır.')
+            return redirect('aptek:aptek_detail', pk=hereket.aptek_id)
+
+        if qty <= 0:
+            messages.error(request, 'Miqdar 0-dan böyük olmalıdır.')
+            return redirect('aptek:aptek_detail', pk=hereket.aptek_id)
+
+        hereket.quantity = qty
+        hereket.save(update_fields=['quantity'])
+        messages.success(request, 'Miqdar yeniləndi.')
+        return redirect('aptek:aptek_detail', pk=hereket.aptek_id)
+
+    context = {
+        'hereket': hereket,
+        'aptek_id': hereket.aptek_id,
+    }
+    return render(request, 'hereket_edit.html', context)
+
+
+@login_required
+def hereket_delete(request, pk):
+    if request.method != 'POST':
+        return redirect('aptek:aptekler')
+
+    depo = _get_active_depo(request)
+    hereket = AnbarHereket.objects.filter(pk=pk, depo=depo).first()
+    if not hereket:
+        messages.error(request, 'Hərəkət tapılmadı.')
+        return redirect('aptek:aptekler')
+
+    aptek_id = hereket.aptek_id
+    drug_name = hereket.drug.med_name
+
+    with transaction.atomic():
+        hereket.delete()
+
+    messages.success(request, f'{drug_name} hərəkəti silindi.')
+    return redirect('aptek:aptek_detail', pk=aptek_id)
 
 
 @login_required

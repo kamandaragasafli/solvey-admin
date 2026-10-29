@@ -16,6 +16,7 @@
   .detail-table .col-doc{min-width:160px;}
   .detail-table .col-qty{min-width:88px;text-align:right;}
   .detail-table .col-pdf{min-width:64px;text-align:center;}
+  .detail-table .col-actions{min-width:100px;text-align:center;}
   .detail-table tbody td.col-pdf a{
     font-size:12px;
     color:var(--primary-color);
@@ -23,6 +24,14 @@
     font-weight:600;
   }
   .detail-table tbody td.col-pdf a:hover{text-decoration:underline;}
+  .btn-action{
+    border:1px solid var(--line); background:#0B0E14; color:var(--ink-soft);
+    padding:4px 8px; cursor:pointer; border-radius:6px; font-size:11px; font-weight:600;
+    margin:0 2px;
+  }
+  .btn-action:hover{background:#161b26; color:#fff;}
+  .btn-action.edit:hover{background:rgba(34,211,238,0.12); border-color:rgba(34,211,238,0.35); color:#22D3EE;}
+  .btn-action.delete:hover{background:rgba(244,63,94,0.12); border-color:rgba(244,63,94,0.35); color:#FB7185;}
   .type-pill{
     display:inline-block;
     padding:3px 9px;
@@ -117,6 +126,7 @@
           <th class="drug-name">Dərman</th>
           <th class="num col-qty">Miqdar</th>
           <th class="col-pdf">PDF</th>
+          <th class="col-actions">Əməliyyat</th>
         </tr>
       </thead>
       <tbody>
@@ -138,11 +148,18 @@
           <td class="col-pdf">
             {% if row.pdf_url %}<a href="{{ row.pdf_url }}" target="_blank" rel="noopener">PDF</a>{% else %}—{% endif %}
           </td>
+          <td class="col-actions">
+            <a href="{% url 'aptek:hereket_edit' row.id %}" class="btn-action edit">Düzəlt</a>
+            <form method="post" action="{% url 'aptek:hereket_delete' row.id %}" style="display:inline;" onsubmit="return confirm('Bu hərəkəti silmək istədiyinizə əminsiniz?');">
+              {% csrf_token %}
+              <button type="submit" class="btn-action delete">Sil</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="6" style="text-align:center;color:var(--ink-soft);padding:32px;">
+          <td colspan="7" style="text-align:center;color:var(--ink-soft);padding:32px;">
             Seçilmiş dövr üçün hərəkət tapılmadı
           </td>
         </tr>
