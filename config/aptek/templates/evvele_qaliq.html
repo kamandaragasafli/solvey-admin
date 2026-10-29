@@ -105,21 +105,16 @@
     </div>
   </div>
 
-  <div class="hint-box">
-    Inputda <b style="color:#fff;">cari əvvələ qalıq</b> görünür.
-    Məsələn <b style="color:#fff;">10</b> ikən <b style="color:#22D3EE;">11</b> yazıb saxlasanız, sistem yalnız
-    <b style="color:#34D399;">+1</b> əlavə edir (update). Köhnə qeydlər silinmir.
-  </div>
+
 
   <div class="drug-list" id="drugList">
     {% for drug in drugs %}
     <div class="drug-row" data-name="{{ drug.med_name|lower }} {{ drug.med_full_name|default:''|lower }}">
-      <div class="drug-name">
+      <div class="drug-name" style="font-size: 15px;">
         {{ drug.med_name }}
-        {% if drug.med_full_name %}<small>{{ drug.med_full_name }}</small>{% endif %}
       </div>
-      <input type="number" name="qty_{{ drug.id }}" class="qty-input" min="0" step="0.01"
-             value="{{ drug.qty_display }}"
+      <input type="number" name="qty_{{ drug.id }}" class="qty-input" min="0" step="0.01" style="font-size: 15px;"
+             value="{{ drug.qty_display }}" 
              data-original="{{ drug.qty_display }}">
     </div>
     {% empty %}

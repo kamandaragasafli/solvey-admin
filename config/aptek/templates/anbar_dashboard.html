@@ -72,9 +72,31 @@
   .manual-remove:hover{background:rgba(244,63,94,0.12); color:#FB7185; border-color:rgba(244,63,94,0.35);}
   .manual-actions{
     display:flex; gap:10px; justify-content:flex-end; margin-top:14px;
-    padding-top:8px;
+    padding-top:8px; align-items:center;
   }
-  .manual-btn{white-space:nowrap;}
+  .manual-total{
+    margin-right:auto; display:flex; gap:8px; align-items:center;
+  }
+  .manual-total .k{font-size:12px;color:var(--ink-soft);text-transform:uppercase;}
+  .manual-total .v{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--primary-color);}
+  .manual-drug-list{
+    max-height:400px; overflow-y:auto; border:1px solid var(--line); border-radius:12px;
+    padding:8px; background:#0B0E14;
+  }
+  .manual-drug-row{
+    display:grid; grid-template-columns:1fr 100px; gap:10px; align-items:center;
+    padding:8px 10px; border-bottom:1px solid var(--line);
+  }
+  .manual-drug-row:last-child{border-bottom:none;}
+  .manual-drug-name{font-size:13px;font-weight:500;color:#fff;}
+  .manual-qty-input{
+    width:100%; min-width:0; border:1px solid var(--line); border-radius:8px;
+    padding:8px 10px; background:#161b26; color:#fff; text-align:center;
+  }
+  .manual-qty-input:focus{
+    outline:none; border-color:rgba(34,211,238,.45); box-shadow:0 0 0 3px rgba(34,211,238,.1);
+  }
+  .manual-drug-row.hidden{display:none;}
   .ledger .ledger-scroll{
     max-height:none;
     overflow:visible;
@@ -277,31 +299,31 @@
               </div>
             </div>
             <div class="field">
-              <label>&nbsp;</label>
-              <button type="button" class="btn btn-ghost manual-btn" id="addManualRow">+ Sətir əlavə et</button>
+              <label>Axtar</label>
+              <input type="text" id="manualDrugSearch" placeholder="Dərman adı...">
             </div>
           </div>
 
-          <table class="manual-table">
-            <thead>
-              <tr>
-                <th style="width:70%;">Dərman</th>
-                <th style="width:20%;">Miqdar</th>
-                <th style="width:10%;">Sil</th>
-              </tr>
-            </thead>
-            <tbody id="manualQaimeRows"></tbody>
-          </table>
+          <div class="manual-drug-list" id="manualDrugList">
+            {% for drug in manual_drugs %}
+            <div class="manual-drug-row" data-name="{{ drug.med_name|lower }}">
+              <div class="manual-drug-name">{{ drug.med_name }}</div>
+              <input type="number" name="manual_qty_{{ drug.id }}" class="manual-qty-input" min="0.01" step="0.01" placeholder="0">
+            </div>
+            {% endfor %}
+          </div>
 
           <div class="manual-actions">
+            <div class="manual-total">
+              <span class="k">Yekun miqdar:</span>
+              <span class="v" id="manualTotalQty">0</span>
+            </div>
             <button type="button" class="btn btn-ghost" id="cancelManualQaime">Ləğv et</button>
             <button type="submit" class="btn btn-primary">Qaiməni yadda saxla</button>
           </div>
         </form>
       </div>
     </div>
-
-    {{ manual_drugs_json|json_script:"manual-drugs-data" }}
 
     <!-- Ledger table -->
     <div class="ledger">
@@ -362,58 +384,49 @@
     var openBtn = document.getElementById('openManualQaime');
     var closeBtn = document.getElementById('closeManualQaime');
     var cancelBtn = document.getElementById('cancelManualQaime');
-    var addRowBtn = document.getElementById('addManualRow');
-    var rowsBody = document.getElementById('manualQaimeRows');
-    var drugsData = document.getElementById('manual-drugs-data');
+    var drugList = document.getElementById('manualDrugList');
+    var searchInput = document.getElementById('manualDrugSearch');
+    var totalQtyEl = document.getElementById('manualTotalQty');
 
-    if (!modal || !openBtn || !rowsBody) return;
+    if (!modal || !openBtn || !drugList) return;
 
-    var drugs = [];
-    try {
-      drugs = drugsData ? JSON.parse(drugsData.textContent) : [];
-    } catch (e) {
-      drugs = [];
+    function updateTotal() {
+      var total = 0;
+      var inputs = drugList.querySelectorAll('.manual-qty-input');
+      inputs.forEach(function (inp) {
+        var val = parseFloat(inp.value.replace(',', '.')) || 0;
+        total += val;
+      });
+      totalQtyEl.textContent = total % 1 === 0 ? String(total) : total.toFixed(1).replace('.', ',');
     }
 
-    function escapeHtml(value) {
-      return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
-    function drugOptionsHtml() {
-      return drugs.map(function (d) {
-        return '<option value="' + d.id + '">' + escapeHtml(d.name) + '</option>';
-      }).join('');
-    }
-
-    function rowHtml() {
-      return (
-        '<tr>' +
-          '<td><select name="manual_drug_id" required>' +
-            '<option value="">Seçin...</option>' +
-            drugOptionsHtml() +
-          '</select></td>' +
-          '<td><input type="number" name="manual_qty" min="0.01" step="0.01" placeholder="0" required></td>' +
-          '<td style="text-align:center;"><button type="button" class="manual-remove remove-row" aria-label="Sil">×</button></td>' +
-        '</tr>'
-      );
-    }
-
-    function addRow() {
-      rowsBody.insertAdjacentHTML('beforeend', rowHtml());
+    function filterDrugs() {
+      var query = searchInput.value.toLowerCase().trim();
+      var rows = drugList.querySelectorAll('.manual-drug-row');
+      rows.forEach(function (row) {
+        var name = row.dataset.name || '';
+        row.classList.toggle('hidden', query && !name.includes(query));
+      });
     }
 
     function openModal() {
       modal.classList.add('show');
-      if (!rowsBody.children.length) addRow();
+      searchInput.value = '';
+      filterDrugs();
+      updateTotal();
     }
 
     function closeModal() {
       modal.classList.remove('show');
     }
+
+    drugList.addEventListener('input', function (e) {
+      if (e.target.classList.contains('manual-qty-input')) {
+        updateTotal();
+      }
+    });
+
+    searchInput.addEventListener('input', filterDrugs);
 
     openBtn.addEventListener('click', function (e) {
       e.preventDefault();
@@ -422,16 +435,8 @@
     });
     if (closeBtn) closeBtn.addEventListener('click', closeModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
-    if (addRowBtn) addRowBtn.addEventListener('click', addRow);
     modal.addEventListener('click', function (e) {
       if (e.target === modal) closeModal();
-    });
-    rowsBody.addEventListener('click', function (e) {
-      if (e.target.classList.contains('remove-row')) {
-        var row = e.target.closest('tr');
-        if (row) row.remove();
-        if (!rowsBody.children.length) addRow();
-      }
     });
   })();
 </script>

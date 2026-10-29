@@ -25,7 +25,7 @@
   .total-box{margin-left:auto;text-align:right;}
   .total-box .k{font-size:10.5px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:0.06em;}
   .total-box .v{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--primary-color);}
-  .drug-list{display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 380px);overflow-y:auto;}
+  .drug-list{display:flex;flex-direction:column;gap:8px;}
   .drug-row{
     display:grid;
     grid-template-columns:1fr 110px;
@@ -52,7 +52,6 @@
   .actions{display:flex;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line);}
   .empty-hint{text-align:center;padding:32px;color:var(--ink-soft);}
   .topbar-actions{display:flex;gap:10px;align-items:center;}
-  @media(max-width:880px){.drug-list{max-height:none;}}
 {% endblock %}
 
 {% block content %}
@@ -74,8 +73,12 @@
       <input type="date" id="date" name="date" value="{{ selected_date }}" required>
     </div>
     <div class="field">
-      <label for="note">Mənbə / qeyd</label>
-      <input type="text" id="note" name="note" value="{{ note }}" maxlength="255" placeholder="Anbara əlavə">
+      <label for="note">Aptek/Depo *</label>
+      <input type="text" id="note" name="note" value="{{ note }}" maxlength="255" placeholder="Məs: Binə Aptek" required>
+    </div>
+    <div class="field">
+      <label for="is_return">Geri qaytarma</label>
+      <input type="checkbox" id="is_return" name="is_return" {% if 'Geri qaytarma' in note %}checked{% endif %}>
     </div>
     <div class="field search">
       <label for="search">Axtar</label>
@@ -90,12 +93,12 @@
   <div class="drug-list" id="drugList">
     {% for drug in drugs %}
     <div class="drug-row" data-name="{{ drug.med_name|lower }} {{ drug.med_full_name|default:''|lower }}">
-      <div class="drug-name">
+      <div class="drug-name" style="font-size: 15px;">
         {{ drug.med_name }}
-        {% if drug.med_full_name %}<small>{{ drug.med_full_name }}</small>{% endif %}
+    
       </div>
       <input type="number" name="qty_{{ drug.id }}" class="qty-input" min="0" step="0.01"
-             value="{% if drug.qty %}{{ drug.qty }}{% endif %}" placeholder="0">
+             value="{% if drug.qty %}{{ drug.qty }}{% endif %}" style="color: white; text-align: center;">
     </div>
     {% empty %}
     <div class="empty-hint">Aktiv dərman tapılmadı</div>
@@ -117,6 +120,7 @@
   const searchEl = document.getElementById('search');
   const dateEl = document.getElementById('date');
   const noteEl = document.getElementById('note');
+  const isReturnEl = document.getElementById('is_return');
 
   function updateTotal(){
     let t = 0;
@@ -132,6 +136,17 @@
     document.querySelectorAll('.drug-row').forEach(row => {
       row.style.display = !q || row.dataset.name.includes(q) ? '' : 'none';
     });
+  });
+
+  // Geri qaytarma toggle
+  isReturnEl.addEventListener('change', function(){
+    if (this.checked) {
+      noteEl.value = 'Geri qaytarma';
+      noteEl.required = false;
+    } else {
+      noteEl.value = '';
+      noteEl.required = true;
+    }
   });
 
   function reloadForm(){

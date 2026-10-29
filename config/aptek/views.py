@@ -633,12 +633,22 @@ def anbara_elave_form(request):
         request.GET.get('date') or request.POST.get('date'),
         today,
     )
-    note = (request.GET.get('note') or request.POST.get('note') or ANBARA_ELAVE_NOTE).strip()
-    if not note:
-        note = ANBARA_ELAVE_NOTE
+    note = (request.GET.get('note') or request.POST.get('note') or '').strip()
 
     if request.method == 'POST':
         with transaction.atomic():
+            # Geri qaytarma checkbox-u varsa, note-u override et
+            is_return = request.POST.get('is_return') == 'on'
+            if is_return:
+                note = 'Geri qaytarma'
+            else:
+                note = request.POST.get('note', '').strip()
+
+            # Validation: note mütləq dolu olmalı
+            if not note:
+                messages.error(request, 'Aptek/Depo sahəsi mütləq doldurulmalıdır.')
+                return redirect(f"{reverse('aptek:anbara_elave_form')}?date={selected_date.isoformat()}")
+
             saved = 0
             for drug in Medical.objects.filter(status=True):
                 raw = request.POST.get(f'qty_{drug.id}', '').strip().replace(',', '.')
@@ -1623,23 +1633,17 @@ def aptek_list(request):
                 messages.error(request, 'Tarix düzgün deyil.')
                 return redirect('aptek:anbar_dashboard')
 
-            drug_ids = request.POST.getlist('manual_drug_id')
-            qty_values = request.POST.getlist('manual_qty')
+            # Yeni format: manual_qty_{drug_id}
             items = []
-            for drug_id, qty_raw in zip(drug_ids, qty_values):
-                if not drug_id:
-                    continue
-                qty_txt = (qty_raw or '').strip().replace(',', '.')
-                if not qty_txt:
+            for drug in Medical.objects.filter(status=True):
+                qty_raw = request.POST.get(f'manual_qty_{drug.id}', '').strip().replace(',', '.')
+                if not qty_raw:
                     continue
                 try:
-                    qty = Decimal(qty_txt)
+                    qty = Decimal(qty_raw)
                 except Exception:
                     continue
                 if qty <= 0:
-                    continue
-                drug = Medical.objects.filter(pk=drug_id, status=True).first()
-                if not drug:
                     continue
                 items.append((drug, qty))
 
@@ -1746,9 +1750,6 @@ def aptek_list(request):
         'record_count': len(rows),
         'last_qaime': last_qaime,
         'manual_drugs': manual_drugs,
-        'manual_drugs_json': [
-            {'id': d.id, 'name': d.med_name} for d in manual_drugs
-        ],
         'manual_default_date': today.isoformat(),
         **user_ctx,
     }
