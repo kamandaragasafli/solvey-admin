@@ -350,6 +350,7 @@ def _anbara_elave_context(request):
         source = movement.note or 'Anbara əlavə'
         sources.add(source)
         rows.append({
+            'id': movement.id,
             'date': movement.date,
             'source': source,
             'aptek': movement.aptek.name if movement.aptek else '—',
@@ -1302,30 +1303,46 @@ def hereket_edit(request, pk):
         messages.error(request, 'Hərəkət tapılmadı.')
         return redirect('aptek:aptekler')
 
+    has_qaime = hereket.qaime_id is not None
+    aptek_id = hereket.aptek_id
+
     if request.method == 'POST':
         new_qty = request.POST.get('quantity', '').strip().replace(',', '.')
         if not new_qty:
             messages.error(request, 'Miqdar düzgün deyil.')
-            return redirect('aptek:aptek_detail', pk=hereket.aptek_id)
+            if has_qaime and aptek_id:
+                return redirect('aptek:aptek_detail', pk=aptek_id)
+            return redirect('aptek:anbara_elave_siyahi')
 
         try:
             qty = Decimal(new_qty)
         except Exception:
             messages.error(request, 'Miqdar rəqəm olmalıdır.')
-            return redirect('aptek:aptek_detail', pk=hereket.aptek_id)
+            if has_qaime and aptek_id:
+                return redirect('aptek:aptek_detail', pk=aptek_id)
+            return redirect('aptek:anbara_elave_siyahi')
 
         if qty <= 0:
             messages.error(request, 'Miqdar 0-dan böyük olmalıdır.')
-            return redirect('aptek:aptek_detail', pk=hereket.aptek_id)
+            if has_qaime and aptek_id:
+                return redirect('aptek:aptek_detail', pk=aptek_id)
+            return redirect('aptek:anbara_elave_siyahi')
 
         hereket.quantity = qty
         hereket.save(update_fields=['quantity'])
         messages.success(request, 'Miqdar yeniləndi.')
-        return redirect('aptek:aptek_detail', pk=hereket.aptek_id)
+
+        # Redirect based on where the entry came from
+        if has_qaime:
+            if aptek_id:
+                return redirect('aptek:aptek_detail', pk=aptek_id)
+            return redirect('aptek:qaimeler')
+        else:
+            return redirect('aptek:anbara_elave_siyahi')
 
     context = {
         'hereket': hereket,
-        'aptek_id': hereket.aptek_id,
+        'aptek_id': aptek_id,
     }
     return render(request, 'hereket_edit.html', context)
 
@@ -1341,14 +1358,24 @@ def hereket_delete(request, pk):
         messages.error(request, 'Hərəkət tapılmadı.')
         return redirect('aptek:aptekler')
 
-    aptek_id = hereket.aptek_id
     drug_name = hereket.drug.med_name
+    has_qaime = hereket.qaime_id is not None
+    aptek_id = hereket.aptek_id
 
     with transaction.atomic():
         hereket.delete()
 
     messages.success(request, f'{drug_name} hərəkəti silindi.')
-    return redirect('aptek:aptek_detail', pk=aptek_id)
+
+    # Redirect based on where the entry came from
+    if has_qaime:
+        # Qaimə entries go back to aptek detail
+        if aptek_id:
+            return redirect('aptek:aptek_detail', pk=aptek_id)
+        return redirect('aptek:qaimeler')
+    else:
+        # Manual entries (anbara elave) go back to siyahi
+        return redirect('aptek:anbara_elave_siyahi')
 
 
 @login_required

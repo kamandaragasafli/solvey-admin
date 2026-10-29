@@ -56,7 +56,11 @@
       </div>
     </div>
     <div class="edit-actions">
+      {% if aptek_id %}
       <a href="{% url 'aptek:aptek_detail' aptek_id %}" class="btn btn-ghost">Ləğv et</a>
+      {% else %}
+      <a href="{% url 'aptek:anbara_elave_siyahi' %}" class="btn btn-ghost">Ləğv et</a>
+      {% endif %}
       <button type="submit" class="btn btn-primary">Yadda saxla</button>
     </div>
   </form>
