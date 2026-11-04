@@ -8,6 +8,7 @@ from django.db import transaction
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.utils import timezone
 from regions.models import Region
 from core.models import DeletedRecipeDrugLog
 from .models import Doctors, Recipe, RecipeDrug, RealSales, RealSalesDrug
@@ -165,7 +166,8 @@ class RecipeAdmin(admin.ModelAdmin):
 
     def get_datetime(self, obj):
         dt = obj.date
-        time = obj.created_at.strftime('%H:%M') if obj.created_at else '--:--'
+        created_at_local = timezone.localtime(obj.created_at) if obj.created_at else None
+        time = created_at_local.strftime('%H:%M') if created_at_local else '--:--'
         return format_html(
             '<span style="color:#60a5fa; font-weight:bold;">{}</span><br><small style="color:#94a3b8;">{}</small>',
             dt.strftime('%d.%m.%Y'),
@@ -341,7 +343,8 @@ class RecipeDrugAdmin(admin.ModelAdmin):
 
     def get_recipe_datetime(self, obj):
         dt = obj.recipe.date
-        time = obj.created_at.strftime('%H:%M') if obj.created_at else '--:--'
+        created_at_local = timezone.localtime(obj.created_at) if obj.created_at else None
+        time = created_at_local.strftime('%H:%M') if created_at_local else '--:--'
         return format_html(
             '<span style="color:#60a5fa; font-weight:bold;">{}</span><br><small style="color:#94a3b8;">{}</small>',
             dt.strftime('%d.%m.%Y'),
