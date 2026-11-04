@@ -156,11 +156,33 @@ class DoctorsAdmin(admin.ModelAdmin):
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('dr', 'region', 'date', 'total_drugs_count')
+    change_list_template = "admin/doctors/recipe/change_list.html"
+    list_display = ('dr', 'region', 'get_datetime', 'total_drugs_count')
     list_filter = ('region', 'date')
     search_fields = ('dr__ad', 'region__region_name')
     date_hierarchy = 'date'
     list_select_related = ('dr', 'region')
+
+    def get_datetime(self, obj):
+        dt = obj.date
+        time = obj.created_at.strftime('%H:%M') if obj.created_at else '--:--'
+        return format_html(
+            '<span style="color:#60a5fa; font-weight:bold;">{}</span><br><small style="color:#94a3b8;">{}</small>',
+            dt.strftime('%d.%m.%Y'),
+            time
+        )
+    get_datetime.short_description = 'Tarix / Saat'
+    get_datetime.admin_order_field = 'date'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        date_from = request.GET.get('date_from')
+        date_to = request.GET.get('date_to')
+        if date_from:
+            qs = qs.filter(date__gte=date_from)
+        if date_to:
+            qs = qs.filter(date__lte=date_to)
+        return qs
     
     def total_drugs_count(self, obj):
         return obj.drugs.count()
@@ -190,8 +212,7 @@ class RecipeDrugAdmin(admin.ModelAdmin):
         'get_region_name',
         'colored_drug',
         'colored_number',
-        'get_recipe_date',
-        'colored_created_at',
+        'get_recipe_datetime',
     )
     list_filter = (RegionFilter, 'drug', 'created_at')
     search_fields = (
@@ -317,6 +338,27 @@ class RecipeDrugAdmin(admin.ModelAdmin):
         )
     colored_number.short_description = 'Say'
     colored_number.admin_order_field = 'number'
+
+    def get_recipe_datetime(self, obj):
+        dt = obj.recipe.date
+        time = obj.created_at.strftime('%H:%M') if obj.created_at else '--:--'
+        return format_html(
+            '<span style="color:#60a5fa; font-weight:bold;">{}</span><br><small style="color:#94a3b8;">{}</small>',
+            dt.strftime('%d.%m.%Y'),
+            time
+        )
+    get_recipe_datetime.short_description = 'Tarix / Saat'
+    get_recipe_datetime.admin_order_field = 'recipe__date'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        date_from = request.GET.get('date_from')
+        date_to = request.GET.get('date_to')
+        if date_from:
+            qs = qs.filter(recipe__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(recipe__date__lte=date_to)
+        return qs
 
     def get_recipe_date(self, obj):
         return obj.recipe.date.strftime('%d.%m.%Y')

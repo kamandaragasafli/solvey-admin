@@ -1525,8 +1525,10 @@ def import_recipes_daily_from_excel(request):
                     not_found_doctors.append(f"{hekim_adi} ({region.region_name})")
                     continue
 
-                recipe, created = Recipe.objects.get_or_create(region=region, dr=doctor, date=base_date)
-                if created: added_count += 1
+                recipe = Recipe.objects.filter(region=region, dr=doctor, date=base_date).first()
+                if not recipe:
+                    recipe = Recipe.objects.create(region=region, dr=doctor, date=base_date)
+                    added_count += 1
 
                 for drug_col in drug_cols:
                     try:

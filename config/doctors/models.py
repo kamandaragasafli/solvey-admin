@@ -6,6 +6,7 @@ from medicine.models import Medical
 from decimal import Decimal as d
 from django.db.models import Sum
 from datetime import date
+from django.utils import timezone
 
 
 
@@ -192,6 +193,7 @@ class Recipe(models.Model):
     region = models.ForeignKey(Region, on_delete=models.CASCADE)
     dr = models.ForeignKey(Doctors, on_delete=models.CASCADE, related_name='recipe')
     date = models.DateField()
+    created_at = models.DateTimeField(default=timezone.now)
     
     def __str__(self):
         return f"{self.dr.ad} - {self.date}"
