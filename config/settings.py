@@ -69,6 +69,7 @@ MIDDLEWARE = [
 
 
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True  # Mobil tətbiqlər üçün cookie support
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
@@ -121,7 +122,10 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 365  # 1 il — çıxış edilməyənə qəd
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = None  # Mobil tətbiqlər üçün məhdudiyyətsiz
+SESSION_COOKIE_SECURE = False  # HTTPS olmayan serverlər üçün
+SESSION_COOKIE_DOMAIN = None  # Bütün subdomain-lər üçün işləyir
+SESSION_COOKIE_PATH = '/'  # Bütün yollar üçün
 
 
 

@@ -41,6 +41,7 @@ urlpatterns = [
     path('ajax/real-sales-data/', views.ajax_real_sales_data, name='ajax_real_sales_data'),
     path('ajax/region-data/', views.ajax_region_data, name='ajax_region_data'),
     path('drug-data/', views.data_list, name='data_list'),
+    path('drug-data/export/', views.export_drug_data_by_date, name='export_drug_data_by_date'),
     path('export-region-excel/', views.export_region_excel, name='export_region_excel'),
 
     path('reg/',views.get_region, name='test'),

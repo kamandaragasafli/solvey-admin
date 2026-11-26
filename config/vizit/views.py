@@ -1,7 +1,10 @@
-from datetime import datetime as dt
+import json
+from datetime import datetime as dt, timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Q, Sum, Value
 from django.db.models.deletion import ProtectedError
@@ -10,11 +13,17 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
-from datetime import date
+from datetime import date, timedelta
 from django.contrib.auth.decorators import login_required
 from medicine.models import Medical
 
-import openpyxl
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.units import inch
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
@@ -34,6 +43,7 @@ from .models import (
     WeeklyScheduleDay,
     WeeklyScheduleVisit,
 )
+from medicine.models import Medical
 from .utils import (
     menecer_rehber_required,
     rehber_required,
@@ -44,6 +54,15 @@ from .utils import (
 )
 
 MUNASIBAT_SECIMLERI = [c[0] for c in Vizit.MUNASIBAT_CHOICES]
+
+# PDF Styles
+from reportlab.lib.styles import getSampleStyleSheet
+pdf_styles = getSampleStyleSheet()
+pdf_styles.add(ParagraphStyle(name='Header', fontSize=18, spaceAfter=12, textColor=colors.HexColor('#1F5F5B'), alignment=1))
+pdf_styles.add(ParagraphStyle(name='Bold', fontSize=12, spaceAfter=6, textColor=colors.black))
+pdf_styles['Normal'].fontSize = 10
+pdf_styles['Normal'].spaceAfter = 6
+pdf_styles['Normal'].textColor = colors.black
 
 ROL_BASLIQLARI = {
     Istifadeci.ROL_NUMAYENDE: 'Tibbi Nümayəndə',
@@ -227,6 +246,576 @@ def logout_view(request):
     vizit_session_temizle(request)
     request.session.flush()
     return redirect('vizit:login')
+
+
+@csrf_exempt
+@ensure_csrf_cookie
+def mobile_login_view(request):
+    """Mobil tətbiq üçün JSON login — eyni Istifadeci.authenticate istifadə edir."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'xeta': 'Method not allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body or b'{}')
+    except (json.JSONDecodeError, ValueError):
+        data = request.POST.dict() if request.POST else {}
+
+    login = str(data.get('login', '')).strip()
+    sifre = str(data.get('sifre', '')).strip()
+
+    if not login or not sifre:
+        return JsonResponse({'ok': False, 'xeta': 'Bütün sahələri doldurun!'}, status=400)
+
+    istifadeci = Istifadeci.authenticate(login, sifre)
+    if not istifadeci:
+        return JsonResponse({'ok': False, 'xeta': 'Login və ya şifrə yanlışdır!'}, status=401)
+
+    request.session.cycle_key()
+    vizit_session_yaz(request, istifadeci)
+    csrftoken = get_token(request)
+
+    # Mobil tətbiqlər üçün session cookie-nin qalması üçün
+    request.session.save()
+
+    return JsonResponse({
+        'ok': True,
+        'sessionid': request.session.session_key,
+        'csrftoken': csrftoken,
+        'token': custom_token.key,
+        'user': {
+            'id': istifadeci.pk,
+            'ad': istifadeci.ad,
+            'login': istifadeci.login,
+            'rol': istifadeci.rol,
+            'rol_ad': istifadeci.get_rol_display(),
+            'qrup': istifadeci.qrup,
+            'bolge_ad': ', '.join([b.region_name for b in istifadeci.bolgeler.all()]) if istifadeci.bolgeler.exists() else '',
+        },
+    })
+
+    # Token yarat və ya yenilə
+    from rest_framework.authtoken.models import Token
+    from django.contrib.auth.models import User
+    dummy_user, _ = User.objects.get_or_create(username=f'vizit_{istifadeci.pk}')
+    custom_token, _ = Token.objects.get_or_create(user=dummy_user)
+
+    return JsonResponse({
+        'ok': True,
+        'sessionid': request.session.session_key,
+        'csrftoken': csrftoken,
+        'token': custom_token.key,
+        'user': {
+            'id': istifadeci.pk,
+            'ad': istifadeci.ad,
+            'login': istifadeci.login,
+            'rol': istifadeci.rol,
+            'rol_ad': istifadeci.get_rol_display(),
+            'qrup': istifadeci.qrup,
+            'bolge_ad': ', '.join([b.region_name for b in istifadeci.bolgeler.all()]) if istifadeci.bolgeler.exists() else '',
+        },
+    })
+
+
+@vizit_login_required
+def mobile_logout_view(request):
+    vizit_session_temizle(request)
+    request.session.flush()
+    return JsonResponse({'ok': True})
+
+
+# ========== MOBILE DASHBOARD API ==========
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+
+
+class VizitTokenPermission:
+    """Custom permission: Token ilə yoxla (session lazım deyil)."""
+    def has_permission(self, request, view):
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        if not auth_header:
+            return False
+        token = auth_header.replace('Token ', '').replace('Bearer ', '')
+        if not token:
+            return False
+        from rest_framework.authtoken.models import Token
+        try:
+            Token.objects.get(key=token)
+            return True
+        except Token.DoesNotExist:
+            return False
+
+
+@api_view(['GET'])
+@permission_classes([VizitTokenPermission])
+def mobile_doctors_api(request):
+    """Ən çox vizit görən top 5 istifadəçi siyahısı — son 7 gün (bütün userlər)."""
+    bugun = timezone.localdate()
+    bir_hevte_once = bugun - timedelta(days=7)
+
+    # Bütün vizitlər (filter yoxdur)
+    qs = Vizit.objects.filter(
+        tarix__gte=bir_hevte_once,
+        tarix__lte=bugun,
+    ).select_related('istifadeci', 'rayon', 'bolge')
+
+    # İstifadəçilər üzrə vizit sayı
+    from django.db.models import Count
+    user_stats = qs.values('istifadeci__ad', 'istifadeci__login', 'rayon__city_name', 'bolge__region_name').annotate(
+        visit_count=Count('id')
+    ).order_by('-visit_count')[:5]
+
+    doctors = []
+    for u in user_stats:
+        doctors.append({
+            'id': len(doctors) + 1,
+            'full_name': u['istifadeci__ad'] or u['istifadeci__login'] or 'İstifadeci',
+            'specialty': 'Nümayəndə',
+            'category': '',
+            'visit_date': f"{u['visit_count']} vizit",
+            'region': u['bolge__region_name'] or '',
+            'rayon': u['rayon__city_name'] or '',
+            'munasibat': '',
+        })
+
+    return JsonResponse({'ok': True, 'doctors': doctors})
+
+
+@api_view(['GET'])
+@permission_classes([VizitTokenPermission])
+def mobile_weekly_stats_api(request):
+    """Həftəlik vizit statistikası — aylıq əsasda həftələr üzrə."""
+    user_id = request.session.get('istifadeci_id')
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+
+    if not user_id:
+        return JsonResponse({'ok': False, 'xeta': 'Giriş tələb olunur'}, status=401)
+
+    bugun = timezone.localdate()
+    ay_basi = date(bugun.year, bugun.month, 1)
+
+    # Həftələr üzrə vizit sayı
+    from django.db.models import Count
+    from django.db.models.functions import TruncWeek
+
+    qs = Vizit.objects.filter(tarix__gte=ay_basi, tarix__lte=bugun)
+
+    if user_rol in (Istifadeci.ROL_NUMAYENDE, Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER):
+        qs = qs.filter(istifadeci_id=user_id)
+    elif user_rol == Istifadeci.ROL_DIVIZIYA_REHB:
+        pass
+    elif user_bolge_ids:
+        qs = qs.filter(bolge_id__in=user_bolge_ids)
+
+    # Həftələr üzrə qruplaşdır
+    weekly_data = qs.annotate(week=TruncWeek('tarix')).values('week').annotate(
+        count=Count('id')
+    ).order_by('week')
+
+    labels = []
+    values = []
+    for w in weekly_data:
+        week_num = w['week'].isocalendar()[1]
+        labels.append(f'H.{week_num}')
+        values.append(w['count'])
+
+    return JsonResponse({
+        'ok': True,
+        'labels': labels,
+        'values': values,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([VizitTokenPermission])
+def mobile_bolgeler_api(request):
+    """İstifadəçinin icazəsi olan bölgələr."""
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+
+    if user_rol in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
+        qs = Region.objects.order_by('region_name')
+    elif user_bolge_ids:
+        qs = Region.objects.filter(pk__in=user_bolge_ids).order_by('region_name')
+    else:
+        qs = Region.objects.none()
+
+    return JsonResponse({
+        'ok': True,
+        'bolgeler': [{'id': r.id, 'ad': r.region_name} for r in qs],
+    })
+
+
+@api_view(['GET'])
+@permission_classes([VizitTokenPermission])
+def mobile_hekimler_api(request):
+    """Bölgə (və ya rayon) üzrə həkimlər."""
+    bolge_id = request.GET.get('bolge_id')
+    rayon_id = request.GET.get('rayon_id')
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+
+    # İcazə yoxla
+    if bolge_id:
+        if user_rol not in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
+            if int(bolge_id) not in [int(b) for b in user_bolge_ids]:
+                return JsonResponse({'ok': False, 'xeta': 'İcazə yoxdur'}, status=403)
+        qs = Doctors.objects.filter(bolge_id=bolge_id, is_active=True)
+    elif rayon_id:
+        city = City.objects.filter(pk=rayon_id).values_list('region_id', flat=True).first()
+        if city is None:
+            return JsonResponse({'ok': False, 'xeta': 'Rayon tapılmadı'}, status=404)
+        if user_rol not in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
+            if city not in [int(b) for b in user_bolge_ids]:
+                return JsonResponse({'ok': False, 'xeta': 'İcazə yoxdur'}, status=403)
+        qs = Doctors.objects.filter(city_id=rayon_id, is_active=True)
+    else:
+        return JsonResponse({'ok': False, 'xeta': 'bolge_id və ya rayon_id tələb olunur'}, status=400)
+
+    return JsonResponse({
+        'ok': True,
+        'hekimler': [
+            {
+                'id': d.id,
+                'ad': d.ad,
+                'ixtisas': d.ixtisas or '',
+                'kategoriya': d.kategoriya or '',
+                'bolge_id': d.bolge_id,
+                'rayon_id': d.city_id,
+                'borc': float(d.previous_debt) if d.previous_debt else 0,
+            }
+            for d in qs.order_by('ad')
+        ],
+    })
+
+
+@api_view(['GET'])
+@permission_classes([VizitTokenPermission])
+def mobile_hekim_detail_api(request, hekim_id):
+    """Həkim detalları — payments, recipe, real_sales, monthly_reports."""
+    from doctors.models import Doctors
+    from django.db.models import Sum
+
+    hekim = get_object_or_404(Doctors, id=hekim_id, is_active=True)
+
+    # İcazə yoxla
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+    if user_rol not in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
+        if hekim.bolge_id not in [int(b) for b in user_bolge_ids]:
+            return JsonResponse({'ok': False, 'xeta': 'İcazə yoxdur'}, status=403)
+
+    # Payments (son 10)
+    from payment.models import Payment_doctor
+    payments = Payment_doctor.objects.filter(doctor=hekim).order_by('-date')[:10]
+
+    # Recipe (tarix filter ilə)
+    from doctors.models import RecipeDrug
+    recipe_date_from = request.GET.get('recipe_date_from', '').strip()
+    recipe_date_to = request.GET.get('recipe_date_to', '').strip()
+    recipe_qs = RecipeDrug.objects.filter(recipe__dr=hekim).select_related('recipe', 'drug', 'recipe__region')
+    if recipe_date_from:
+        try:
+            df = date.fromisoformat(recipe_date_from)
+            recipe_qs = recipe_qs.filter(recipe__date__gte=df)
+        except ValueError:
+            pass
+    if recipe_date_to:
+        try:
+            dt_obj = date.fromisoformat(recipe_date_to)
+            recipe_qs = recipe_qs.filter(recipe__date__lte=dt_obj)
+        except ValueError:
+            pass
+    recipe_qs = recipe_qs.order_by('recipe__date')
+
+    # Real sales
+    from doctors.models import RealSalesDrug
+    real_sales_lines = list(
+        RealSalesDrug.objects.filter(real_sale__dr_name=hekim)
+        .select_related('real_sale', 'real_sale__region_n', 'drug_name')
+        .order_by('-real_sale__date_sale', '-id')
+    )
+
+    # Recipe total
+    recibe_total = RecipeDrug.objects.filter(recipe__dr=hekim).aggregate(total=Sum('number'))['total'] or 0
+
+    # Monthly reports (silinme_list)
+    from payment.models import MonthlyDoctorReport
+    monthly_reports = MonthlyDoctorReport.objects.filter(doctor=hekim).order_by('-report_month')
+    silinme_list = [
+        {
+            'month': report.report_month.strftime('%B %Y'),
+            'hekimden_silinen': report.hekimden_silinen,
+        }
+        for report in monthly_reports
+    ]
+
+    return JsonResponse({
+        'ok': True,
+        'hekim': {
+            'id': hekim.id,
+            'ad': hekim.ad,
+            'ixtisas': hekim.ixtisas or '',
+            'kategoriya': hekim.kategoriya or '',
+            'bolge': hekim.bolge.region_name if hekim.bolge else '',
+            'rayon': hekim.city.get_city_name_display() if hekim.city else '',
+        },
+        'payments': [
+            {
+                'id': p.id,
+                'amount': str(p.amount),
+                'date': p.date.strftime('%d.%m.%Y') if p.date else '',
+                'note': p.note or '',
+            }
+            for p in payments
+        ],
+        'recipe': [
+            {
+                'id': r.id,
+                'drug_ad': r.drug.med_name if r.drug else '',
+                'number': r.number,
+                'date': r.recipe.date.strftime('%d.%m.%Y') if r.recipe.date else '',
+                'region': r.recipe.region.region_name if r.recipe.region else '',
+            }
+            for r in recipe_qs
+        ],
+        'real_sales': [
+            {
+                'id': rs.id,
+                'drug_ad': rs.drug_name.med_name if rs.drug_name else '',
+                'number': rs.number,
+                'date': rs.real_sale.date_sale.strftime('%d.%m.%Y') if rs.real_sale.date_sale else '',
+                'region': rs.real_sale.region_n.region_name if rs.real_sale.region_n else '',
+            }
+            for rs in real_sales_lines
+        ],
+        'recibe_total': recibe_total,
+        'silinme_list': silinme_list,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([VizitTokenPermission])
+def mobile_preparations_api(request):
+    """Mobil tətbiq üçün preparatlar siyahısı."""
+    preparations = Medical.objects.filter(status=True).order_by('med_name')
+    return JsonResponse({
+        'ok': True,
+        'preparations': [
+            {
+                'id': p.id,
+                'med_name': p.med_name,
+                'med_full_name': p.med_full_name or '',
+            }
+            for p in preparations
+        ],
+    })
+
+
+@api_view(['GET'])
+@permission_classes([VizitTokenPermission])
+def mobile_report_api(request):
+    """Mobil tətbiq üçün aylıq hesabat API."""
+    user_id = request.session.get('istifadeci_id')
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+
+    if not user_id:
+        return JsonResponse({'ok': False, 'xeta': 'Giriş tələb olunur'}, status=401)
+
+    # Tarix filter
+    year = int(request.GET.get('year', timezone.localdate().year))
+    month = int(request.GET.get('month', timezone.localdate().month))
+
+    try:
+        ay_basi = date(year, month, 1)
+        ay_sonu = (ay_basi.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    except ValueError:
+        return JsonResponse({'ok': False, 'xeta': 'Düzgün tarix daxil edin'}, status=400)
+
+    # Vizitlər
+    qs = Vizit.objects.filter(tarix__gte=ay_basi, tarix__lte=ay_sonu)
+
+    if user_rol in (Istifadeci.ROL_NUMAYENDE, Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER):
+        qs = qs.filter(istifadeci_id=user_id)
+    elif user_rol == Istifadeci.ROL_DIVIZIYA_REHB:
+        pass
+    elif user_bolge_ids:
+        qs = qs.filter(bolge_id__in=user_bolge_ids)
+
+    umumi_vizit = qs.count()
+    yeni_hekim_sayi = qs.filter(hekim_id__isnull=True).count()
+
+    # Həkimlər üzrə statistika
+    hekim_stats = []
+    for vizit in qs.select_related('hekim', 'bolge', 'rayon').order_by('-tarix'):
+        hekim_stats.append({
+            'id': vizit.pk,
+            'title': vizit.hekim_ad_goster,
+            'meta': f"{vizit.bolge.region_name if vizit.bolge else ''} · {vizit.rayon.get_city_name_display() if vizit.rayon else ''}",
+            'value': vizit.tarix.strftime('%d.%m.%Y'),
+        })
+
+    return JsonResponse({
+        'ok': True,
+        'summary': [
+            {'label': 'Ümumi vizit', 'value': str(umumi_vizit)},
+            {'label': 'Yeni həkim', 'value': str(yeni_hekim_sayi)},
+        ],
+        'rows': hekim_stats[:50],  # Maksimum 50
+    })
+
+
+@api_view(['GET'])
+@permission_classes([VizitTokenPermission])
+def mobile_report_pdf_api(request):
+    """Mobil tətbiq üçün PDF export API."""
+    user_id = request.session.get('istifadeci_id')
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+
+    if not user_id:
+        return JsonResponse({'ok': False, 'xeta': 'Giriş tələb olunur'}, status=401)
+
+    # İstifadeci məlumatlarını al
+    try:
+        istifadeci = Istifadeci.objects.get(pk=user_id)
+        user_ad = istifadeci.ad
+    except Istifadeci.DoesNotExist:
+        user_ad = 'İstifadeci'
+
+    # Tarix filter
+    year = int(request.GET.get('year', timezone.localdate().year))
+    month = int(request.GET.get('month', timezone.localdate().month))
+
+    try:
+        ay_basi = date(year, month, 1)
+        ay_sonu = (ay_basi.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    except ValueError:
+        return JsonResponse({'ok': False, 'xeta': 'Düzgün tarix daxil edin'}, status=400)
+
+    # Vizitlər
+    qs = Vizit.objects.filter(tarix__gte=ay_basi, tarix__lte=ay_sonu)
+
+    if user_rol in (Istifadeci.ROL_NUMAYENDE, Istifadeci.ROL_MENECER, Istifadeci.ROL_REHBER):
+        qs = qs.filter(istifadeci_id=user_id)
+    elif user_rol == Istifadeci.ROL_DIVIZIYA_REHB:
+        pass
+    elif user_bolge_ids:
+        qs = qs.filter(bolge_id__in=user_bolge_ids)
+
+    vizitler = qs.select_related('hekim', 'bolge', 'rayon').prefetch_related('preparatlar__preparat').order_by('tarix', 'vaxt')
+
+    # PDF yarat
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="vizit_{year}_{month}.pdf"'
+
+    # PDF hazırla
+    doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+
+    elements = []
+
+    # Başlıq
+    elements.append(Paragraph(f"{user_ad} Vizit", pdf_styles['Header']))
+    elements.append(Paragraph(f"{ay_basi.strftime('%d.%m.%Y')} - {ay_sonu.strftime('%d.%m.%Y')}", pdf_styles['Normal']))
+    elements.append(Paragraph(f"Cəmi: {vizitler.count()}", pdf_styles['Bold']))
+    elements.append(Spacer(1, 0.2*inch))
+
+    # Cədvəl
+    data = [['#', 'Həkim', 'İxtisas', 'Münasibət', 'Dərmanlar', 'Qeyd', 'Vaxt']]
+    for idx, vizit in enumerate(vizitler, 1):
+        dermanlar = ', '.join([p.preparat.med_name for p in vizit.preparatlar.all()])
+        data.append([
+            str(idx),
+            vizit.hekim_ad_goster,
+            vizit.hekim_ixtisas_goster,
+            vizit.munasibat,
+            dermanlar,
+            vizit.qeyd or '-',
+            f"{vizit.vaxt.strftime('%H:%M')}" if vizit.vaxt else '-',
+        ])
+
+    table = Table(data, colWidths=[0.5*inch, 1.5*inch, 1*inch, 1*inch, 1.5*inch, 1*inch, 0.6*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, 1), colors.grey),
+        ('TEXTCOLOR', (0, 1), (-1, 1), colors.black),
+        ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
+    ]))
+
+    elements.append(table)
+    doc.build(elements)
+
+    return response
+
+
+@api_view(['POST'])
+@permission_classes([VizitTokenPermission])
+def mobile_create_vizit_api(request):
+    """Mobil tətbiq üçün vizit yaratma API."""
+    try:
+        data = json.loads(request.body or b'{}')
+    except (json.JSONDecodeError, ValueError):
+        data = request.POST.dict() if request.POST else {}
+
+    user_id = request.session.get('istifadeci_id')
+    user_rol = request.session.get('rol')
+    user_bolge_ids = request.session.get('bolge_ids', [])
+
+    if not user_id:
+        return JsonResponse({'ok': False, 'xeta': 'Giriş tələb olunur'}, status=401)
+
+    hekim_id = data.get('hekim_id')
+    hekim_adi = data.get('hekim_adi', '')
+    hekim_ixtisas = data.get('hekim_ixtisas', '')
+    bolge_id = data.get('bolge_id')
+    rayon_id = data.get('rayon_id')
+    munasibat = data.get('munasibat', '')
+    qeyd = data.get('qeyd', '')
+    preparatlar = data.get('preparatlar', [])
+
+    # Validation
+    hekim_ok = (hekim_id and str(hekim_id).isdigit()) or bool(hekim_adi)
+    if not hekim_ok or not bolge_id or not preparatlar:
+        return JsonResponse({'ok': False, 'xeta': 'Bütün sahələri doldurun'}, status=400)
+
+    # İcazə yoxla - bölgənin istifadəçiyə aid olub olmadığını
+    if user_rol not in (Istifadeci.ROL_REHBER, Istifadeci.ROL_DIVIZIYA_REHB):
+        if int(bolge_id) not in [int(b) for b in user_bolge_ids]:
+            return JsonResponse({'ok': False, 'xeta': 'İcazə yoxdur'}, status=403)
+
+    try:
+        with transaction.atomic():
+            vizit = Vizit.objects.create(
+                istifadeci_id=user_id,
+                hekim_id=int(hekim_id) if hekim_id and str(hekim_id).isdigit() else None,
+                hekim_adi=hekim_adi[:150] if (not hekim_id or not str(hekim_id).isdigit()) and hekim_adi else '',
+                hekim_ixtisas=hekim_ixtisas[:50] if (not hekim_id or not str(hekim_id).isdigit()) and hekim_ixtisas else '',
+                bolge_id=int(bolge_id),
+                rayon_id=int(rayon_id) if rayon_id and str(rayon_id).isdigit() else None,
+                munasibat=munasibat,
+                qeyd=qeyd or None,
+                tarix=timezone.localdate(),
+                vaxt=timezone.localtime().time().replace(second=0, microsecond=0),
+            )
+
+            VizitPreparat.objects.bulk_create([
+                VizitPreparat(vizit=vizit, preparat_id=int(pid)) for pid in preparatlar
+            ])
+
+        return JsonResponse({
+            'ok': True,
+            'vizit_id': vizit.pk,
+            'message': 'Vizit uğurla qeydə alındı',
+        })
+    except Exception as e:
+        return JsonResponse({'ok': False, 'xeta': f'Xəta baş verdi: {str(e)}'}, status=500)
 
 
 def register_view(request):

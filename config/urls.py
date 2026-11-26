@@ -11,7 +11,7 @@ def test_view(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', lambda request: redirect('/login/')),  
+    path('', lambda request: redirect('/login/')),
     path('test/', test_view),
     path('', include("core.urls")),
     path('drugs/', include("medicine.urls")),
@@ -19,6 +19,7 @@ urlpatterns = [
     path('reports/', include("payment.urls")),
     path('regions/', include("regions.urls")),
     path('doctors/', include("doctors.urls")),
+    path('vizit/', include("vizit.urls")),
     path('api/', include("tracking.urls")),
     path('users/', include("user.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

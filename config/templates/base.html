@@ -64,6 +64,10 @@
       flex-shrink: 0 !important;
       margin-left: 0 !important;
     }
+    .doc-btn, .notification-btn, .author-mode-btn, .ai-chat-btn {
+      order: 5 !important;
+      flex-shrink: 0 !important;
+    }
     .top-bar-wrap .top-actions:not(.open) {
       display: none !important;
       visibility: hidden !important;
@@ -110,12 +114,12 @@
       width: min(280px, 88vw) !important;
       max-width: 88vw !important;
     }
-    .chat-panel {
+    .chat-panel, .notification-panel, .author-panel {
       width: 100% !important;
       max-width: 100vw !important;
       right: -100% !important;
     }
-    .chat-panel.open { right: 0 !important; }
+    .chat-panel.open, .notification-panel.open, .author-panel.open { right: 0 !important; }
     .card-grid {
       grid-template-columns: 1fr !important;
     }
@@ -202,6 +206,76 @@
 .doc-btn:hover {
     transform: scale(1.1);
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Notification Button */
+.notification-btn {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-left: 12px;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.notification-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+.notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #1f2937;
+}
+
+/* Author Mode Button */
+.author-mode-btn {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-left: 12px;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.author-mode-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+.author-mode-btn.active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .ai-chat-icon-wrapper {
@@ -530,6 +604,302 @@
     color: #ffffff;
     transform: translateX(4px);
 }
+
+/* Notification Panel */
+.notification-panel {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: var(--panel-width);
+    height: 100vh;
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+    color: #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+    transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1050;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.notification-panel.open { right: 0; }
+
+.notification-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notification-header-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.notification-badge-header {
+    background: #f59e0b;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.notification-body {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background: #0f172a;
+}
+
+.notification-item {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.notification-item:hover {
+    background: rgba(30, 41, 59, 1);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.notification-item.unread {
+    border-left: 3px solid #f59e0b;
+}
+
+.notification-item-title {
+    font-weight: 600;
+    color: #f9fafb;
+    margin-bottom: 4px;
+}
+
+.notification-item-text {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    margin-bottom: 8px;
+}
+
+.notification-item-time {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.notification-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #94a3b8;
+}
+
+.notification-empty i {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    color: #64748b;
+}
+
+/* Author Mode Panel */
+.author-panel {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: var(--panel-width);
+    height: 100vh;
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+    color: #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+    transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1050;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.author-panel.open { right: 0; }
+
+.author-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.author-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.author-status.active {
+    color: #10b981;
+}
+
+.author-body {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background: #0f172a;
+}
+
+.author-mode-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.author-mode-toggle-label {
+    font-weight: 600;
+    color: #f9fafb;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 50px;
+    height: 26px;
+    background: #475569;
+    border-radius: 13px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.toggle-switch.active {
+    background: #10b981;
+}
+
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+}
+
+.toggle-switch.active::after {
+    transform: translateX(24px);
+}
+
+.author-settings-group {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.author-settings-title {
+    font-weight: 600;
+    color: #f9fafb;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.author-setting-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.author-setting-item:last-child {
+    border-bottom: none;
+}
+
+.author-setting-label {
+    font-size: 0.9rem;
+    color: #cbd5e1;
+}
+
+.author-setting-value {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+/* Author Download Section */
+.author-download-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.author-download-label {
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    font-weight: 500;
+}
+
+.author-date-input,
+.author-time-input {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #f9fafb;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.author-date-input:focus,
+.author-time-input:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.author-download-btn {
+    margin-top: 12px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.author-download-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.author-download-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.author-download-btn:disabled:hover {
+    transform: none;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
 </style>
 
 
@@ -701,6 +1071,31 @@
           <i class="bi bi-list"></i>
         </button>
 
+        <button type="button" class="ai-chat-btn" id="aiChatBtn" aria-label="AI Assistant" title="AI Assistant">
+          <div class="ai-pulse"></div>
+          <div class="ai-chat-icon-wrapper">
+            <i class="bi bi-robot"></i>
+          </div>
+        </button>
+
+        <button type="button" class="notification-btn" id="notificationBtn" aria-label="Bildirişlər" title="Bildirişlər">
+          <i class="bi bi-bell"></i>
+          <span class="notification-badge">3</span>
+        </button>
+
+        <button type="button" class="author-mode-btn" id="authorModeBtn" aria-label="Author Rejimi" title="Author Rejimi">
+          <i class="bi bi-person-gear"></i>
+        </button>
+
+        <a href="{% static 'docs/isci-telimati.html' %}" target="_blank" class="doc-btn" aria-label="Dokumentasiya" title="İşçi Təlimatı">
+          <i class="bi bi-book"></i>
+        </a>
+
+        <button type="button" class="theme-toggle-btn" id="themeToggle" aria-label="Tema dəyiş" title="Ağ / Tünd rejim">
+          <i class="bi bi-sun-fill icon-sun"></i>
+          <i class="bi bi-moon-stars-fill icon-moon"></i>
+        </button>
+
         <a href="{% url 'index' %}" class="top-bar-logo" aria-label="Solvey Pharma">
           <img src="{% static 'img/solvey logo.png' %}" alt="Solvey Pharma">
         </a>
@@ -709,16 +1104,6 @@
           <i class="bi bi-lightning-charge-fill"></i>
           <span>Əməliyyatlar</span>
         </button>
-
-        <button type="button" class="theme-toggle-btn" id="themeToggle" aria-label="Tema dəyiş" title="Ağ / Tünd rejim">
-          <i class="bi bi-sun-fill icon-sun"></i>
-          <i class="bi bi-moon-stars-fill icon-moon"></i>
-        </button>
-
-        <a href="{% static 'docs/isci-telimati.html' %}" target="_blank" class="doc-btn" aria-label="Dokumentasiya" title="İşçi Təlimatı">
-          <i class="bi bi-book"></i>
-        </a>
-
 
     </div>
 
@@ -738,7 +1123,7 @@
         <i class="bx bx-dollar-circle"></i> Həkimə Ödəniş Əlavə et
       </a>
     </div>
-    
+
   </div>
 
 
@@ -791,6 +1176,126 @@
 </div>
 </div>
 </aside>
+
+<!-- Notification Panel -->
+<aside id="notificationPanel" class="notification-panel" role="dialog" aria-label="Bildirişlər">
+<div class="notification-header">
+<div class="notification-header-content">
+<i class="bi bi-bell" style="color: #f59e0b; font-size: 1.3rem;"></i>
+<span style="font-weight: 600; font-size: 1.1rem; color: #f9fafb;">Bildirişlər</span>
+<span class="notification-badge-header">3</span>
+</div>
+<button id="notificationCloseBtn" class="chat-close-btn" aria-label="Bağla">
+<i class="bi bi-x-lg"></i>
+</button>
+</div>
+
+<div class="notification-body">
+<div class="notification-item unread">
+<div class="notification-item-title">Yeni sifariş</div>
+<div class="notification-item-text">Həkim Dr. Əliyev yeni sifariş yaratdı</div>
+<div class="notification-item-time">5 dəqiqə əvvəl</div>
+</div>
+
+<div class="notification-item unread">
+<div class="notification-item-title">Ödəniş bildirişi</div>
+<div class="notification-item-text">Həkim Dr. Məmmədova üçün ödəniş alındı</div>
+<div class="notification-item-time">15 dəqiqə əvvəl</div>
+</div>
+
+<div class="notification-item unread">
+<div class="notification-item-title">Anbar xəbərdarlığı</div>
+<div class="notification-item-text">Dərman №12345 sayı minimum səviyyəyə çatdı</div>
+<div class="notification-item-time">1 saat əvvəl</div>
+</div>
+
+<div class="notification-item">
+<div class="notification-item-title">Hesabat tamamlandı</div>
+<div class="notification-item-text">Aylıq hesabat uğurla yükləndi</div>
+<div class="notification-item-time">2 saat əvvəl</div>
+</div>
+</div>
+</aside>
+
+<!-- Author Mode Panel -->
+<aside id="authorPanel" class="author-panel" role="dialog" aria-label="Author Rejimi">
+<div class="author-header">
+<div class="chat-header-content">
+<div class="ai-badge">
+<i class="bi bi-person-gear" style="color: #8b5cf6;"></i>
+<span>Author Rejimi</span>
+</div>
+<div class="author-status" id="authorStatus">
+<span class="status-dot" style="background: #64748b;"></span>
+<span class="status-text">Deaktiv</span>
+</div>
+</div>
+<button id="authorCloseBtn" class="chat-close-btn" aria-label="Bağla">
+<i class="bi bi-x-lg"></i>
+</button>
+</div>
+
+<div class="author-body">
+<div class="author-mode-toggle">
+<div class="author-mode-toggle-label">Author Rejimi</div>
+<div class="toggle-switch" id="authorToggleSwitch"></div>
+</div>
+
+<div class="author-settings-group">
+<div class="author-settings-title">
+<i class="bi bi-gear"></i>
+Tənzimləmələr
+</div>
+<div class="author-setting-item">
+<div class="author-setting-label">İstifadəçi</div>
+<div class="author-setting-value">{{ request.user.username }}</div>
+</div>
+<div class="author-setting-item">
+<div class="author-setting-label">Rol</div>
+<div class="author-setting-value">
+{% if request.user.is_superuser %}Admin{% else %}İstifadəçi{% endif %}
+</div>
+</div>
+<div class="author-setting-item">
+<div class="author-setting-label">Sessiya</div>
+<div class="author-setting-value">Aktiv</div>
+</div>
+</div>
+
+<div class="author-settings-group">
+<div class="author-settings-title">
+<i class="bi bi-sliders"></i>
+Nizamlamalar
+</div>
+<div class="author-setting-item">
+<div class="author-setting-label">Avtomatik yaddaş</div>
+<div class="toggle-switch" style="width: 40px; height: 22px;" id="autoSaveToggle"></div>
+</div>
+<div class="author-setting-item">
+<div class="author-setting-label">Bildirişlər</div>
+<div class="toggle-switch active" style="width: 40px; height: 22px;" id="notificationsToggle"></div>
+</div>
+</div>
+
+<div class="author-settings-group">
+<div class="author-settings-title">
+<i class="bi bi-download"></i>
+Qeydiyyat Yüklə
+</div>
+<div class="author-download-section">
+<div class="author-download-label">Tarix seçin:</div>
+<input type="date" id="downloadDate" class="author-date-input">
+<div class="author-download-label" style="margin-top: 12px;">Saat seçin:</div>
+<input type="time" id="downloadTime" class="author-time-input">
+<button id="downloadExcelBtn" class="author-download-btn">
+<i class="bi bi-file-earmark-excel"></i>
+Excel Yüklə
+</button>
+</div>
+</div>
+</div>
+</aside>
+
 {% if messages %}
   <div class="alert-container">
     {% for message in messages %}
@@ -831,13 +1336,24 @@
 <script src="{% static 'js/main.js' %}"></script>
 <script>
 // Türkçe değişken isimleri (tercihinize göre)
-const avatarBtn = document.getElementById('avatarBtn');
 const sohbetPanel = document.getElementById('sohbetPanel');
 const overlay = document.getElementById('overlay');
 const closeBtn = document.getElementById('closeBtn');
 const sendBtn = document.getElementById('sendBtn');
 const msgInput = document.getElementById('msgInput');
 const chatBody = document.getElementById('chatBody');
+
+// Notification panel
+const notificationBtn = document.getElementById('notificationBtn');
+const notificationPanel = document.getElementById('notificationPanel');
+const notificationCloseBtn = document.getElementById('notificationCloseBtn');
+
+// Author mode panel
+const authorModeBtn = document.getElementById('authorModeBtn');
+const authorPanel = document.getElementById('authorPanel');
+const authorCloseBtn = document.getElementById('authorCloseBtn');
+const authorToggleSwitch = document.getElementById('authorToggleSwitch');
+const authorStatus = document.getElementById('authorStatus');
 
 // White / Dark theme toggle
 (function () {
@@ -929,7 +1445,6 @@ function acKapat(toggle) {
     const ac = typeof toggle === 'boolean' ? toggle : !sohbetPanel.classList.contains('open');
     sohbetPanel.classList.toggle('open', ac);
     overlay.classList.toggle('visible', ac);
-    avatarBtn.setAttribute('aria-expanded', String(ac));
 
     if(ac){
         // panel açıldığında inputa odak
@@ -937,11 +1452,142 @@ function acKapat(toggle) {
     }
 }
 
+// Close all panels
+function closeAllPanels() {
+    sohbetPanel.classList.remove('open');
+    notificationPanel.classList.remove('open');
+    authorPanel.classList.remove('open');
+    overlay.classList.remove('visible');
+    notificationBtn.setAttribute('aria-expanded', 'false');
+    authorModeBtn.setAttribute('aria-expanded', 'false');
+}
+
+// Notification panel toggle
+function toggleNotificationPanel(toggle) {
+    const open = typeof toggle === 'boolean' ? toggle : !notificationPanel.classList.contains('open');
+    closeAllPanels();
+    notificationPanel.classList.toggle('open', open);
+    overlay.classList.toggle('visible', open);
+    notificationBtn.setAttribute('aria-expanded', String(open));
+}
+
+// Author panel toggle
+function toggleAuthorPanel(toggle) {
+    const open = typeof toggle === 'boolean' ? toggle : !authorPanel.classList.contains('open');
+    closeAllPanels();
+    authorPanel.classList.toggle('open', open);
+    overlay.classList.toggle('visible', open);
+    authorModeBtn.setAttribute('aria-expanded', String(open));
+}
+
 
 // Tetikleyiciler
-avatarBtn.addEventListener('click', ()=> acKapat());
+document.getElementById('aiChatBtn').addEventListener('click', ()=> acKapat());
 closeBtn.addEventListener('click', ()=> acKapat(false));
-overlay.addEventListener('click', ()=> acKapat(false));
+overlay.addEventListener('click', ()=> closeAllPanels());
+
+// Notification panel event listeners
+notificationBtn.addEventListener('click', ()=> toggleNotificationPanel());
+notificationCloseBtn.addEventListener('click', ()=> toggleNotificationPanel(false));
+
+// Author panel event listeners
+authorModeBtn.addEventListener('click', ()=> toggleAuthorPanel());
+authorCloseBtn.addEventListener('click', ()=> toggleAuthorPanel(false));
+
+// Author mode toggle switch
+authorToggleSwitch.addEventListener('click', () => {
+    const isActive = authorToggleSwitch.classList.toggle('active');
+    authorModeBtn.classList.toggle('active', isActive);
+    const statusDot = authorStatus.querySelector('.status-dot');
+    const statusText = authorStatus.querySelector('.status-text');
+    if (isActive) {
+        authorStatus.classList.add('active');
+        statusDot.style.background = '#10b981';
+        statusText.textContent = 'Aktiv';
+    } else {
+        authorStatus.classList.remove('active');
+        statusDot.style.background = '#64748b';
+        statusText.textContent = 'Deaktiv';
+    }
+});
+
+// Download Excel function
+// Set default date to today
+const today = new Date();
+const todayStr = today.toISOString().split('T')[0];
+downloadDate.value = todayStr;
+
+// Set default time to current time
+const now = new Date();
+const hours = String(now.getHours()).padStart(2, '0');
+const minutes = String(now.getMinutes()).padStart(2, '0');
+downloadTime.value = `${hours}:${minutes}`;
+
+downloadExcelBtn.addEventListener('click', async () => {
+    // Check if author mode is active
+    if (!authorToggleSwitch.classList.contains('active')) {
+        alert('Author rejimi aktiv deyil. Zəhmət olmasa əvvəlcə author rejimini aktiv edin.');
+        return;
+    }
+
+    // Check if date and time are selected
+    if (!downloadDate.value || !downloadTime.value) {
+        alert('Zəhmət olmasa tarix və saat seçin.');
+        return;
+    }
+
+    // Combine date and time
+    const selectedDateTime = `${downloadDate.value} ${downloadTime.value}`;
+
+    // Disable button and show loading state
+    downloadExcelBtn.disabled = true;
+    downloadExcelBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Yüklənir...';
+
+    try {
+        // Make request to download endpoint
+        const response = await fetch('/doctors/drug-data/export/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                datetime: selectedDateTime
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Xəta: ${response.status}`);
+        }
+
+        // Get the blob (Excel file)
+        const blob = await response.blob();
+
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `qeydiyyat_${selectedDateTime.replace(' ', '_')}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        alert('Fayl uğurla yükləndi!');
+
+    } catch (error) {
+        console.error('Yükləmə xətası:', error);
+        alert(`Xəta baş verdi: ${error.message}`);
+    } finally {
+        // Re-enable button
+        downloadExcelBtn.disabled = false;
+        downloadExcelBtn.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Excel Yüklə';
+    }
+});
 
 
 // Enter ile gönder
@@ -1071,7 +1717,7 @@ function getCookie(name) {
 // ESC ile kapatma
 document.addEventListener('keydown', (e)=>{
     if(e.key === 'Escape'){
-        acKapat(false);
+        closeAllPanels();
     }
 });
 

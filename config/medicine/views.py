@@ -1,6 +1,9 @@
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.http import JsonResponse
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal, InvalidOperation
 from medicine.models import Medical
 
@@ -85,3 +88,36 @@ def drugs(request):
         "drugs": drugs
     }
     return render(request, "drugs.html", context)
+
+
+# ========== MOBILE API ==========
+class MedicineTokenPermission:
+    """Custom permission: Token ilə session yoxla."""
+    def has_permission(self, request, view):
+        token = request.META.get('HTTP_AUTHORIZATION', '').replace('Token ', '')
+        if not token:
+            return False
+        from rest_framework.authtoken.models import Token
+        try:
+            Token.objects.get(key=token)
+            return True
+        except Token.DoesNotExist:
+            return False
+
+
+@api_view(['GET'])
+@permission_classes([MedicineTokenPermission])
+def mobile_preparations_api(request):
+    """Mobil tətbiq üçün preparatlar siyahısı."""
+    preparations = Medical.objects.filter(status=True).order_by('med_name')
+    return JsonResponse({
+        'ok': True,
+        'preparations': [
+            {
+                'id': p.id,
+                'med_name': p.med_name,
+                'med_full_name': p.med_full_name or '',
+            }
+            for p in preparations
+        ],
+    })

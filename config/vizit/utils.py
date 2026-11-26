@@ -51,7 +51,6 @@ def vizit_session_yaz(request, istifadeci):
         request.session[key] = value
     # 1 il və ya global SESSION_COOKIE_AGE; brauzer bağlananda silinməsin
     request.session.set_expiry(60 * 60 * 24 * 365)
-    request.session.modified = True
     request.session.save()
 
 

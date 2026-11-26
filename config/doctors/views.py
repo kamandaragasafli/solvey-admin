@@ -2140,6 +2140,231 @@ def export_region_excel(request):
     wb.save(response)
     return response
 
+
+@require_POST
+def export_drug_data_by_date(request):
+    """
+    Seçilmiş tarixdən sonra qeydiyyatları Excel formasında yükləyir.
+    Bölgələr ayrı sheet-lərdə ixrac olunur.
+    Yalnız seçilmiş ayın qeydiyyatları göstərilir.
+    """
+    try:
+        data = json.loads(request.body)
+        datetime_str = data.get('datetime')
+
+        if not datetime_str:
+            return JsonResponse({'error': 'Tarix seçilməyib'}, status=400)
+
+        # Tarix və saatı parse et
+        try:
+            selected_datetime = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M')
+        except ValueError:
+            return JsonResponse({'error': 'Tarix formatı səhvdir'}, status=400)
+
+        # Seçilmiş ayı müəyyən et
+        selected_date = selected_datetime.date()
+        selected_month = selected_date.month
+        selected_year = selected_date.year
+
+        # Bütün bölgələri al
+        regions = Region.objects.all()
+
+        # Excel workbook yarat
+        wb = Workbook()
+        # Default sheet-i sil
+        wb.remove(wb.active)
+
+        # Dərmanlar siyahısı (hamısı üçün eyni)
+        drugs = list(Medical.objects.active().order_by('id'))
+
+        # Hər bölgə üçün ayrı sheet
+        for region in regions:
+            # 🔹 Əsas queryset – arxivlənmiş həkimlər göstərilməsin
+            doctors = Doctors.objects.filter(bolge=region, is_active=True).select_related('bolge').prefetch_related('odenisler')
+
+            doctor_ids = doctors.values_list('id', flat=True)
+
+            # RecipeDrug aggregation + ay filteri
+            counts_qs = RecipeDrug.objects.filter(
+                recipe__dr__in=doctor_ids,
+                recipe__region=region,
+                drug__status=True,
+                recipe__date__month=selected_month,
+                recipe__date__year=selected_year
+            )
+
+            # Seçilmiş tarixdən sonrakı qeydiyyatları filter et
+            counts_qs = counts_qs.filter(recipe__date__gte=selected_date)
+
+            counts_qs = counts_qs.values('recipe__dr', 'drug_id').annotate(total=Sum('number'))
+
+            # Həkim -> dərman -> sayı mapping
+            doctor_drug_counts = defaultdict(dict)
+            doctor_total_counts = defaultdict(int)
+            for row in counts_qs:
+                dr_id = row['recipe__dr']
+                drug_id = row['drug_id']
+                total = row['total'] or 0
+                doctor_drug_counts[dr_id][drug_id] = total
+                doctor_total_counts[dr_id] += total
+
+            # Yalnız məlumatı olan həkimləri göstər
+            valid_doctor_ids = set(doctor_total_counts.keys())
+            doctors = doctors.filter(id__in=valid_doctor_ids)
+
+            # Əgər bu bölgədə qeydiyyat yoxdursa, skip et
+            if not doctors.exists():
+                continue
+
+            # Sheet yarat
+            ws = wb.create_sheet(title=region.region_name[:31])  # Excel sheet adı max 31 simvol
+
+            headers = ["№", "Bölgə", "Həkim adı", "Son Ödəniş"] + [d.med_name for d in drugs] + ["Total"]
+            ws.append(headers)
+
+            bold_font = Font(bold=True, color="060411")
+            header_fill = PatternFill(fill_type="solid", fgColor="F0F0F0")
+            thin = Side(style='thin', color="000000")
+            thin_border = Border(left=thin, right=thin, top=thin, bottom=thin)
+            center_align = Alignment(horizontal="center", vertical="bottom")
+
+            for cell in ws[1]:
+                cell.font = bold_font
+                cell.fill = header_fill
+                cell.border = thin_border
+                cell.alignment = Alignment(horizontal="center", vertical="center", textRotation=90)
+
+            ws.freeze_panes = "A2"
+
+            # Sütun enliklərini sıxlaşdır
+            ws.column_dimensions['A'].width = 5   # №
+            ws.column_dimensions['B'].width = 12  # Bölgə
+            ws.column_dimensions['C'].width = 20  # Həkim adı
+            ws.column_dimensions['D'].width = 18  # Son Ödəniş
+
+            # Dərman sütunları - dar et (E sütunundan başlayır)
+            for i in range(len(drugs)):
+                col_letter = get_column_letter(5 + i)  # 5 = E sütunu
+                ws.column_dimensions[col_letter].width = 4
+
+            # Total sütunu
+            total_col_letter = get_column_letter(5 + len(drugs))
+            ws.column_dimensions[total_col_letter].width = 6
+
+            idx = 1
+            for doctor in doctors:
+                total = doctor_total_counts.get(doctor.id, 0)
+                last_payment = doctor.odenisler.order_by('-date').first()
+
+                if last_payment:
+                    odeme = f"₼{float(last_payment.pay):.2f} - {last_payment.date.strftime('%Y-%m-%d')}"
+                elif doctor.geriqaytarma > 0:
+                    odeme = f"₼{float(doctor.geriqaytarma):.2f}"
+                elif doctor.investisiya > 0:
+                    odeme = f"₼{float(doctor.investisiya):.2f}"
+                elif doctor.avans > 0:
+                    odeme = f"₼{float(doctor.avans):.2f}"
+                else:
+                    odeme = "-"
+
+                row = [
+                    idx,
+                    doctor.bolge.region_name,
+                    doctor.ad,
+                    odeme,
+                ]
+
+                counts_map = doctor_drug_counts.get(doctor.id, {})
+                for drug in drugs:
+                    row.append(counts_map.get(drug.id, 0))
+                row.append(total)
+
+                ws.append(row)
+
+                # Hər xanaya border və mərkəzləşdirmə əlavə et
+                current_row = ws.max_row
+                for col in range(1, len(headers) + 1):
+                    cell = ws.cell(row=current_row, column=col)
+                    cell.border = thin_border
+                    cell.alignment = center_align
+
+                    # Total sütunu bold olsun əgər 0-dan böyükdürsə
+                    if col == len(headers) and cell.value and cell.value > 0:
+                        cell.font = Font(bold=True)
+
+                idx += 1
+
+            # 📈 Cəmlər
+            start_drug_col = 5  # E sütunu (dərmanlar buradan başlayır)
+            num_drugs = len(drugs)
+            total_col_idx = start_drug_col + num_drugs  # Total sütunu
+
+            # Hər dərman üçün cəm
+            drug_totals = [0] * num_drugs
+            overall_total = 0
+
+            # Data sətirlərini oxuyub cəmləri hesabla
+            for row_idx in range(2, ws.max_row + 1):
+                # Dərman sütunları (E-dən başlayır)
+                for i, drug in enumerate(drugs):
+                    col_idx = start_drug_col + i
+                    cell_value = ws.cell(row=row_idx, column=col_idx).value
+                    try:
+                        drug_totals[i] += int(cell_value or 0)
+                    except:
+                        pass
+
+                # Total sütunu
+                try:
+                    total_cell_value = ws.cell(row=row_idx, column=total_col_idx).value
+                    overall_total += int(total_cell_value or 0)
+                except:
+                    pass
+
+            # Cəmi sətirini yaz
+            total_row_idx = ws.max_row + 1
+
+            # Boş xanaları doldur və "Cəmi" yaz
+            for col in range(1, 4):
+                cell = ws.cell(row=total_row_idx, column=col, value="")
+                cell.border = thin_border
+                cell.alignment = center_align
+
+            cemi_cell = ws.cell(row=total_row_idx, column=4, value="Cəmi")
+            cemi_cell.font = Font(bold=True)
+            cemi_cell.border = thin_border
+            cemi_cell.alignment = center_align
+
+            # Hər dərman üçün cəmi (E sütunundan başlayır)
+            for i, total in enumerate(drug_totals):
+                cell = ws.cell(row=total_row_idx, column=start_drug_col + i, value=total)
+                cell.border = thin_border
+                cell.alignment = center_align
+                if total > 0:
+                    cell.font = Font(bold=True)
+
+            # Ümumi total xanası
+            overall_cell = ws.cell(row=total_row_idx, column=total_col_idx, value=overall_total)
+            overall_cell.border = thin_border
+            overall_cell.alignment = center_align
+            overall_cell.font = Font(bold=True if overall_total > 0 else False)
+
+        # Əgər heç bir bölgədə qeydiyyat yoxdursa
+        if len(wb.sheetnames) == 0:
+            return JsonResponse({'error': 'Seçilmiş tarixdə qeydiyyat tapılmadı'}, status=404)
+
+        # Excel faylı kimi qaytar
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        filename = f"Qeydiyyatlar_{selected_date.strftime('%Y-%m-%d')}.xlsx"
+        response['Content-Disposition'] = f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
+        wb.save(response)
+        return response
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Səhv JSON formatı'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 def get_region(request):
     
     reg = Region.objects.all().order_by('id')

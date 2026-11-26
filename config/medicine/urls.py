@@ -10,4 +10,5 @@ urlpatterns = [
     path("edit-drug/<int:id>/", views.update_drug, name="edit-drug"),
     path("delete-drug/<int:id>/",views.del_drug,name='remove'),
     path("drugs/",views.drugs,name='drugs'),
+    path("api/mobile/preparations/", views.mobile_preparations_api, name='mobile_preparations'),
 ]
