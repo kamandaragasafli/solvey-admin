@@ -120,9 +120,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 365  # 1 il — çıxış edilməyənə qədər
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
-SESSION_SAVE_EVERY_REQUEST = True
+SESSION_SAVE_EVERY_REQUEST = False  # Hər request-də session key-i yeniləmə, cookie problemləri yaranmasın
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = None  # Mobil tətbiqlər üçün məhdudiyyətsiz
+SESSION_COOKIE_SAMESITE = 'Lax'  # Standart Lax - əksər browser-lər üçün uyğun
 SESSION_COOKIE_SECURE = False  # HTTPS olmayan serverlər üçün
 SESSION_COOKIE_DOMAIN = None  # Bütün subdomain-lər üçün işləyir
 SESSION_COOKIE_PATH = '/'  # Bütün yollar üçün
