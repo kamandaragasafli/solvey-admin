@@ -235,6 +235,9 @@ def login_view(request):
                 longitude = request.POST.get('longitude')
                 location_name = request.POST.get('location_name')
 
+                # Debug: konum məlumatlarını log et
+                print(f"DEBUG - Konum məlumatları: lat={latitude}, lng={longitude}, loc={location_name}")
+
                 # Aktivlik log
                 UserActivityLog.objects.create(
                     istifadeci=istifadeci,

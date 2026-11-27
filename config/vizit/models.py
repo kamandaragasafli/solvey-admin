@@ -94,7 +94,7 @@ class Vizit(models.Model):
     ]
 
     istifadeci = models.ForeignKey(
-        Istifadeci, on_delete=models.PROTECT, db_column='istifadeci_id', related_name='vizitler'
+        Istifadeci, on_delete=models.CASCADE, db_column='istifadeci_id', related_name='vizitler'
     )
     hekim = models.ForeignKey(
         Doctors, on_delete=models.SET_NULL, db_column='hekim_id', related_name='vizitler', null=True, blank=True
@@ -155,7 +155,7 @@ class VizitPreparat(models.Model):
 
 
 class AptekVizit(models.Model):
-    user = models.ForeignKey(Istifadeci, on_delete=models.PROTECT, db_column='user_id', related_name='aptek_vizit')
+    user = models.ForeignKey(Istifadeci, on_delete=models.CASCADE, db_column='user_id', related_name='aptek_vizit')
     rayon = models.ForeignKey(City, on_delete=models.SET_NULL, db_column='rayon_id', related_name='aptek_vizit', null=True, blank=True)
     bolge = models.ForeignKey(Region, on_delete=models.PROTECT, db_column='bolge_id', related_name='aptek_vizit')
     aptek_ad = models.CharField(max_length=255)

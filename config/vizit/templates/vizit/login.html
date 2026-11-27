@@ -255,7 +255,7 @@
             </div>
         </div>
 
-        <button type="submit" class="login-btn">Daxil ol →</button>
+        <button type="submit" class="login-btn" id="loginBtn">Daxil ol →</button>
 
         <div class="toggle-link">
             Hesabınız yoxdur? <a href="{% url 'vizit:register' %}">Qeydiyyatdan keçin</a>
@@ -340,74 +340,91 @@
     setupToggle('toggleRegPassword', 'reg_sifre');
     setupToggle('toggleRegPasswordConfirm', 'reg_sifre_tekrar');
 
-    // Səhifə yükləndikdə konum soruş
+    // Login button click konum soruş
+    const loginBtn = document.getElementById('loginBtn');
     const locationMessage = document.getElementById('locationMessage');
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
+    
+    if (loginBtn) {
+        loginBtn.addEventListener('click', function(e) {
+            e.preventDefault();
 
-                console.log('Konum alındı:', lat, lng);
+            if (navigator.geolocation) {
+                locationMessage.innerHTML = '<i>📍</i> <span>Konum əldə edilir...</span>';
+                
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
 
-                // Konum adını əldə et
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const locationName = data.display_name || '';
+                        console.log('Konum alındı:', lat, lng);
 
-                        console.log('Konum adı:', locationName);
+                        // Konum adını əldə et
+                        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                const locationName = data.display_name || '';
 
-                        // Gizli input elementləri yarat
-                        const latInput = document.createElement('input');
-                        latInput.type = 'hidden';
-                        latInput.name = 'latitude';
-                        latInput.value = lat;
+                                console.log('Konum adı:', locationName);
 
-                        const lngInput = document.createElement('input');
-                        lngInput.type = 'hidden';
-                        lngInput.name = 'longitude';
-                        lngInput.value = lng;
+                                // Gizli input elementləri yarat
+                                const latInput = document.createElement('input');
+                                latInput.type = 'hidden';
+                                latInput.name = 'latitude';
+                                latInput.value = lat;
 
-                        const locInput = document.createElement('input');
-                        locInput.type = 'hidden';
-                        locInput.name = 'location_name';
-                        locInput.value = locationName;
+                                const lngInput = document.createElement('input');
+                                lngInput.type = 'hidden';
+                                lngInput.name = 'longitude';
+                                lngInput.value = lng;
 
-                        document.getElementById('loginForm').appendChild(latInput);
-                        document.getElementById('loginForm').appendChild(lngInput);
-                        document.getElementById('loginForm').appendChild(locInput);
+                                const locInput = document.createElement('input');
+                                locInput.type = 'hidden';
+                                locInput.name = 'location_name';
+                                locInput.value = locationName;
 
-                        // Mesajı gizlət
+                                document.getElementById('loginForm').appendChild(latInput);
+                                document.getElementById('loginForm').appendChild(lngInput);
+                                document.getElementById('loginForm').appendChild(locInput);
+
+                                // Mesajı gizlət və form-u submit et
+                                if (locationMessage) locationMessage.style.display = 'none';
+                                document.getElementById('loginForm').submit();
+                            })
+                            .catch(err => {
+                                console.log('Konum adı alınamadı:', err);
+                                // Konum adı olmadan koordinatları qoy
+                                const latInput = document.createElement('input');
+                                latInput.type = 'hidden';
+                                latInput.name = 'latitude';
+                                latInput.value = lat;
+
+                                const lngInput = document.createElement('input');
+                                lngInput.type = 'hidden';
+                                lngInput.name = 'longitude';
+                                lngInput.value = lng;
+
+                                document.getElementById('loginForm').appendChild(latInput);
+                                document.getElementById('loginForm').appendChild(lngInput);
+
+                                if (locationMessage) locationMessage.style.display = 'none';
+                                document.getElementById('loginForm').submit();
+                            });
+                    },
+                    function(error) {
+                        console.log('Konum icazəsi verilmədi:', error.message);
+                        // İcazə verilmədisə form-u submit et
                         if (locationMessage) locationMessage.style.display = 'none';
-                    })
-                    .catch(err => {
-                        console.log('Konum adı alınamadı:', err);
-                        // Konum adı olmadan koordinatları qoy
-                        const latInput = document.createElement('input');
-                        latInput.type = 'hidden';
-                        latInput.name = 'latitude';
-                        latInput.value = lat;
-
-                        const lngInput = document.createElement('input');
-                        lngInput.type = 'hidden';
-                        lngInput.name = 'longitude';
-                        lngInput.value = lng;
-
-                        document.getElementById('loginForm').appendChild(latInput);
-                        document.getElementById('loginForm').appendChild(lngInput);
-
-                        if (locationMessage) locationMessage.style.display = 'none';
-                    });
-            },
-            function(error) {
-                console.log('Konum icazəsi verilmədi:', error.message);
-                // İcazə verilmədisə mesajı gizlət
+                        document.getElementById('loginForm').submit();
+                    }
+                );
+            } else {
+                // Geolocation dəstəklənmirsə form-u submit et
                 if (locationMessage) locationMessage.style.display = 'none';
+                document.getElementById('loginForm').submit();
             }
-        );
+        });
     } else {
-        // Geolocation dəstəklənmirsə mesajı gizlət
+        // Button tapılmadı form-u submit et
         if (locationMessage) locationMessage.style.display = 'none';
     }
 })();
