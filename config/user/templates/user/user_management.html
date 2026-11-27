@@ -1,0 +1,366 @@
+{% extends 'base.html' %}
+
+{% block title %}İstifadəçi İdarəetmə{% endblock %}
+
+{% block content %}
+<style>
+  .um-top-bar-wrap {
+    margin-bottom: 20px;
+  }
+  .um-page-title h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #f9fafb;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0;
+  }
+  .um-page-title i {
+    color: #10a37f;
+    font-size: 1.3rem;
+  }
+
+  .um-alert {
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 0.95rem;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .um-alert-success {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #6ee7b7;
+  }
+  .um-alert-error {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+  }
+
+  .um-card {
+    background: linear-gradient(180deg, #1a2234 0%, #161d2c 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  }
+  .um-card-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.02);
+  }
+  .um-card-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #f1f5f9;
+  }
+  .um-card-header i { color: #10a37f; }
+
+  .um-card-body { padding: 22px; }
+
+  .um-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+  }
+  .um-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+  }
+  .um-form-group .um-hint {
+    font-weight: 400;
+    color: #64748b;
+  }
+  .um-input,
+  .um-select {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(15, 23, 42, 0.7);
+    color: #f1f5f9;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .um-input::placeholder { color: #64748b; }
+  .um-input:focus,
+  .um-select:focus {
+    outline: none;
+    border-color: #10a37f;
+    box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.15);
+  }
+  .um-select[multiple] { height: 160px; }
+  .um-select option { background: #161d2c; color: #f1f5f9; }
+  .um-select-hint {
+    color: #64748b;
+    font-size: 11px;
+    margin-top: 4px;
+    display: block;
+  }
+
+  .um-actions {
+    margin-top: 24px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .um-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .um-btn-primary {
+    background: linear-gradient(135deg, #10a37f 0%, #0d8f6e 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);
+  }
+  .um-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(16, 163, 127, 0.4);
+    color: #fff;
+  }
+  .um-btn-outline {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #cbd5e1;
+  }
+  .um-btn-outline:hover {
+    background: rgba(255,255,255,0.08);
+    color: #f1f5f9;
+  }
+
+  .um-table-wrap { padding: 22px; overflow-x: auto; }
+  .um-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 720px;
+  }
+  .um-table thead tr {
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .um-table th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+  .um-table td {
+    padding: 14px;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .um-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .um-table td strong { color: #f9fafb; }
+
+  .um-role-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(16, 163, 127, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 163, 127, 0.3);
+  }
+
+  .um-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    text-decoration: none;
+    margin-right: 8px;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .um-icon-btn-edit {
+    background: rgba(255,255,255,0.05);
+    color: #94a3b8;
+  }
+  .um-icon-btn-edit:hover {
+    background: rgba(16, 163, 127, 0.15);
+    color: #34d399;
+  }
+  .um-icon-btn-del {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+  }
+  .um-icon-btn-del:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+  }
+</style>
+
+<div class="top-bar-wrap um-top-bar-wrap">
+  <div class="um-page-title">
+    <h2><i class='bx bx-user'></i> İstifadəçi İdarəetmə</h2>
+  </div>
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="um-alert {% if '❌' in message.message %}um-alert-error{% else %}um-alert-success{% endif %}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+{% if edit_user %}
+<div class="um-card">
+  <div class="um-card-header">
+    <h3><i class='bx bx-edit'></i> İstifadəçini redaktə et — {{ edit_user.ad }}</h3>
+  </div>
+  <form method="post" class="um-card-body">
+    {% csrf_token %}
+    <input type="hidden" name="user_id" value="{{ edit_user.id }}">
+    <div class="um-form-grid">
+      <div class="um-form-group">
+        <label>Login</label>
+        <input type="text" name="login" required value="{{ edit_user.login }}" class="um-input">
+      </div>
+      <div class="um-form-group">
+        <label>Şifrə <span class="um-hint">(boş = dəyişmə)</span></label>
+        <input type="text" name="sifre" placeholder="Yeni şifrə (ixtiyari)" class="um-input">
+      </div>
+      <div class="um-form-group">
+        <label>Ad</label>
+        <input type="text" name="ad" required value="{{ edit_user.ad }}" class="um-input">
+      </div>
+      <div class="um-form-group">
+        <label>Rol</label>
+        <select name="rol" class="um-select">
+          <option value="numayende" {% if edit_user.rol == 'numayende' %}selected{% endif %}>Tibbi Nümayəndə</option>
+          <option value="menecer" {% if edit_user.rol == 'menecer' %}selected{% endif %}>Menecer</option>
+          <option value="diviziya_rehb" {% if edit_user.rol == 'diviziya_rehb' %}selected{% endif %}>Diviziya Rəhbəri</option>
+          <option value="rehber" {% if edit_user.rol == 'rehber' %}selected{% endif %}>Rəhbər</option>
+        </select>
+      </div>
+      <div class="um-form-group">
+        <label>Status</label>
+        <select name="aktiv" class="um-select">
+          <option value="1" {% if edit_user.aktiv %}selected{% endif %}>Aktiv</option>
+          <option value="0" {% if not edit_user.aktiv %}selected{% endif %}>Deaktiv</option>
+        </select>
+      </div>
+      <div class="um-form-group">
+        <label>Bölgə</label>
+        <select name="bolge_ids" multiple class="um-select">
+          {% for b in bolgeler %}
+          <option value="{{ b.id }}" {% if b.id in edit_user_bolge_ids %}selected{% endif %}>{{ b.region_name }}</option>
+          {% endfor %}
+        </select>
+        <small class="um-select-hint">(Ctrl/Command düyməsini sıxaraq çoxlu seçim edə bilərsiniz)</small>
+      </div>
+    </div>
+    <div class="um-actions">
+      <button type="submit" name="save_user" class="um-btn um-btn-primary"><i class='bx bx-save'></i> Yadda saxla</button>
+      <a href="{% url 'user:management' %}" class="um-btn um-btn-outline">Ləğv et</a>
+    </div>
+  </form>
+</div>
+{% else %}
+<div class="um-card">
+  <div class="um-card-header">
+    <h3><i class='bx bx-plus'></i> Yeni İstifadəçi</h3>
+  </div>
+  <form method="post" class="um-card-body">
+    {% csrf_token %}
+    <div class="um-form-grid">
+      <div class="um-form-group">
+        <label>Login</label>
+        <input type="text" name="login" required placeholder="İstifadəçi adı" class="um-input">
+      </div>
+      <div class="um-form-group">
+        <label>Şifrə</label>
+        <input type="text" name="sifre" required placeholder="Şifrə" class="um-input">
+      </div>
+      <div class="um-form-group">
+        <label>Ad</label>
+        <input type="text" name="ad" required placeholder="Tam adı" class="um-input">
+      </div>
+      <div class="um-form-group">
+        <label>Rol</label>
+        <select name="rol" class="um-select">
+          <option value="numayende">Tibbi Nümayəndə</option>
+          <option value="menecer">Menecer</option>
+          <option value="diviziya_rehb">Diviziya Rəhbəri</option>
+          <option value="rehber">Rəhbər</option>
+        </select>
+      </div>
+      <div class="um-form-group">
+        <label>Bölgə</label>
+        <select name="bolge_ids" multiple class="um-select">
+          {% for b in bolgeler %}
+          <option value="{{ b.id }}">{{ b.region_name }}</option>
+          {% endfor %}
+        </select>
+        <small class="um-select-hint">(Ctrl/Command düyməsini sıxaraq çoxlu seçim edə bilərsiniz)</small>
+      </div>
+    </div>
+    <div class="um-actions">
+      <button type="submit" name="add_user" class="um-btn um-btn-primary"><i class='bx bx-plus'></i> Əlavə et</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="um-card">
+  <div class="um-card-header">
+    <h3><i class='bx bx-user'></i> Mövcud İstifadəçilər ({{ istifadeciler|length }})</h3>
+  </div>
+  <div class="um-table-wrap">
+    <table class="um-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Login</th>
+          <th>Ad</th>
+          <th>Rol</th>
+          <th>Bölgə</th>
+          <th>Aktiv</th>
+          <th>Əməliyyat</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in istifadeciler %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td><strong>{{ u.login }}</strong></td>
+          <td>{{ u.ad }}</td>
+          <td><span class="um-role-badge">{{ u.get_rol_display }}</span></td>
+          <td>{% for b in u.bolgeler.all %}{{ b.region_name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+          <td>{% if u.aktiv %}✅{% else %}❌{% endif %}</td>
+          <td style="white-space:nowrap;">
+            <a href="{% url 'user:management' %}?edit_user={{ u.id }}" class="um-icon-btn um-icon-btn-edit" title="Redaktə"><i class='bx bx-edit'></i></a>
+            <a href="{% url 'user:management' %}?del_user={{ u.id }}" onclick="return confirm('İstifadəçi və ona aid vizit qeydləri silinsin?')" class="um-icon-btn um-icon-btn-del" title="Sil"><i class='bx bx-trash'></i></a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block title %}İstifadəçi Aktivlikləri{% endblock %}
+
+{% block content %}
+<style>
+  .ua-top-bar-wrap { margin-bottom: 20px; }
+  .ua-page-title h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #f9fafb;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0;
+  }
+  .ua-page-title i { color: #10a37f; font-size: 1.3rem; }
+
+  .ua-card {
+    background: linear-gradient(180deg, #1a2234 0%, #161d2c 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  }
+  .ua-card-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.02);
+  }
+  .ua-card-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #f1f5f9;
+  }
+  .ua-card-header i { color: #10a37f; }
+
+  .ua-table-wrap { padding: 22px; overflow-x: auto; }
+  .ua-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 640px;
+  }
+  .ua-table thead tr {
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .ua-table th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+  .ua-table td {
+    padding: 14px;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .ua-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .ua-table td strong { color: #f9fafb; }
+  .ua-table td.ua-empty {
+    text-align: center;
+    color: #64748b;
+    padding: 24px;
+  }
+
+  .ua-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .ua-status-active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+  .ua-status-inactive {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .ua-action-login { color: #34d399; font-weight: 600; }
+  .ua-action-logout { color: #f87171; font-weight: 600; }
+  .ua-action-other { color: #94a3b8; font-weight: 600; }
+</style>
+
+<div class="top-bar-wrap ua-top-bar-wrap">
+  <div class="ua-page-title">
+    <h2><i class='bx bx-user'></i> İstifadəçi Aktivlikləri</h2>
+  </div>
+</div>
+
+<div class="ua-card">
+  <div class="ua-card-header">
+    <h3><i class='bx bx-user-check'></i> Hazırda Aktiv İstifadəçilər ({{ active_users|length }})</h3>
+  </div>
+  <div class="ua-table-wrap">
+    <table class="ua-table">
+      <thead>
+        <tr>
+          <th>İstifadəçi</th>
+          <th>Login vaxtı</th>
+          <th>Konum</th>
+          <th>IP Ünvan</th>
+          <th>Durum</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in active_users %}
+        <tr>
+          <td><strong>{{ log.istifadeci.ad }}</strong> ({{ log.istifadeci.login }})</td>
+          <td>{{ log.timestamp|date:"d.m.Y H:i" }}</td>
+          <td>
+            {% if log.latitude and log.longitude %}
+              <a href="https://www.google.com/maps?q={{ log.latitude }},{{ log.longitude }}" target="_blank" style="color:#60a5fa;text-decoration:none;">
+                <i class='bx bx-map'></i> {{ log.location_name|truncatechars:30|default:"Konum" }}
+              </a>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{{ log.ip_address|default:"—" }}</td>
+          <td><span class="ua-status ua-status-active">Aktiv</span></td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="ua-empty">Hazırda aktiv istifadəçi yoxdur</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="ua-card">
+  <div class="ua-card-header">
+    <h3><i class='bx bx-history'></i> Son 7 Gün Aktivlikləri ({{ logs|length }})</h3>
+  </div>
+  <div class="ua-table-wrap">
+    <table class="ua-table">
+      <thead>
+        <tr>
+          <th>İstifadəçi</th>
+          <th>Əməliyyat</th>
+          <th>Vaxt</th>
+          <th>Konum</th>
+          <th>IP Ünvan</th>
+          <th>Durum</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td><strong>{{ log.istifadeci.ad }}</strong> ({{ log.istifadeci.login }})</td>
+          <td>
+            {% if log.action == 'login' %}
+              <span class="ua-action-login">Giriş</span>
+            {% elif log.action == 'logout' %}
+              <span class="ua-action-logout">Çıxış</span>
+            {% else %}
+              <span class="ua-action-other">Aktivlik</span>
+            {% endif %}
+          </td>
+          <td>{{ log.timestamp|date:"d.m.Y H:i" }}</td>
+          <td>
+            {% if log.latitude and log.longitude %}
+              <a href="https://www.google.com/maps?q={{ log.latitude }},{{ log.longitude }}" target="_blank" style="color:#60a5fa;text-decoration:none;">
+                <i class='bx bx-map'></i> {{ log.location_name|truncatechars:30|default:"Konum" }}
+              </a>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{{ log.ip_address|default:"—" }}</td>
+          <td>
+            {% if log.is_active %}
+              <span class="ua-status ua-status-active">Aktiv</span>
+            {% else %}
+              <span class="ua-status ua-status-inactive">Çıxış etmiş</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="ua-empty">Aktivlik yoxdur</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -337,3 +337,40 @@ class GorulenHekim(models.Model):
 
     def __str__(self):
         return f"{self.hekim} — {self.seen_date}"
+
+
+class UserActivityLog(models.Model):
+    """İstifadəçi login/logout və aktivlik izləməsi"""
+
+    istifadeci = models.ForeignKey(
+        Istifadeci,
+        on_delete=models.CASCADE,
+        related_name="activity_logs",
+        db_column="istifadeci_id",
+    )
+    action = models.CharField(
+        max_length=20,
+        choices=[
+            ('login', 'Giriş'),
+            ('logout', 'Çıxış'),
+            ('activity', 'Aktivlik'),
+        ],
+        default='activity'
+    )
+    session_key = models.CharField(max_length=255, null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    location_name = models.CharField(max_length=255, null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)  # Hazırda aktiv session?
+
+    class Meta:
+        db_table = "user_activity_logs"
+        ordering = ["-timestamp"]
+        verbose_name = "İstifadəçi aktivliyi"
+        verbose_name_plural = "İstifadəçi aktivlikləri"
+
+    def __str__(self):
+        return f"{self.istifadeci.ad} — {self.get_action_display()} — {self.timestamp}"

@@ -1043,6 +1043,33 @@
         </svg>
         <span>Ayarlar</span>
     </a>
+    <div class="prescription-divider"></div>
+
+    <!-- User Tracker -->
+    <a href="{% url 'user:management' %}" class="nav-item">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+        </svg>
+        <span>İstifadəçilər</span>
+    </a>
+
+    <!-- User Activity -->
+    <a href="{% url 'user:activity' %}" class="nav-item">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        <span>Aktivliklər</span>
+    </a>
+
+        <!-- User tracking -->
+    <a href="{% url 'user:tracking' %}" class="nav-item">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+        <span>İzləmə</span>
+    </a>
+
+
     {% endif %}
 
 </div>

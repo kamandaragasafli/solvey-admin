@@ -187,6 +187,22 @@
         .hidden {
             display: none;
         }
+
+        .location-message {
+            background: #e3f2fd;
+            color: #1976d2;
+            border-left: 4px solid #2196f3;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .location-message i {
+            font-size: 18px;
+        }
     </style>
 </head>
 <body>
@@ -205,6 +221,11 @@
         <span>⚠️</span> {{ xeta }}
     </div>
     {% endif %}
+
+    <div class="location-message" id="locationMessage">
+        <i>📍</i>
+        <span>Konum məlumatları üçün icazə tələb olunur...</span>
+    </div>
 
     <!-- Login Form -->
     <form method="POST" id="loginForm" {% if register %}class="hidden"{% endif %}>
@@ -318,6 +339,73 @@
     setupToggle('togglePassword', 'sifre');
     setupToggle('toggleRegPassword', 'reg_sifre');
     setupToggle('toggleRegPasswordConfirm', 'reg_sifre_tekrar');
+
+    // Səhifə yükləndikdə konum soruş
+    const locationMessage = document.getElementById('locationMessage');
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                // Konum adını əldə et
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const locationName = data.display_name || '';
+
+                        // Gizli input elementləri yarat
+                        const latInput = document.createElement('input');
+                        latInput.type = 'hidden';
+                        latInput.name = 'latitude';
+                        latInput.value = lat;
+
+                        const lngInput = document.createElement('input');
+                        lngInput.type = 'hidden';
+                        lngInput.name = 'longitude';
+                        lngInput.value = lng;
+
+                        const locInput = document.createElement('input');
+                        locInput.type = 'hidden';
+                        locInput.name = 'location_name';
+                        locInput.value = locationName;
+
+                        document.getElementById('loginForm').appendChild(latInput);
+                        document.getElementById('loginForm').appendChild(lngInput);
+                        document.getElementById('loginForm').appendChild(locInput);
+
+                        // Mesajı gizlət
+                        if (locationMessage) locationMessage.style.display = 'none';
+                    })
+                    .catch(err => {
+                        console.log('Konum adı alınamadı:', err);
+                        // Konum adı olmadan koordinatları qoy
+                        const latInput = document.createElement('input');
+                        latInput.type = 'hidden';
+                        latInput.name = 'latitude';
+                        latInput.value = lat;
+
+                        const lngInput = document.createElement('input');
+                        lngInput.type = 'hidden';
+                        lngInput.name = 'longitude';
+                        lngInput.value = lng;
+
+                        document.getElementById('loginForm').appendChild(latInput);
+                        document.getElementById('loginForm').appendChild(lngInput);
+
+                        if (locationMessage) locationMessage.style.display = 'none';
+                    });
+            },
+            function(error) {
+                console.log('Konum icazəsi verilmədi:', error.message);
+                // İcazə verilmədisə mesajı gizlət
+                if (locationMessage) locationMessage.style.display = 'none';
+            }
+        );
+    } else {
+        // Geolocation dəstəklənmirsə mesajı gizlət
+        if (locationMessage) locationMessage.style.display = 'none';
+    }
 })();
 </script>
 

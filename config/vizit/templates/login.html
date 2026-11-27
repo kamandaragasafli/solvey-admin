@@ -167,5 +167,83 @@
     </form>
 </div>
 
+<script>
+// Login edildikdə konum göndər və form-u submit et
+document.querySelector('form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    function submitForm() {
+        this.submit();
+    }
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                // Konum adını əldə et
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const locationName = data.display_name || '';
+
+                        // API-ə göndər
+                        fetch('/vizit/api/save-location/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                            },
+                            body: JSON.stringify({
+                                latitude: lat,
+                                longitude: lng,
+                                location_name: locationName
+                            })
+                        })
+                        .then(() => {
+                            // Form-u submit et
+                            document.querySelector('form').submit();
+                        })
+                        .catch(() => {
+                            // Xəta olsa da form-u submit et
+                            document.querySelector('form').submit();
+                        });
+                    })
+                    .catch(() => {
+                        // Konum adı olmadan göndər
+                        fetch('/vizit/api/save-location/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                            },
+                            body: JSON.stringify({
+                                latitude: lat,
+                                longitude: lng,
+                                location_name: ''
+                            })
+                        })
+                        .then(() => {
+                            document.querySelector('form').submit();
+                        })
+                        .catch(() => {
+                            document.querySelector('form').submit();
+                        });
+                    });
+            },
+            function(error) {
+                console.log('Konum icazəsi verilmədi:', error.message);
+                // Konum icazəsi verilmədisə yine de form-u submit et
+                document.querySelector('form').submit();
+            }
+        );
+    } else {
+        // Geolocation dəstəklənmirsə form-u submit et
+        document.querySelector('form').submit();
+    }
+});
+</script>
+
 </body>
 </html>

@@ -42,6 +42,7 @@ from .models import (
     WeeklySchedule,
     WeeklyScheduleDay,
     WeeklyScheduleVisit,
+    UserActivityLog,
 )
 from medicine.models import Medical
 from .utils import (
@@ -228,6 +229,25 @@ def login_view(request):
                 # Köhnə sessiya cookie-ni təzələ, məlumatı saxla
                 request.session.cycle_key()
                 vizit_session_yaz(request, istifadeci)
+
+                # Konum məlumatları
+                latitude = request.POST.get('latitude')
+                longitude = request.POST.get('longitude')
+                location_name = request.POST.get('location_name')
+
+                # Aktivlik log
+                UserActivityLog.objects.create(
+                    istifadeci=istifadeci,
+                    action='login',
+                    session_key=request.session.session_key,
+                    ip_address=request.META.get('REMOTE_ADDR'),
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    latitude=float(latitude) if latitude else None,
+                    longitude=float(longitude) if longitude else None,
+                    location_name=location_name[:255] if location_name else None,
+                    is_active=True
+                )
+
                 if istifadeci.rol == Istifadeci.ROL_REHBER:
                     return redirect('vizit:admin_panel')
                 return redirect('vizit:index')
@@ -243,9 +263,87 @@ def login_view(request):
 
 
 def logout_view(request):
+    user_id = request.session.get('istifadeci_id')
+    session_key = request.session.session_key
+
     vizit_session_temizle(request)
     request.session.flush()
+
+    # Logout log
+    if user_id:
+        try:
+            istifadeci = Istifadeci.objects.get(pk=user_id)
+            UserActivityLog.objects.filter(
+                istifadeci=istifadeci,
+                session_key=session_key
+            ).update(is_active=False)
+            UserActivityLog.objects.create(
+                istifadeci=istifadeci,
+                action='logout',
+                session_key=session_key,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                is_active=False
+            )
+        except Istifadeci.DoesNotExist:
+            pass
+
     return redirect('vizit:login')
+
+
+@csrf_exempt
+def save_location_view(request):
+    """İstifadəçi konumunu qeyd etmək üçün API"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'xeta': 'Method not allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body or b'{}')
+    except (json.JSONDecodeError, ValueError):
+        data = request.POST.dict() if request.POST else {}
+
+    user_id = request.session.get('istifadeci_id')
+    if not user_id:
+        return JsonResponse({'ok': False, 'xeta': 'Giriş tələb olunur'}, status=401)
+
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+    location_name = data.get('location_name')
+
+    try:
+        istifadeci = Istifadeci.objects.get(pk=user_id)
+
+        # Son aktiv login log-unu tap və konum yenilə
+        last_log = UserActivityLog.objects.filter(
+            istifadeci=istifadeci,
+            action='login',
+            is_active=True
+        ).first()
+
+        if last_log:
+            last_log.latitude = float(latitude) if latitude else None
+            last_log.longitude = float(longitude) if longitude else None
+            last_log.location_name = location_name[:255] if location_name else None
+            last_log.save()
+        else:
+            # Aktiv login yoxdursa yeni log yarat
+            UserActivityLog.objects.create(
+                istifadeci=istifadeci,
+                action='activity',
+                session_key=request.session.session_key,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                latitude=float(latitude) if latitude else None,
+                longitude=float(longitude) if longitude else None,
+                location_name=location_name[:255] if location_name else None,
+                is_active=True
+            )
+
+        return JsonResponse({'ok': True})
+    except Istifadeci.DoesNotExist:
+        return JsonResponse({'ok': False, 'xeta': 'İstifadəçi tapılmadı'}, status=404)
+    except Exception as e:
+        return JsonResponse({'ok': False, 'xeta': str(e)}, status=500)
 
 
 @csrf_exempt
