@@ -245,6 +245,8 @@
   var bounds = [];
 
   items.forEach(function (item, idx) {
+    if (!item) return;
+
     var lat = parseFloat(item.dataset.lat);
     var lng = parseFloat(item.dataset.lng);
     if (isNaN(lat) || isNaN(lng)) return;
