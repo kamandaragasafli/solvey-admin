@@ -348,11 +348,15 @@
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
 
+                console.log('Konum alındı:', lat, lng);
+
                 // Konum adını əldə et
                 fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
                     .then(response => response.json())
                     .then(data => {
                         const locationName = data.display_name || '';
+
+                        console.log('Konum adı:', locationName);
 
                         // Gizli input elementləri yarat
                         const latInput = document.createElement('input');
