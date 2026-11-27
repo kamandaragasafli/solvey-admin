@@ -255,13 +255,13 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    background: linear-gradient(135deg, #0050b8 0%, #003d8f 100%);
     border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 4px 12px rgba(17, 123, 245, 0.3);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin-left: 12px;
     color: white;
@@ -270,7 +270,7 @@
 
 .author-mode-btn:hover {
     transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+    box-shadow: 0 6px 20px rgba(17, 123, 245, 0.4);
 }
 
 .author-mode-btn.active {
@@ -1071,30 +1071,29 @@
           <i class="bi bi-list"></i>
         </button>
 
-        <button type="button" class="ai-chat-btn" id="aiChatBtn" aria-label="AI Assistant" title="AI Assistant">
+        <!-- <button type="button" class="ai-chat-btn" id="aiChatBtn" aria-label="AI Assistant" title="AI Assistant">
           <div class="ai-pulse"></div>
           <div class="ai-chat-icon-wrapper">
             <i class="bi bi-robot"></i>
           </div>
-        </button>
+        </button> -->
 
-        <button type="button" class="notification-btn" id="notificationBtn" aria-label="Bildirişlər" title="Bildirişlər">
+        <!-- <button type="button" class="notification-btn" id="notificationBtn" aria-label="Bildirişlər" title="Bildirişlər">
           <i class="bi bi-bell"></i>
           <span class="notification-badge">3</span>
-        </button>
+        </button> -->
 
         <button type="button" class="author-mode-btn" id="authorModeBtn" aria-label="Author Rejimi" title="Author Rejimi">
           <i class="bi bi-person-gear"></i>
-        </button>
-
-        <a href="{% static 'docs/isci-telimati.html' %}" target="_blank" class="doc-btn" aria-label="Dokumentasiya" title="İşçi Təlimatı">
+        </button> 
+                <!-- <a href="{% static 'docs/isci-telimati.html' %}" target="_blank" class="doc-btn" aria-label="Dokumentasiya" title="İşçi Təlimatı">
           <i class="bi bi-book"></i>
-        </a>
+        </a> -->
 
-        <button type="button" class="theme-toggle-btn" id="themeToggle" aria-label="Tema dəyiş" title="Ağ / Tünd rejim">
+        <!-- <button type="button" class="theme-toggle-btn" id="themeToggle" aria-label="Tema dəyiş" title="Ağ / Tünd rejim">
           <i class="bi bi-sun-fill icon-sun"></i>
           <i class="bi bi-moon-stars-fill icon-moon"></i>
-        </button>
+        </button> -->
 
         <a href="{% url 'index' %}" class="top-bar-logo" aria-label="Solvey Pharma">
           <img src="{% static 'img/solvey logo.png' %}" alt="Solvey Pharma">
